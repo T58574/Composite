@@ -1,0 +1,111 @@
+[gd_scene load_steps=8 format=3 uid="uid://composite_test_range_3d"]
+
+[ext_resource type="Script" path="res://scripts/physics/raycast_suspension.gd" id="1_suspension"]
+[ext_resource type="Script" path="res://scripts/procedural/hull_builder.gd" id="2_hull"]
+[ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="3_pbr"]
+[ext_resource type="Script" path="res://scenes/combat/test_range_ui.gd" id="4_ui"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_top_color = Color(0.2, 0.45, 0.75, 1)
+sky_horizon_color = Color(0.6, 0.7, 0.8, 1)
+
+[sub_resource type="Sky" id="Sky_range"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_range"]
+background_mode = 2
+sky = SubResource("Sky_range")
+tonemap_mode = 2
+ssao_enabled = true
+glow_enabled = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hull"]
+render_priority = 0
+shader = ExtResource("3_pbr")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(200, 1, 200)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+size = Vector3(200, 1, 200)
+
+[node name="TestRange3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_range")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 20, 0)
+shadow_enabled = true
+
+[node name="GroundTerrain" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GroundTerrain"]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="GroundTerrain"]
+mesh = SubResource("BoxMesh_ground")
+
+[node name="TestVehicle" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+script = ExtResource("1_suspension")
+
+[node name="ProceduralHullMesh" type="MeshInstance3D" parent="TestVehicle"]
+script = ExtResource("2_hull")
+hull_material = SubResource("ShaderMaterial_hull")
+
+[node name="TargetDummy" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 1.5, -50)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TargetDummy"]
+
+[node name="UI_HUD" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_ui")
+
+[node name="InfoBox" type="PanelContainer" parent="UI_HUD"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 400.0
+offset_bottom = 180.0
+
+[node name="Margin" type="MarginContainer" parent="UI_HUD/InfoBox"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="UI_HUD/InfoBox/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HBoxNav" type="HBoxContainer" parent="UI_HUD/InfoBox/Margin/VBox"]
+layout_mode = 2
+
+[node name="MainMenuBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
+layout_mode = 2
+text = "← Главное меню"
+
+[node name="SandboxBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
+layout_mode = 2
+text = "🛠️ В конструктор"
+
+[node name="Title" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "COMBAT TEST RANGE"
+
+[node name="ControlsHelp" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
+layout_mode = 2
+text = "WASD / Стрелки: Движение танка\nN: Оптика СУО (День/Тепловизор/ПНВ)\nR: Лазерный дальномер"
+
+[connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/MainMenuBtn" to="UI_HUD" method="_on_main_menu_pressed"]
+[connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/SandboxBtn" to="UI_HUD" method="_on_sandbox_pressed"]

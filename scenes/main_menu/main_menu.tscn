@@ -1,0 +1,215 @@
+[gd_scene load_steps=5 format=3 uid="uid://composite_main_menu_3d"]
+
+[ext_resource type="Script" path="res://scenes/main_menu/main_menu.gd" id="1_menu"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_menu"]
+sky_top_color = Color(0.12, 0.15, 0.2, 1)
+sky_horizon_color = Color(0.2, 0.25, 0.3, 1)
+ground_bottom_color = Color(0.08, 0.09, 0.11, 1)
+
+[sub_resource type="Sky" id="Sky_menu"]
+sky_material = SubResource("ProceduralSkyMaterial_menu")
+
+[sub_resource type="Environment" id="Environment_menu"]
+background_mode = 2
+sky = SubResource("Sky_menu")
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.8
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_menu")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 10, 0)
+
+[node name="BackgroundRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.1, 0.12, 0.95)
+
+[node name="MainLayout" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 50
+
+[node name="HBox" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/separation = 40
+
+[node name="LeftMenuPanel" type="VBoxContainer" parent="MainLayout/HBox"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TitleLabel" type="Label" parent="MainLayout/HBox/LeftMenuPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "COMPOSITE"
+
+[node name="SubtitleLabel" type="Label" parent="MainLayout/HBox/LeftMenuPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "MODERN ARMORED VEHICLE SIMULATOR"
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/HBox/LeftMenuPanel"]
+layout_mode = 2
+
+[node name="MainMenuVBox" type="VBoxContainer" parent="MainLayout/HBox/LeftMenuPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SandboxBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🛠️ 1. ПЕСОЧНИЦА КОНСТРУКТОР"
+alignment = 0
+
+[node name="SandboxDesc" type="Label" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "   Flat-мир для процедурного проектирования корпуса и башни"
+
+[node name="TestRangeBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🎯 2. ПОЛИГОН ИСПЫТАНИЙ"
+alignment = 0
+
+[node name="TestRangeDesc" type="Label" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "   Полигон с кочками, мишенями и физикой Raycast-подвески Jolt"
+
+[node name="SettingsBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚙️ 3. НАСТРОЙКИ ИГРЫ"
+alignment = 0
+
+[node name="ExitBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "❌ 4. ВЫХОД ИЗ ИГРЫ"
+alignment = 0
+
+[node name="Spacer" type="Control" parent="MainLayout/HBox/LeftMenuPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VersionLabel" type="Label" parent="MainLayout/HBox/LeftMenuPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.5, 1)
+theme_override_font_sizes/font_size = 12
+text = "v0.2.0 MVP // Godot Engine 4.7.1 & Jolt Physics"
+
+[node name="CenterContainer" type="CenterContainer" parent="MainLayout/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SettingsPanel" type="PanelContainer" parent="MainLayout/HBox/CenterContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 400)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="MainLayout/HBox/CenterContainer/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SettingsTitle" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "⚙️ НАСТРОЙКИ ИГРЫ"
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="WindowModeLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Режим экрана (Window Mode):"
+
+[node name="WindowModeOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ResolutionLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Разрешение экрана (Resolution):"
+
+[node name="ResolutionOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MsaaLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Сглаживание (Anti-Aliasing / MSAA):"
+
+[node name="MsaaOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="VolumeLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Общая громкость (Master Volume):"
+
+[node name="VolumeSlider" type="HSlider" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+value = 80.0
+
+[node name="Spacer" type="Control" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CloseSettingsBtn" type="Button" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "ПРИМЕНИТЬ И ЗАКРЫТЬ"
+
+[connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/SandboxBtn" to="." method="_on_sandbox_pressed"]
+[connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/TestRangeBtn" to="." method="_on_test_range_pressed"]
+[connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/SettingsBtn" to="." method="_on_settings_pressed"]
+[connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/ExitBtn" to="." method="_on_exit_game_pressed"]
+[connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/WindowModeOption" to="." method="_on_window_mode_selected"]
+[connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/ResolutionOption" to="." method="_on_resolution_selected"]
+[connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/MsaaOption" to="." method="_on_msaa_selected"]
+[connection signal="pressed" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/CloseSettingsBtn" to="." method="_on_close_settings_pressed"]

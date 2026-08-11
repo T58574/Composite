@@ -1,0 +1,841 @@
+[gd_scene load_steps=22 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
+
+[ext_resource type="Script" path="res://scenes/tank_editor/tank_editor_ui.gd" id="1_editor_ui"]
+[ext_resource type="Script" path="res://scripts/editor/editor_camera.gd" id="2_camera"]
+[ext_resource type="Script" path="res://scripts/editor/mesh_editor.gd" id="3_mesh_editor"]
+[ext_resource type="Script" path="res://scripts/procedural/hull_builder.gd" id="4_hull"]
+[ext_resource type="Script" path="res://scripts/procedural/turret_builder.gd" id="5_turret"]
+[ext_resource type="Script" path="res://scripts/procedural/track_generator.gd" id="6_tracks"]
+[ext_resource type="Script" path="res://scripts/editor/firepower_builder.gd" id="7_firepower"]
+[ext_resource type="Script" path="res://scripts/editor/gizmo_3d.gd" id="8_gizmo"]
+[ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="9_pbr"]
+[ext_resource type="Shader" path="res://assets/shaders/armor_heatmap.gdshader" id="10_heatmap"]
+[ext_resource type="Shader" path="res://assets/shaders/xray_mesh.gdshader" id="11_xray"]
+[ext_resource type="Texture2D" path="res://assets/materials/tank_steel_armor.jpeg" id="12_armor_tex"]
+[ext_resource type="Texture2D" path="res://assets/materials/concrete_floor.jpeg" id="13_grid_tex"]
+[ext_resource type="Texture2D" uid="uid://cw32xstdnptsh" path="res://assets/materials/hangar_floor_grid.jpg" id="14_hangar_tex"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tactical"]
+sky_top_color = Color(0.2, 0.35, 0.55, 1)
+sky_horizon_color = Color(0.65, 0.7, 0.76, 1)
+ground_bottom_color = Color(0.1, 0.12, 0.14, 1)
+ground_horizon_color = Color(0.4, 0.43, 0.47, 1)
+sun_angle_max = 30.0
+
+[sub_resource type="Sky" id="Sky_tactical"]
+sky_material = SubResource("ProceduralSkyMaterial_tactical")
+
+[sub_resource type="Environment" id="Environment_tactical"]
+background_mode = 2
+sky = SubResource("Sky_tactical")
+ambient_light_source = 3
+ambient_light_color = Color(0.24, 0.26, 0.3, 1)
+ambient_light_sky_contribution = 0.75
+ambient_light_energy = 1.2
+tonemap_mode = 2
+tonemap_exposure = 1.15
+ssao_enabled = true
+ssao_radius = 1.8
+ssao_intensity = 3.0
+ssao_power = 1.5
+ssao_detail = 0.5
+ssao_horizon = 0.06
+glow_enabled = true
+glow_intensity = 0.35
+glow_bloom = 0.12
+glow_blend_mode = 0
+ssr_enabled = true
+ssr_max_steps = 64
+ssr_fade_in = 0.15
+ssr_fade_out = 2.0
+ssr_depth_tolerance = 0.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pbr"]
+render_priority = 0
+shader = ExtResource("9_pbr")
+shader_parameter/albedo_texture = ExtResource("12_armor_tex")
+shader_parameter/base_color = Color(1, 1, 1, 1)
+shader_parameter/metallic = 0.85
+shader_parameter/roughness = 0.45
+shader_parameter/uv_scale = 0.6
+shader_parameter/edge_wear = 0.35
+shader_parameter/camo_type = 0
+shader_parameter/camo_scale = 0.8
+shader_parameter/dirt_amount = 0.35
+shader_parameter/dirt_height = 1.2
+shader_parameter/dirt_color = Color(0.28, 0.22, 0.15, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_heatmap"]
+render_priority = 0
+shader = ExtResource("10_heatmap")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xray"]
+render_priority = 0
+shader = ExtResource("11_xray")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(100, 100)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_concrete_floor"]
+albedo_texture = ExtResource("13_grid_tex")
+uv1_scale = Vector3(16, 16, 1)
+metallic = 0.08
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_platform"]
+size = Vector3(12, 0.04, 18)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hangar_platform"]
+albedo_texture = ExtResource("14_hangar_tex")
+uv1_scale = Vector3(4, 6, 1)
+metallic = 0.15
+roughness = 0.38
+
+[node name="TankEditor" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Node3D" type="Node3D" parent="."]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D"]
+environment = SubResource("Environment_tactical")
+
+[node name="SunLight3D" type="DirectionalLight3D" parent="Node3D"]
+transform = Transform3D(0.819152, -0.40558, 0.40558, 0, 0.707107, 0.707107, -0.573576, -0.579228, 0.579228, 0, 15, 0)
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 1.6
+shadow_enabled = true
+directional_shadow_mode = 2
+directional_shadow_max_distance = 60.0
+shadow_blur = 1.8
+shadow_bias = 0.04
+
+[node name="StudioFillLight" type="DirectionalLight3D" parent="Node3D"]
+transform = Transform3D(-0.819152, 0.40558, -0.40558, 0, 0.707107, 0.707107, 0.573576, 0.579228, -0.579228, 0, 12, 0)
+light_color = Color(0.55, 0.7, 0.88, 1)
+light_energy = 0.45
+shadow_enabled = false
+
+[node name="StudioRimLight" type="DirectionalLight3D" parent="Node3D"]
+transform = Transform3D(0.5, 0, -0.866025, -0.433013, 0.866025, -0.25, 0.75, 0.5, 0.433013, 0, 10, 0)
+light_color = Color(1, 0.95, 0.88, 1)
+light_energy = 0.55
+shadow_enabled = false
+
+[node name="ConcreteFloor" type="MeshInstance3D" parent="Node3D"]
+mesh = SubResource("PlaneMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_concrete_floor")
+
+[node name="PosturePlatform" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("BoxMesh_platform")
+surface_material_override/0 = SubResource("StandardMaterial3D_hangar_platform")
+
+[node name="EditorCameraPivot" type="Node3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 1.2, 0)
+script = ExtResource("2_camera")
+
+[node name="SpringArm3D" type="SpringArm3D" parent="Node3D/EditorCameraPivot"]
+spring_length = 8.0
+
+[node name="Camera3D" type="Camera3D" parent="Node3D/EditorCameraPivot/SpringArm3D"]
+fov = 60.0
+
+[node name="ProceduralVehicle" type="Node3D" parent="Node3D"]
+
+[node name="ProceduralHull" type="MeshInstance3D" parent="Node3D/ProceduralVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("4_hull")
+hull_material = SubResource("ShaderMaterial_pbr")
+
+[node name="ProceduralTurret" type="Node3D" parent="Node3D/ProceduralVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+script = ExtResource("5_turret")
+turret_material = SubResource("ShaderMaterial_pbr")
+
+[node name="TrackGenerator" type="Node3D" parent="Node3D/ProceduralVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+script = ExtResource("6_tracks")
+track_material = SubResource("ShaderMaterial_pbr")
+
+[node name="FirepowerBuilder" type="Node3D" parent="Node3D/ProceduralVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+script = ExtResource("7_firepower")
+
+[node name="Gizmo3D" type="Node3D" parent="Node3D"]
+script = ExtResource("8_gizmo")
+
+[node name="MeshEditorController" type="Node3D" parent="Node3D" node_paths=PackedStringArray("hull_builder", "turret_builder", "camera_3d", "gizmo_3d")]
+script = ExtResource("3_mesh_editor")
+hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
+turret_builder = NodePath("../ProceduralVehicle/ProceduralTurret")
+camera_3d = NodePath("../EditorCameraPivot/SpringArm3D/Camera3D")
+gizmo_3d = NodePath("../Gizmo3D")
+pbr_material = SubResource("ShaderMaterial_pbr")
+heatmap_material = SubResource("ShaderMaterial_heatmap")
+xray_material = SubResource("ShaderMaterial_xray")
+
+[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_editor_ui")
+hull_builder = NodePath("../Node3D/ProceduralVehicle/ProceduralHull")
+turret_builder = NodePath("../Node3D/ProceduralVehicle/ProceduralTurret")
+track_generator = NodePath("../Node3D/ProceduralVehicle/TrackGenerator")
+firepower_builder = NodePath("../Node3D/ProceduralVehicle/FirepowerBuilder")
+editor_camera = NodePath("../Node3D/EditorCameraPivot")
+mesh_editor = NodePath("../Node3D/MeshEditorController")
+
+[node name="TopHeaderBar" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 44.0
+grow_horizontal = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/TopHeaderBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="HBox" type="HBoxContainer" parent="UIOverlay/TopHeaderBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MainMenuBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Menu"
+
+[node name="EraLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Era"
+
+[node name="EraOption" type="OptionButton" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TankNameEdit" type="LineEdit" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "MM22"
+placeholder_text = "Tank Name..."
+
+[node name="SavePresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Save"
+
+[node name="LoadPresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Load"
+
+[node name="ResetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Reset"
+
+[node name="VSep1" type="VSeparator" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+
+[node name="MassBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Mass:"
+
+[node name="MassBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "64.91t"
+
+[node name="SpaceBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+text = "Volume:"
+
+[node name="SpaceBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "50.83k"
+
+[node name="Spacer" type="Control" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SolidBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Solid [F1]"
+
+[node name="HeatmapBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Armor Heatmap [F2]"
+
+[node name="XrayBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "X-Ray [F3]"
+
+[node name="SymmetryCheck" type="CheckBox" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Symmetry X"
+
+[node name="TestDriveBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Test Range"
+
+[node name="LeftSidebar" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_top = 46.0
+offset_right = 160.0
+offset_bottom = -60.0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/LeftSidebar"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/LeftSidebar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CatCompartmentsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Compartments"
+
+[node name="CatTracksBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Tracks"
+
+[node name="CatPowertrainBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Powertrain"
+
+[node name="CatFirepowerBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Firepower"
+
+[node name="CatCrewBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Crew"
+
+[node name="CatPaintBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Paint"
+
+[node name="CatDecalsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 0
+text = "Decals"
+
+[node name="CategoryStack" type="PanelContainer" parent="UIOverlay"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 162.0
+offset_top = 46.0
+offset_right = 380.0
+offset_bottom = -60.0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/CategoryStack"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="CompartmentsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Compartment Specs"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Hull Length (m)"
+
+[node name="HullLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 2.0
+max_value = 10.0
+step = 0.1
+value = 6.8
+
+[node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Hull Width (m)"
+
+[node name="HullWidthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.5
+max_value = 5.0
+step = 0.1
+value = 3.4
+
+[node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Hull Height (m)"
+
+[node name="HullHeightSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.5
+max_value = 2.5
+step = 0.1
+value = 1.4
+
+[node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Glacis Angle (°)"
+
+[node name="GlacisAngleSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 10.0
+max_value = 80.0
+step = 1.0
+value = 60.0
+
+[node name="TracksPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+text = "Road Wheel Pairs"
+
+[node name="WheelsCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 4.0
+max_value = 8.0
+step = 1.0
+value = 6.0
+
+[node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+text = "Wheel Diameter (m)"
+
+[node name="WheelDiamSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.4
+max_value = 1.0
+step = 0.05
+value = 0.65
+
+[node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+text = "Track Width (m)"
+
+[node name="TrackWSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.3
+max_value = 0.9
+step = 0.05
+value = 0.6
+
+[node name="PowertrainPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PowertrainTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+layout_mode = 2
+text = "Powertrain Specs"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+layout_mode = 2
+
+[node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+layout_mode = 2
+text = "Engine Output (HP)"
+
+[node name="EnginePowerSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 400.0
+max_value = 1800.0
+step = 50.0
+value = 1200.0
+
+[node name="FirepowerPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+text = "Gun Caliber (mm)"
+
+[node name="GunCaliberSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 30.0
+max_value = 152.0
+step = 5.0
+value = 120.0
+
+[node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+text = "Barrel Length (m)"
+
+[node name="BarrelLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 2.0
+max_value = 8.0
+step = 0.2
+value = 6.2
+
+[node name="CrewPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CrewTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+layout_mode = 2
+text = "Crew Ergonomics"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+layout_mode = 2
+
+[node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+layout_mode = 2
+text = "Crew Members"
+
+[node name="CrewCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 2.0
+max_value = 5.0
+step = 1.0
+value = 4.0
+
+[node name="PaintPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PaintTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+layout_mode = 2
+text = "Paint & Camouflage"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+layout_mode = 2
+
+[node name="SchemeLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+layout_mode = 2
+text = "Camouflage Pattern"
+
+[node name="PaintSchemeOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DecalsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DecalTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+layout_mode = 2
+text = "Insignia & Marking"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+layout_mode = 2
+
+[node name="DecalLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+layout_mode = 2
+text = "Insignia Symbol"
+
+[node name="DecalOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RightStructureInspector" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = 46.0
+offset_bottom = -60.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/RightStructureInspector"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStructureInspector/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InspectorHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+layout_mode = 2
+text = "Structure"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PartNameLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+text = "base-bashna-1"
+
+[node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ModePointsBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Points [1]"
+
+[node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Edges [2]"
+
+[node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Faces [3]"
+
+[node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Corners [4]"
+
+[node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.7, 0.2, 1)
+text = "Edit Actions"
+
+[node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+columns = 2
+
+[node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete [Del]"
+
+[node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Extrude [E]"
+
+[node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Split Face"
+
+[node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Flip Normals"
+
+[node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Mirror X"
+
+[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+text = "Smooth Angle (36.0°)"
+
+[node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.0
+max_value = 90.0
+step = 1.0
+value = 36.0
+
+[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+text = "Grid Size (mm)"
+
+[node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.0
+max_value = 500.0
+step = 10.0
+
+[node name="ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+text = "Armor Thickness (mm)"
+
+[node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 5.0
+max_value = 800.0
+step = 5.0
+value = 223.0
+
+[node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+layout_mode = 2
+text = "Material Type"
+
+[node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BottomToolbar" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+offset_top = -54.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/BottomToolbar"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="HBox" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PresetTabs" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+layout_mode = 2
+
+[node name="TurretsTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+layout_mode = 2
+text = "Turrets"
+
+[node name="StructuralTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+layout_mode = 2
+text = "Structural"
+
+[node name="AddonTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+layout_mode = 2
+text = "Addon Structures"
+
+[node name="VSep1" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+layout_mode = 2
+
+[node name="GizmoToolbar" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ToolTranslateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Move [G]"
+
+[node name="ToolRotateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rotate [R]"
+
+[node name="ToolScaleBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Scale [S]"
+
+[node name="ToolSnapBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Snap"
+
+[node name="VSep2" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+layout_mode = 2
+
+[node name="HoverInspectionLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 0.9, 1, 1)
+text = "Hover over armor to inspect..."
+
+[node name="FPSLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.7, 0.2, 1)
+text = "FPS: 60"
+
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/MainMenuBtn" to="UIOverlay" method="_on_main_menu_pressed"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/SavePresetBtn" to="UIOverlay" method="_on_save_preset_pressed"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/LoadPresetBtn" to="UIOverlay" method="_on_load_preset_pressed"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/SolidBtn" to="UIOverlay" method="_on_solid_btn_pressed"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/HeatmapBtn" to="UIOverlay" method="_on_heatmap_btn_pressed"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/XrayBtn" to="UIOverlay" method="_on_xray_btn_pressed"]
+[connection signal="toggled" from="UIOverlay/TopHeaderBar/Margin/HBox/SymmetryCheck" to="UIOverlay" method="_on_symmetry_toggled"]
+[connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/TestDriveBtn" to="UIOverlay" method="_on_test_drive_pressed"]
+
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCompartmentsBtn" to="UIOverlay" method="_on_category_selected" binds=[0]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatTracksBtn" to="UIOverlay" method="_on_category_selected" binds=[1]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPowertrainBtn" to="UIOverlay" method="_on_category_selected" binds=[2]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatFirepowerBtn" to="UIOverlay" method="_on_category_selected" binds=[3]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCrewBtn" to="UIOverlay" method="_on_category_selected" binds=[4]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPaintBtn" to="UIOverlay" method="_on_category_selected" binds=[5]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatDecalsBtn" to="UIOverlay" method="_on_category_selected" binds=[6]]
+
+[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModePointsBtn" to="UIOverlay" method="_on_mode_points_pressed"]
+[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeEdgesBtn" to="UIOverlay" method="_on_mode_edges_pressed"]
+[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeFacesBtn" to="UIOverlay" method="_on_mode_faces_pressed"]
+[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeCornersBtn" to="UIOverlay" method="_on_mode_corners_pressed"]
+[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid/ExtrudeBtn" to="UIOverlay" method="_on_extrude_pressed"]

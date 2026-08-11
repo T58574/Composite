@@ -1,0 +1,32 @@
+# ==========================================
+# Godot 4 Git Ignore Configuration
+# ==========================================
+
+# Godot 4 import and cache directory (generated automatically by editor)
+.godot/
+
+# Exported game binaries & packages
+*.import_cache
+*.pck
+*.zip
+*.exe
+*.dll
+*.so
+*.dylib
+*.apk
+*.aab
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor temporary workspace files
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# Logs and system generated temp files
+*.log
+.system_generated/

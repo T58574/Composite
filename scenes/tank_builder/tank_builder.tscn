@@ -1,0 +1,340 @@
+[gd_scene load_steps=8 format=3 uid="uid://composite_tank_builder_3d"]
+
+[ext_resource type="Script" path="res://scenes/tank_builder/tank_builder_ui.gd" id="1_ui"]
+[ext_resource type="Script" path="res://scripts/procedural/hull_builder.gd" id="2_hull"]
+[ext_resource type="Script" path="res://scripts/procedural/turret_builder.gd" id="3_turret"]
+[ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="4_pbr"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_env"]
+sky_top_color = Color(0.35, 0.5, 0.7, 1)
+sky_horizon_color = Color(0.65, 0.7, 0.75, 1)
+ground_bottom_color = Color(0.2, 0.2, 0.22, 1)
+ground_horizon_color = Color(0.65, 0.7, 0.75, 1)
+
+[sub_resource type="Sky" id="Sky_builder"]
+sky_material = SubResource("ProceduralSkyMaterial_env")
+
+[sub_resource type="Environment" id="Environment_builder"]
+background_mode = 2
+sky = SubResource("Sky_builder")
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hull"]
+render_priority = 0
+shader = ExtResource("4_pbr")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(100, 100)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.12, 0.14, 0.16, 1)
+roughness = 0.8
+
+[node name="TankBuilder3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_builder")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 15, 0)
+shadow_enabled = true
+
+[node name="FloorGrid" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_floor")
+
+[node name="CameraPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 1.2, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
+fov = 60.0
+
+[node name="ProceduralVehicle" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+
+[node name="ProceduralHull" type="MeshInstance3D" parent="ProceduralVehicle"]
+script = ExtResource("2_hull")
+hull_material = SubResource("ShaderMaterial_hull")
+
+[node name="ProceduralTurret" type="Node3D" parent="ProceduralVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+script = ExtResource("3_turret")
+turret_material = SubResource("ShaderMaterial_hull")
+
+[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "orbit_camera_pivot", "camera_node")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ui")
+hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
+turret_builder = NodePath("../ProceduralVehicle/ProceduralTurret")
+orbit_camera_pivot = NodePath("../CameraPivot")
+camera_node = NodePath("../CameraPivot/Camera3D")
+
+[node name="HeaderPanel" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 50.0
+grow_horizontal = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/HeaderPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 10
+
+[node name="HBox" type="HBoxContainer" parent="UIOverlay/HeaderPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MainMenuBtn" type="Button" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+text = "← Главное меню"
+
+[node name="VSeparator0" type="VSeparator" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "COMPOSITE // TANK & TURRET BUILDER 3D"
+
+[node name="VSeparator" type="VSeparator" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+
+[node name="PresetMBT" type="Button" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+text = "Preset: MBT (Tank)"
+
+[node name="PresetIFV" type="Button" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+text = "Preset: IFV (BMP)"
+
+[node name="VSeparator2" type="VSeparator" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+
+[node name="TestRangeBtn" type="Button" parent="UIOverlay/HeaderPanel/Margin/HBox"]
+layout_mode = 2
+text = "🎯 Тест на полигоне"
+
+[node name="LeftControlsPanel" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_top = 60.0
+offset_right = 340.0
+offset_bottom = -20.0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/LeftControlsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/LeftControlsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SectionTitle" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "HULL GEOMETRY"
+
+[node name="LengthLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Length (m)"
+
+[node name="LengthSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 3.0
+max_value = 10.0
+step = 0.1
+value = 6.8
+
+[node name="WidthLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Width (m)"
+
+[node name="WidthSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 2.0
+max_value = 5.0
+step = 0.1
+value = 3.4
+
+[node name="HeightLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Height (m)"
+
+[node name="HeightSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.8
+max_value = 3.0
+step = 0.1
+value = 1.4
+
+[node name="GlacisLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Front Glacis Angle (°)"
+
+[node name="GlacisSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 15.0
+max_value = 80.0
+step = 1.0
+value = 60.0
+
+[node name="ArmorLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Front Armor (mm RHA)"
+
+[node name="ArmorSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 50.0
+max_value = 1000.0
+step = 10.0
+value = 450.0
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="TurretTitle" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "TURRET & MAIN GUN"
+
+[node name="TurretLLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Turret Length (m)"
+
+[node name="TurretLengthSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.5
+max_value = 5.0
+step = 0.1
+value = 3.2
+
+[node name="TurretWLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Turret Width (m)"
+
+[node name="TurretWidthSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.5
+max_value = 5.0
+step = 0.1
+value = 2.8
+
+[node name="BarrelLabel" type="Label" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Gun Barrel Length (m)"
+
+[node name="BarrelSlider" type="HSlider" parent="UIOverlay/LeftControlsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 3.0
+max_value = 9.0
+step = 0.1
+value = 6.2
+
+[node name="RightStatsPanel" type="PanelContainer" parent="UIOverlay"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -360.0
+offset_top = 60.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="UIOverlay/RightStatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStatsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatsTitle" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "VEHICLE ANALYSIS"
+
+[node name="MassLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Total Mass: 0.0 Tons"
+
+[node name="VolumeLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hull Volume: 0.0 m³"
+
+[node name="ArmorEffLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hull Front: 450mm RHA (LOS Eff: --)"
+
+[node name="HSeparator2" type="HSeparator" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="AimTitle" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "TURRET TRAVERSE & ELEVATION TEST"
+
+[node name="YawLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Turret Yaw / Azimuth (°)"
+
+[node name="TurretYawSlider" type="HSlider" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -180.0
+max_value = 180.0
+step = 1.0
+value = 0.0
+
+[node name="PitchLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+layout_mode = 2
+text = "Gun Pitch / Elevation (°)"
+
+[node name="GunPitchSlider" type="HSlider" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -8.0
+max_value = 20.0
+step = 0.5
+value = 0.0
+
+[node name="StatusLabel" type="Label" parent="UIOverlay/RightStatsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: Operational"
+
+[connection signal="pressed" from="UIOverlay/HeaderPanel/Margin/HBox/MainMenuBtn" to="UIOverlay" method="_on_main_menu_pressed"]
+[connection signal="pressed" from="UIOverlay/HeaderPanel/Margin/HBox/PresetMBT" to="UIOverlay" method="_on_preset_mbt_selected"]
+[connection signal="pressed" from="UIOverlay/HeaderPanel/Margin/HBox/PresetIFV" to="UIOverlay" method="_on_preset_ifv_selected"]
+[connection signal="pressed" from="UIOverlay/HeaderPanel/Margin/HBox/TestRangeBtn" to="UIOverlay" method="_on_test_range_pressed"]
