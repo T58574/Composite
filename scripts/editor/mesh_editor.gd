@@ -21,7 +21,7 @@ signal selection_changed()
 @export var gizmo_3d: Gizmo3D
 
 @export var symmetry_x_enabled: bool = true
-@export_range(0.01, 2.0, 0.05) var grid_snap_step: float = 0.1 ## Meters (0.05, 0.1, 0.5)
+@export var grid_snap_step: float = 0.1 ## Meters (0.05, 0.1, 0.5)
 
 var current_edit_mode: EditMode = EditMode.VERTEX
 var current_vis_mode: VisualizationMode = VisualizationMode.SOLID
@@ -40,8 +40,7 @@ var hovered_face_index: int = -1
 
 # Visual Selection Overlays
 var selection_overlay_mesh: MeshInstance3D
-var selection_fill_material: StandardMaterial3D
-var selection_line_material: StandardMaterial3D
+var selection_material: StandardMaterial3D
 
 func _ready() -> void:
 	if track_generator == null and get_parent():
@@ -51,7 +50,8 @@ func _ready() -> void:
 	set_visualization_mode(VisualizationMode.SOLID)
 
 	if gizmo_3d:
-		gizmo_3d.transform_changed.connect(_on_gizmo_transform_changed)
+		if not gizmo_3d.transform_changed.is_connected(_on_gizmo_transform_changed):
+			gizmo_3d.transform_changed.connect(_on_gizmo_transform_changed)
 
 func _setup_selection_overlay() -> void:
 	if selection_overlay_mesh == null:
@@ -59,27 +59,16 @@ func _setup_selection_overlay() -> void:
 		selection_overlay_mesh.name = "SelectionOverlay"
 		add_child(selection_overlay_mesh)
 
-	selection_fill_material = StandardMaterial3D.new()
-	selection_fill_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	selection_fill_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	selection_fill_material.albedo_color = Color(1.0, 0.75, 0.1, 0.35) # Golden fill
-	selection_fill_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	selection_fill_material.no_depth_test = true
-
-	selection_line_material = StandardMaterial3D.new()
-	selection_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	selection_line_material.vertex_color_use_as_albedo = true
-	selection_line_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	selection_line_material.no_depth_test = true
+	selection_material = StandardMaterial3D.new()
+	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	selection_material.albedo_color = Color(1.0, 0.6, 0.1, 1.0) # Orange primary selection
+	selection_material.no_depth_test = true
 
 func _unhandled_input(event: InputEvent) -> void:
 	if gizmo_3d and gizmo_3d.process_input_event(camera_3d, event):
 		return
 
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		_pick_element_at_screen_pos(event.position)
-
-	elif event is InputEventMouseMotion:
+	if event is InputEventMouseMotion:
 		inspect_hover_point(event.position)
 
 	elif event is InputEventKey and event.pressed:
@@ -93,12 +82,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2: set_edit_mode(EditMode.EDGE)
 			KEY_3: set_edit_mode(EditMode.FACE)
 			KEY_4: set_edit_mode(EditMode.CORNER)
-			KEY_G:
-				set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
-			KEY_R:
-				set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
-			KEY_S:
-				set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
+			KEY_G: set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
+			KEY_R: set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
+			KEY_S: set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
 			KEY_E:
 				if current_edit_mode == EditMode.FACE and selected_face_index != -1:
 					extrude_selected_face()
@@ -181,10 +167,11 @@ func _raycast_targets(ray_origin: Vector3, ray_dir: Vector3) -> Dictionary:
 				var dist = ray_origin.distance_to(hit)
 				if dist < closest_dist:
 					closest_dist = dist
+					var tri_verts: Array = [faces[i * 3], faces[i * 3 + 1], faces[i * 3 + 2]]
 					best_hit = {
 						"target": target,
 						"face_index": i,
-						"face_verts": [faces[i * 3], faces[i * 3 + 1], faces[i * 3 + 2]],
+						"face_verts": tri_verts,
 						"hit_pos": hit,
 						"dist": dist
 					}
@@ -206,7 +193,7 @@ func _pick_element_at_screen_pos(screen_pos: Vector2) -> void:
 
 	selected_target = best_hit["target"]
 	selected_face_index = best_hit["face_index"]
-	var face_verts: Array[Vector3] = best_hit["face_verts"]
+	var face_verts: Array = best_hit["face_verts"]
 	var hit_pos_global: Vector3 = best_hit["hit_pos"]
 	var target_gt = selected_target.global_transform
 
@@ -270,48 +257,23 @@ func _clear_selection() -> void:
 	_update_selection_visuals()
 	selection_changed.emit()
 
-func _on_gizmo_transform_changed(trans_delta: Vector3, rot_delta: Vector3, scale_delta: Vector3) -> void:
+func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _scale_delta: Vector3) -> void:
 	if selected_target == null:
 		return
 
 	var scale_factor = 2.0 if symmetry_x_enabled else 1.0
 
-	if gizmo_3d and gizmo_3d.gizmo_mode == Gizmo3D.GizmoMode.SCALE:
-		var sx = (scale_delta.x - 1.0) * scale_factor
-		var sy = (scale_delta.y - 1.0) * 1.5
-		var sz = (scale_delta.z - 1.0) * 1.5
-		if selected_target == hull_builder:
-			hull_builder.length = clamp(hull_builder.length + sz, 2.0, 10.0)
-			hull_builder.width = clamp(hull_builder.width + sx, 1.5, 5.0)
-			hull_builder.height = clamp(hull_builder.height + sy, 0.5, 2.5)
-			hull_builder.generate_hull_mesh()
-		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-			turret_builder.turret_length = clamp(turret_builder.turret_length + sz, 1.5, 4.5)
-			turret_builder.turret_width = clamp(turret_builder.turret_width + sx, 1.5, 4.5)
-			turret_builder.turret_height = clamp(turret_builder.turret_height + sy, 0.6, 2.0)
-			turret_builder.generate_turret_and_gun()
+	if selected_target == hull_builder:
+		hull_builder.length = clamp(hull_builder.length + trans_delta.x * 1.5, 2.0, 10.0)
+		hull_builder.width = clamp(hull_builder.width + trans_delta.z * scale_factor, 1.5, 5.0)
+		hull_builder.height = clamp(hull_builder.height + trans_delta.y * 1.5, 0.5, 2.5)
+		hull_builder.generate_hull_mesh()
 
-	elif gizmo_3d and gizmo_3d.gizmo_mode == Gizmo3D.GizmoMode.ROTATE:
-		var rot_amount_deg = rad_to_deg(rot_delta.x + rot_delta.y + rot_delta.z)
-		if selected_target == hull_builder:
-			hull_builder.front_glacis_angle_deg = clamp(hull_builder.front_glacis_angle_deg + rot_amount_deg * 0.5, 10.0, 80.0)
-			hull_builder.generate_hull_mesh()
-		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-			turret_builder.cheek_angle_deg = clamp(turret_builder.cheek_angle_deg + rot_amount_deg * 0.5, 15.0, 75.0)
-			turret_builder.generate_turret_and_gun()
-
-	else:
-		# GizmoMode.TRANSLATE or default
-		if selected_target == hull_builder:
-			hull_builder.length = clamp(hull_builder.length + trans_delta.z * 1.5, 2.0, 10.0)
-			hull_builder.width = clamp(hull_builder.width + trans_delta.x * scale_factor, 1.5, 5.0)
-			hull_builder.height = clamp(hull_builder.height + trans_delta.y * 1.5, 0.5, 2.5)
-			hull_builder.generate_hull_mesh()
-		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-			turret_builder.turret_length = clamp(turret_builder.turret_length + trans_delta.z * 1.5, 1.5, 4.5)
-			turret_builder.turret_width = clamp(turret_builder.turret_width + trans_delta.x * scale_factor, 1.5, 4.5)
-			turret_builder.turret_height = clamp(turret_builder.turret_height + trans_delta.y * 1.5, 0.6, 2.0)
-			turret_builder.generate_turret_and_gun()
+	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
+		turret_builder.turret_length = clamp(turret_builder.turret_length + trans_delta.x * 1.5, 1.5, 4.5)
+		turret_builder.turret_width = clamp(turret_builder.turret_width + trans_delta.z * scale_factor, 1.5, 4.5)
+		turret_builder.turret_height = clamp(turret_builder.turret_height + trans_delta.y * 1.5, 0.6, 2.0)
+		turret_builder.generate_turret_and_gun()
 
 	_reposition_gizmo_and_selection()
 	_update_selection_visuals()
@@ -399,193 +361,177 @@ func _update_selection_visuals() -> void:
 		selection_overlay_mesh.mesh = null
 		return
 
-	var arr_mesh = ArrayMesh.new()
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-	# 1. Semi-transparent golden fill overlay quad (Color(1.0, 0.75, 0.1, 0.35)) when in EditMode.FACE
+	# 1. Translucent Face Fill Overlay (Sprocket-style Golden Fill)
 	if current_edit_mode == EditMode.FACE and selected_positions.size() >= 3:
-		var st_fill = SurfaceTool.new()
-		st_fill.begin(Mesh.PRIMITIVE_TRIANGLES)
-		st_fill.set_color(Color(1.0, 0.75, 0.1, 0.35))
-
 		var p0 = selected_positions[0]
 		var p1 = selected_positions[1]
 		var p2 = selected_positions[2]
+		var normal = (p1 - p0).cross(p2 - p0).normalized()
 
-		# Front face triangle
-		st_fill.set_uv(Vector2(0, 0))
-		st_fill.add_vertex(p0)
-		st_fill.set_uv(Vector2(1, 0))
-		st_fill.add_vertex(p1)
-		st_fill.set_uv(Vector2(0.5, 1))
-		st_fill.add_vertex(p2)
-
-		# Back face triangle
-		st_fill.set_uv(Vector2(0, 0))
-		st_fill.add_vertex(p0)
-		st_fill.set_uv(Vector2(0.5, 1))
-		st_fill.add_vertex(p2)
-		st_fill.set_uv(Vector2(1, 0))
-		st_fill.add_vertex(p1)
-
-		if selected_positions.size() >= 4:
-			var p3 = selected_positions[3]
-			st_fill.set_uv(Vector2(0, 0))
-			st_fill.add_vertex(p0)
-			st_fill.set_uv(Vector2(1, 0))
-			st_fill.add_vertex(p2)
-			st_fill.set_uv(Vector2(0.5, 1))
-			st_fill.add_vertex(p3)
-
-			st_fill.set_uv(Vector2(0, 0))
-			st_fill.add_vertex(p0)
-			st_fill.set_uv(Vector2(0.5, 1))
-			st_fill.add_vertex(p3)
-			st_fill.set_uv(Vector2(1, 0))
-			st_fill.add_vertex(p2)
+		st.set_color(Color(1.0, 0.75, 0.1, 0.35))
+		st.set_normal(normal)
+		st.set_uv(Vector2(0, 0))
+		st.add_vertex(p0)
+		st.set_normal(normal)
+		st.set_uv(Vector2(1, 0))
+		st.add_vertex(p1)
+		st.set_normal(normal)
+		st.set_uv(Vector2(0.5, 1))
+		st.add_vertex(p2)
 
 		if symmetry_x_enabled:
 			var s0 = _symmetry_x(p0)
 			var s1 = _symmetry_x(p1)
 			var s2 = _symmetry_x(p2)
-			st_fill.set_uv(Vector2(0, 0))
-			st_fill.add_vertex(s0)
-			st_fill.set_uv(Vector2(1, 0))
-			st_fill.add_vertex(s1)
-			st_fill.set_uv(Vector2(0.5, 1))
-			st_fill.add_vertex(s2)
+			var s_norm = (s1 - s0).cross(s2 - s0).normalized()
 
-			st_fill.set_uv(Vector2(0, 0))
-			st_fill.add_vertex(s0)
-			st_fill.set_uv(Vector2(0.5, 1))
-			st_fill.add_vertex(s2)
-			st_fill.set_uv(Vector2(1, 0))
-			st_fill.add_vertex(s1)
+			st.set_color(Color(0.2, 0.8, 1.0, 0.35))
+			st.set_normal(s_norm)
+			st.set_uv(Vector2(0, 0))
+			st.add_vertex(s0)
+			st.set_normal(s_norm)
+			st.set_uv(Vector2(1, 0))
+			st.add_vertex(s1)
+			st.set_normal(s_norm)
+			st.set_uv(Vector2(0.5, 1))
+			st.add_vertex(s2)
 
-		st_fill.generate_normals()
-		st_fill.generate_tangents()
-		arr_mesh = st_fill.commit(arr_mesh)
-		arr_mesh.surface_set_material(arr_mesh.get_surface_count() - 1, selection_fill_material)
+	# 2. Contour Line Outlines
+	if selected_positions.size() >= 3:
+		var p0 = selected_positions[0]
+		var p1 = selected_positions[1]
+		var p2 = selected_positions[2]
+		_add_thick_line(st, p0, p1, Color(1.0, 0.85, 0.1), 0.015)
+		_add_thick_line(st, p1, p2, Color(1.0, 0.85, 0.1), 0.015)
+		_add_thick_line(st, p2, p0, Color(1.0, 0.85, 0.1), 0.015)
+	elif selected_positions.size() >= 2:
+		_add_thick_line(st, selected_positions[0], selected_positions[1], Color(1.0, 0.85, 0.1), 0.015)
 
-	# 2. Line Overlay Surface: Contours (Bright Orange/Yellow), Red Vertex Cubes, Cyan Diamond Anchor
-	var st_lines = SurfaceTool.new()
-	st_lines.begin(Mesh.PRIMITIVE_LINES)
+	# 3. Corner Vertex Handle Nodes (Red Cubes)
+	if selected_target and selected_target.mesh:
+		var faces = selected_target.mesh.get_faces()
+		var gt = selected_target.global_transform
+		for i in range(min(faces.size(), 48)):
+			var v_g = gt * faces[i]
+			_add_box(st, v_g, 0.07, Color(1.0, 0.2, 0.2))
 
-	# Bright orange/yellow outline contours (Color(1.0, 0.85, 0.1))
-	var contour_color = Color(1.0, 0.85, 0.1)
-	st_lines.set_color(contour_color)
+	# 4. Center Cyan Wireframe Diamond Anchor
+	if selected_positions.size() > 0:
+		var center_pos = Vector3.ZERO
+		for pos in selected_positions:
+			center_pos += pos
+		center_pos /= float(selected_positions.size())
+		_add_diamond_anchor(st, center_pos, 0.12, Color(0.2, 0.8, 1.0))
 
-	match current_edit_mode:
-		EditMode.FACE:
-			if selected_positions.size() >= 3:
-				var p0 = selected_positions[0]
-				var p1 = selected_positions[1]
-				var p2 = selected_positions[2]
-				_add_line(st_lines, p0, p1)
-				_add_line(st_lines, p1, p2)
-				_add_line(st_lines, p2, p0)
-				if selected_positions.size() >= 4:
-					_add_line(st_lines, p2, selected_positions[3])
-					_add_line(st_lines, selected_positions[3], p0)
-		EditMode.EDGE:
-			if selected_positions.size() >= 2:
-				_add_line(st_lines, selected_positions[0], selected_positions[1])
-		EditMode.VERTEX, EditMode.CORNER:
-			pass
+	st.generate_tangents()
+	selection_overlay_mesh.mesh = st.commit()
 
-	if symmetry_x_enabled:
-		st_lines.set_color(contour_color)
-		match current_edit_mode:
-			EditMode.FACE:
-				if selected_positions.size() >= 3:
-					var s0 = _symmetry_x(selected_positions[0])
-					var s1 = _symmetry_x(selected_positions[1])
-					var s2 = _symmetry_x(selected_positions[2])
-					_add_line(st_lines, s0, s1)
-					_add_line(st_lines, s1, s2)
-					_add_line(st_lines, s2, s0)
-					if selected_positions.size() >= 4:
-						var s3 = _symmetry_x(selected_positions[3])
-						_add_line(st_lines, s2, s3)
-						_add_line(st_lines, s3, s0)
-			EditMode.EDGE:
-				if selected_positions.size() >= 2:
-					_add_line(st_lines, _symmetry_x(selected_positions[0]), _symmetry_x(selected_positions[1]))
-			EditMode.VERTEX, EditMode.CORNER:
-				pass
-
-	# Red 3D vertex handle cubes (Color(1.0, 0.2, 0.2)) at corner vertices
-	var vertex_color = Color(1.0, 0.2, 0.2)
-	for pos in selected_positions:
-		_add_box(st_lines, pos, 0.08, vertex_color)
-		if symmetry_x_enabled:
-			_add_box(st_lines, _symmetry_x(pos), 0.08, vertex_color)
-
-	# Cyan wireframe diamond anchor (Color(0.2, 0.8, 1.0)) at selected face/node center
-	var center = Vector3.ZERO
-	for pos in selected_positions:
-		center += pos
-	center /= float(selected_positions.size())
-
-	var diamond_color = Color(0.2, 0.8, 1.0)
-	_add_diamond(st_lines, center, 0.16, diamond_color)
-	if symmetry_x_enabled:
-		_add_diamond(st_lines, _symmetry_x(center), 0.16, diamond_color)
-
-	arr_mesh = st_lines.commit(arr_mesh)
-	arr_mesh.surface_set_material(arr_mesh.get_surface_count() - 1, selection_line_material)
-
-	selection_overlay_mesh.mesh = arr_mesh
+	# Unshaded translucent overlay material
+	var overlay_mat = StandardMaterial3D.new()
+	overlay_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	overlay_mat.vertex_color_use_as_albedo = true
+	overlay_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	overlay_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	overlay_mat.no_depth_test = true
+	selection_overlay_mesh.material_override = overlay_mat
 
 func _symmetry_x(pos: Vector3) -> Vector3:
 	return Vector3(-pos.x, pos.y, pos.z)
 
-func _add_line(st: SurfaceTool, a: Vector3, b: Vector3) -> void:
-	st.set_uv(Vector2.ZERO)
-	st.add_vertex(a)
-	st.set_uv(Vector2.ZERO)
-	st.add_vertex(b)
+func _add_thick_line(st: SurfaceTool, a: Vector3, b: Vector3, color: Color, width: float) -> void:
+	var dir = (b - a).normalized()
+	var side = Vector3.UP.cross(dir).normalized() * width
+	if side.length_squared() < 0.0001:
+		side = Vector3.RIGHT * width
+
+	var n = Vector3.UP
+	st.set_color(color)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0,0))
+	st.add_vertex(a - side)
+	st.set_normal(n)
+	st.set_uv(Vector2(1,0))
+	st.add_vertex(a + side)
+	st.set_normal(n)
+	st.set_uv(Vector2(1,1))
+	st.add_vertex(b + side)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0,0))
+	st.add_vertex(a - side)
+	st.set_normal(n)
+	st.set_uv(Vector2(1,1))
+	st.add_vertex(b + side)
+	st.set_normal(n)
+	st.set_uv(Vector2(0,1))
+	st.add_vertex(b - side)
 
 func _add_box(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
-	st.set_color(color)
 	var h = size * 0.5
-	var c = [
-		center + Vector3(-h, -h, -h), center + Vector3(h, -h, -h),
-		center + Vector3(h, -h, h), center + Vector3(-h, -h, h),
-		center + Vector3(-h, h, -h), center + Vector3(h, h, -h),
-		center + Vector3(h, h, h), center + Vector3(-h, h, h)
-	]
-	for i in range(4):
-		_add_line(st, c[i], c[(i + 1) % 4])
-		_add_line(st, c[4 + i], c[4 + (i + 1) % 4])
-		_add_line(st, c[i], c[4 + i])
+	var c0 = center + Vector3(-h, -h, -h)
+	var c1 = center + Vector3(h, -h, -h)
+	var c2 = center + Vector3(h, -h, h)
+	var c3 = center + Vector3(-h, -h, h)
+	var c4 = center + Vector3(-h, h, -h)
+	var c5 = center + Vector3(h, h, -h)
+	var c6 = center + Vector3(h, h, h)
+	var c7 = center + Vector3(-h, h, h)
 
-func _add_diamond(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
 	st.set_color(color)
+
+	# 6 Box faces
+	_add_quad_simple(st, c0, c1, c5, c4) # Front
+	_add_quad_simple(st, c3, c7, c6, c2) # Rear
+	_add_quad_simple(st, c0, c4, c7, c3) # Left
+	_add_quad_simple(st, c1, c2, c6, c5) # Right
+	_add_quad_simple(st, c4, c5, c6, c7) # Top
+	_add_quad_simple(st, c0, c3, c2, c1) # Bottom
+
+func _add_quad_simple(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	var n = (b - a).cross(d - a).normalized()
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(b)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 1))
+	st.add_vertex(d)
+
+func _add_diamond_anchor(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
 	var h = size * 0.5
-	var top = center + Vector3(0, h, 0)
-	var bot = center + Vector3(0, -h, 0)
+	var top = center + Vector3(0, h * 1.4, 0)
+	var bot = center + Vector3(0, -h * 1.4, 0)
 	var e0 = center + Vector3(h, 0, 0)
 	var e1 = center + Vector3(0, 0, h)
 	var e2 = center + Vector3(-h, 0, 0)
 	var e3 = center + Vector3(0, 0, -h)
 
-	# Top pyramid
-	_add_line(st, top, e0)
-	_add_line(st, top, e1)
-	_add_line(st, top, e2)
-	_add_line(st, top, e3)
+	st.set_color(color)
 
-	# Bottom pyramid
-	_add_line(st, bot, e0)
-	_add_line(st, bot, e1)
-	_add_line(st, bot, e2)
-	_add_line(st, bot, e3)
-
-	# Equator ring
-	_add_line(st, e0, e1)
-	_add_line(st, e1, e2)
-	_add_line(st, e2, e3)
-	_add_line(st, e3, e0)
+	_add_quad_simple(st, top, e0, bot, e1)
+	_add_quad_simple(st, top, e1, bot, e2)
+	_add_quad_simple(st, top, e2, bot, e3)
+	_add_quad_simple(st, top, e3, bot, e0)
 
 func inspect_hover_point(screen_pos: Vector2) -> void:
 	if camera_3d == null:
@@ -599,12 +545,12 @@ func inspect_hover_point(screen_pos: Vector2) -> void:
 		return
 
 	var target = hit_data["target"]
-	var face_verts: Array[Vector3] = hit_data["face_verts"]
+	var face_verts: Array = hit_data["face_verts"]
 	var gt = target.global_transform
 
-	var v0 = gt * face_verts[0]
-	var v1 = gt * face_verts[1]
-	var v2 = gt * face_verts[2]
+	var v0: Vector3 = gt * face_verts[0]
+	var v1: Vector3 = gt * face_verts[1]
+	var v2: Vector3 = gt * face_verts[2]
 
 	var normal = (v1 - v0).cross(v2 - v0).normalized()
 	if normal.dot(-ray_dir) < 0:
