@@ -117,7 +117,7 @@ func _input(event: InputEvent) -> void:
 		_update_camera_transform()
 
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
-		focus_target(Vector3(0.0, 1.2, 0.0))
+		_focus_on_vehicle()
 
 func _update_camera_transform() -> void:
 	self.rotation_degrees = Vector3(pitch_deg, yaw_deg, 0.0)
@@ -126,3 +126,33 @@ func _update_camera_transform() -> void:
 func focus_target(new_target: Vector3) -> void:
 	var tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "global_position", new_target, 0.4)
+
+func _focus_on_vehicle() -> void:
+	var aabb := AABB()
+	var found := false
+	var vehicle_root: Node = null
+	if get_parent():
+		vehicle_root = get_parent().get_node_or_null("ProceduralVehicle")
+	if vehicle_root == null:
+		focus_target(Vector3(0.0, 1.2, 0.0))
+		return
+	for child in vehicle_root.get_children():
+		if child is MeshInstance3D and child.mesh:
+			var child_aabb := child.global_transform * child.mesh.get_aabb()
+			if not found:
+				aabb = child_aabb
+				found = true
+			else:
+				aabb = aabb.merge(child_aabb)
+		for grandchild in child.get_children():
+			if grandchild is MeshInstance3D and grandchild.mesh:
+				var gc_aabb := grandchild.global_transform * grandchild.mesh.get_aabb()
+				if not found:
+					aabb = gc_aabb
+					found = true
+				else:
+					aabb = aabb.merge(gc_aabb)
+	if found:
+		focus_target(aabb.get_center())
+	else:
+		focus_target(Vector3(0.0, 1.2, 0.0))

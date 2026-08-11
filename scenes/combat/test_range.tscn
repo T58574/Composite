@@ -1,112 +1,227 @@
-[gd_scene load_steps=8 format=3 uid="uid://composite_test_range_3d"]
+[gd_scene load_steps=14 format=3 uid="uid://composite_test_range_3d"]
 
 [ext_resource type="Script" path="res://scripts/physics/raycast_suspension.gd" id="1_suspension"]
 [ext_resource type="Script" path="res://scripts/procedural/hull_builder.gd" id="2_hull"]
-[ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="3_pbr"]
-[ext_resource type="Script" path="res://scenes/combat/test_range_ui.gd" id="4_ui"]
+[ext_resource type="Script" path="res://scripts/procedural/turret_builder.gd" id="3_turret"]
+[ext_resource type="Script" path="res://scripts/procedural/track_generator.gd" id="4_tracks"]
+[ext_resource type="Script" path="res://scripts/combat/chase_camera.gd" id="5_chase_cam"]
+[ext_resource type="Script" path="res://scripts/combat/shooting_system.gd" id="6_shooting"]
+[ext_resource type="Script" path="res://scripts/combat/test_range_hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/fcs/thermal_fcs.gd" id="8_fcs"]
+[ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="9_pbr"]
+[ext_resource type="Shader" path="res://assets/shaders/flir_thermal.gdshader" id="10_flir"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.2, 0.45, 0.75, 1)
 sky_horizon_color = Color(0.6, 0.7, 0.8, 1)
+ground_bottom_color = Color(0.18, 0.15, 0.12, 1)
+ground_horizon_color = Color(0.5, 0.48, 0.42, 1)
 
-[sub_resource type="Sky" id="Sky_range"]
-sky_material = SubResource("ProceduralSkyMaterial_sky")
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
 
-[sub_resource type="Environment" id="Environment_range"]
+[sub_resource type="Environment" id="env"]
 background_mode = 2
-sky = SubResource("Sky_range")
-tonemap_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.6, 0.65, 1)
+ambient_light_energy = 0.4
 ssao_enabled = true
+ssao_radius = 2.0
+ssao_intensity = 1.5
 glow_enabled = true
+glow_intensity = 0.3
+tonemap_mode = 2
+tonemap_exposure = 1.1
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_hull"]
-render_priority = 0
-shader = ExtResource("3_pbr")
+[sub_resource type="ShaderMaterial" id="hull_mat"]
+shader = ExtResource("9_pbr")
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+[sub_resource type="BoxShape3D" id="ground_shape"]
 size = Vector3(200, 1, 200)
 
-[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.35, 0.32, 0.28, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="ground_mesh"]
 size = Vector3(200, 1, 200)
+material = SubResource("ground_mat")
+
+[sub_resource type="BoxShape3D" id="target_shape_1"]
+size = Vector3(3, 3, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="target_mat"]
+albedo_color = Color(0.8, 0.15, 0.1, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="target_mesh_1"]
+size = Vector3(3, 3, 0.5)
+material = SubResource("target_mat")
+
+[sub_resource type="BoxShape3D" id="target_shape_2"]
+size = Vector3(3, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="target_mesh_2"]
+size = Vector3(3, 3, 0.5)
+material = SubResource("target_mat")
+
+[sub_resource type="BoxShape3D" id="target_shape_3"]
+size = Vector3(3, 3, 0.5)
+
+[sub_resource type="BoxMesh" id="target_mesh_3"]
+size = Vector3(3, 3, 0.5)
+material = SubResource("target_mat")
+
+[sub_resource type="BoxShape3D" id="ramp_shape_1"]
+size = Vector3(6, 0.5, 10)
+
+[sub_resource type="StandardMaterial3D" id="ramp_mat"]
+albedo_color = Color(0.45, 0.42, 0.38, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="ramp_mesh_1"]
+size = Vector3(6, 0.5, 10)
+material = SubResource("ramp_mat")
+
+[sub_resource type="BoxShape3D" id="ramp_shape_2"]
+size = Vector3(6, 1.0, 10)
+
+[sub_resource type="BoxMesh" id="ramp_mesh_2"]
+size = Vector3(6, 1.0, 10)
+material = SubResource("ramp_mat")
+
+[sub_resource type="ShaderMaterial" id="flir_mat"]
+shader = ExtResource("10_flir")
 
 [node name="TestRange3D" type="Node3D"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_range")
+environment = SubResource("env")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 20, 0)
+transform = Transform3D(0.866, -0.433, 0.25, 0, 0.5, 0.866, -0.5, -0.75, 0.433, 30, 40, 0)
+light_color = Color(1, 0.95, 0.85, 1)
+light_energy = 1.2
 shadow_enabled = true
+directional_shadow_max_distance = 150.0
 
 [node name="GroundTerrain" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="GroundTerrain"]
-shape = SubResource("BoxShape3D_ground")
+shape = SubResource("ground_shape")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="GroundTerrain"]
-mesh = SubResource("BoxMesh_ground")
+mesh = SubResource("ground_mesh")
 
 [node name="TestVehicle" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+mass = 42000.0
 script = ExtResource("1_suspension")
+engine_horsepower = 1200.0
+max_speed_kmh = 65.0
 
 [node name="ProceduralHullMesh" type="MeshInstance3D" parent="TestVehicle"]
 script = ExtResource("2_hull")
-hull_material = SubResource("ShaderMaterial_hull")
+hull_material = SubResource("hull_mat")
 
-[node name="TargetDummy" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 1.5, -50)
+[node name="ProceduralTurret" type="Node3D" parent="TestVehicle"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+script = ExtResource("3_turret")
+turret_material = SubResource("hull_mat")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="TargetDummy"]
+[node name="TrackGenerator" type="Node3D" parent="TestVehicle"]
+script = ExtResource("4_tracks")
 
-[node name="UI_HUD" type="Control" parent="."]
+[node name="ShootingSystem" type="Node3D" parent="TestVehicle"]
+script = ExtResource("6_shooting")
+turret_builder = NodePath("../ProceduralTurret")
+
+[node name="FCS" type="Node3D" parent="TestVehicle"]
+script = ExtResource("8_fcs")
+
+[node name="LRFRayCast" type="RayCast3D" parent="TestVehicle/FCS"]
+target_position = Vector3(0, 0, -5000)
+enabled = true
+
+[node name="ChaseCamera" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 12)
+script = ExtResource("5_chase_cam")
+target = NodePath("../TestVehicle")
+
+[node name="Camera3D" type="Camera3D" parent="ChaseCamera"]
+current = true
+
+[node name="Target_50m" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -50)
+metadata/armor_thickness_mm = 200.0
+metadata/armor_type = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Target_50m"]
+shape = SubResource("target_shape_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Target_50m"]
+mesh = SubResource("target_mesh_1")
+
+[node name="Target_100m" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.5, -100)
+metadata/armor_thickness_mm = 300.0
+metadata/armor_type = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Target_100m"]
+shape = SubResource("target_shape_2")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Target_100m"]
+mesh = SubResource("target_mesh_2")
+
+[node name="Target_200m" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.5, -200)
+metadata/armor_thickness_mm = 500.0
+metadata/armor_type = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Target_200m"]
+shape = SubResource("target_shape_3")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Target_200m"]
+mesh = SubResource("target_mesh_3")
+
+[node name="Ramp_Small" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 20, 0.2, -20)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ramp_Small"]
+shape = SubResource("ramp_shape_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ramp_Small"]
+mesh = SubResource("ramp_mesh_1")
+
+[node name="Ramp_Large" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, -20, 0.4, -30)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ramp_Large"]
+shape = SubResource("ramp_shape_2")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ramp_Large"]
+mesh = SubResource("ramp_mesh_2")
+
+[node name="FLIROverlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="ThermalRect" type="ColorRect" parent="FLIROverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+material = SubResource("flir_mat")
+
+[node name="TestRangeHUD" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("4_ui")
-
-[node name="InfoBox" type="PanelContainer" parent="UI_HUD"]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 400.0
-offset_bottom = 180.0
-
-[node name="Margin" type="MarginContainer" parent="UI_HUD/InfoBox"]
-layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 12
-
-[node name="VBox" type="VBoxContainer" parent="UI_HUD/InfoBox/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="HBoxNav" type="HBoxContainer" parent="UI_HUD/InfoBox/Margin/VBox"]
-layout_mode = 2
-
-[node name="MainMenuBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
-layout_mode = 2
-text = "RANGE_MAIN_MENU"
-
-[node name="SandboxBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
-layout_mode = 2
-text = "RANGE_TO_BUILDER"
-
-[node name="Title" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "RANGE_TITLE"
-
-[node name="ControlsHelp" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
-layout_mode = 2
-text = "RANGE_CONTROLS"
-
-[connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/MainMenuBtn" to="UI_HUD" method="_on_main_menu_pressed"]
-[connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/SandboxBtn" to="UI_HUD" method="_on_sandbox_pressed"]
-
+mouse_filter = 2
+script = ExtResource("7_hud")
+vehicle = NodePath("../TestVehicle")
+shooting_system = NodePath("../TestVehicle/ShootingSystem")
+fcs = NodePath("../TestVehicle/FCS")

@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Serializes and deserializes full Sprocket tank configurations to JSON files.
 
-static func save_preset(file_path: String, tank_name: String, era: String, hull: HullBuilder, turret: TurretBuilder, tracks: TrackGenerator, firepower: FirepowerBuilder) -> bool:
+static func save_preset(file_path: String, tank_name: String, era: String, hull: HullBuilder, turret: TurretBuilder, tracks: TrackGenerator, firepower: FirepowerBuilder, vertex_offsets: Dictionary = {}) -> bool:
 	var data = {
 		"version": "0.2.53.2",
 		"name": tank_name,
@@ -34,6 +34,17 @@ static func save_preset(file_path: String, tank_name: String, era: String, hull:
 		}
 	}
 
+	if not vertex_offsets.is_empty():
+		var serialized_offsets = {}
+		for builder_name in vertex_offsets:
+			var builder_offsets = vertex_offsets[builder_name]
+			var serialized_builder_offsets = {}
+			for vertex_index in builder_offsets:
+				var offset = builder_offsets[vertex_index]
+				serialized_builder_offsets[str(vertex_index)] = [offset.x, offset.y, offset.z]
+			serialized_offsets[builder_name] = serialized_builder_offsets
+		data["vertex_offsets"] = serialized_offsets
+
 	var file = FileAccess.open(file_path, FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data, "  "))
@@ -57,3 +68,20 @@ static func load_preset(file_path: String) -> Dictionary:
 	if parse_result == OK and json.data is Dictionary:
 		return json.data
 	return {}
+
+## Extracts vertex offsets from loaded preset data, converting [x,y,z] arrays back to Vector3
+static func extract_vertex_offsets(data: Dictionary) -> Dictionary:
+	if not data.has("vertex_offsets"):
+		return {}
+	var offsets := {}
+	var raw: Dictionary = data["vertex_offsets"]
+	for builder_name in raw:
+		var builder_offsets := {}
+		var raw_builder: Dictionary = raw[builder_name]
+		for idx_str in raw_builder:
+			var arr = raw_builder[idx_str]
+			if arr is Array and arr.size() == 3:
+				builder_offsets[int(idx_str)] = Vector3(arr[0], arr[1], arr[2])
+		if not builder_offsets.is_empty():
+			offsets[builder_name] = builder_offsets
+	return offsets
