@@ -41,11 +41,16 @@ func generate_tracks_and_wheels() -> void:
 	_create_road_wheels_and_belts()
 
 func _ensure_default_material() -> void:
-	if track_material == null:
+	if track_material == null or track_material is ShaderMaterial:
 		var mat = StandardMaterial3D.new()
-		mat.albedo_color = Color(0.22, 0.24, 0.26)
-		mat.metallic = 0.45
-		mat.roughness = 0.55
+		if ResourceLoader.exists("res://assets/materials/tank_track_link.jpg"):
+			var tex = load("res://assets/materials/tank_track_link.jpg") as Texture2D
+			mat.albedo_texture = tex
+			mat.uv1_scale = Vector3(3.0, 3.0, 3.0)
+		else:
+			mat.albedo_color = Color(0.22, 0.24, 0.26)
+		mat.metallic = 0.55
+		mat.roughness = 0.45
 		track_material = mat
 
 func _clear_existing() -> void:
@@ -206,7 +211,6 @@ func _create_idler_mesh(radius: float, width: float, side: float) -> MeshInstanc
 
 	var sides = 20
 	var rim_width = width * 0.35
-	var rim_r_in = radius * 0.78
 
 	for i in range(sides):
 		var a1 = (float(i) / float(sides)) * TAU

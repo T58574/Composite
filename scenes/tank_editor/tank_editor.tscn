@@ -14,6 +14,7 @@
 [ext_resource type="Texture2D" path="res://assets/materials/tank_steel_armor.jpeg" id="12_armor_tex"]
 [ext_resource type="Texture2D" path="res://assets/materials/concrete_floor.jpeg" id="13_grid_tex"]
 [ext_resource type="Texture2D" uid="uid://cw32xstdnptsh" path="res://assets/materials/hangar_floor_grid.jpg" id="14_hangar_tex"]
+[ext_resource type="Texture2D" path="res://assets/materials/tank_track_link.jpg" id="15_track_tex"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tactical"]
 sky_top_color = Color(0.2, 0.35, 0.55, 1)
