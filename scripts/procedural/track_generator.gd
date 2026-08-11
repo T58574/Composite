@@ -2,6 +2,7 @@ class_name TrackGenerator
 extends Node3D
 
 ## Procedural Continuous Track Belt and Road Wheel Generator for Sprocket-style Editor.
+## Aligned along X axis (vehicle length) and Z axis (vehicle track span width).
 ## Builds dual-rim road wheels with hub caps, drive sprockets with radial teeth,
 ## skeletonized idler wheels, return rollers, and continuous track belt loops with realistic sag curves.
 
@@ -12,7 +13,7 @@ enum SuspensionType { TORSION_BAR, HYDROPNEUMATIC, LEAF_SPRING }
 @export_range(0.3, 1.2, 0.05) var wheel_diameter: float = 0.65 ## Meters
 @export_range(0.3, 0.9, 0.05) var track_width: float = 0.6 ## Meters
 @export_range(0.3, 1.2, 0.05) var suspension_height: float = 0.6 ## Ground clearance
-@export_range(1.2, 2.5, 0.1) var track_span_width: float = 1.6 ## Distance from vehicle center
+@export_range(1.2, 2.5, 0.1) var track_span_width: float = 1.6 ## Distance from vehicle center (Z axis)
 @export_range(0.01, 0.15, 0.01) var track_sag_m: float = 0.06 ## Track sag depth on top run
 
 @export_group("Suspension Tuning")
@@ -46,35 +47,37 @@ func _clear_existing() -> void:
 func _create_road_wheels_and_belts() -> void:
 	var wheel_radius = wheel_diameter * 0.5
 	var chassis_length = (road_wheels_count - 1) * (wheel_diameter * 1.15)
-	var start_z = -chassis_length * 0.5
-	var end_z = chassis_length * 0.5
+	
+	# Chassis runs along X axis: Rear (-X) to Front (+X)
+	var rear_x = -chassis_length * 0.5
+	var front_x = chassis_length * 0.5
 
-	for side in [-1.0, 1.0]: # Left (-1) and Right (1)
-		var x_pos = side * track_span_width
+	for side in [-1.0, 1.0]: # Left (-1, -Z) and Right (1, +Z)
+		var z_pos = side * track_span_width
 
-		# 1. Drive Sprocket (Front) with teeth
-		var sprocket_pos = Vector3(x_pos, 0.1, start_z - (wheel_radius * 1.3))
+		# 1. Drive Sprocket (Front, +X) with radial teeth
+		var sprocket_pos = Vector3(front_x + (wheel_radius * 1.3), 0.1, z_pos)
 		var sprocket = _create_sprocket_mesh(wheel_radius * 0.9, track_width * 0.85, side)
 		sprocket.position = sprocket_pos
 		add_child(sprocket)
 
-		# 2. Idler Wheel (Rear) with dished spokes
-		var idler_pos = Vector3(x_pos, 0.1, end_z + (wheel_radius * 1.3))
+		# 2. Idler Wheel (Rear, -X) with dished spokes
+		var idler_pos = Vector3(rear_x - (wheel_radius * 1.3), 0.1, z_pos)
 		var idler = _create_idler_mesh(wheel_radius * 0.85, track_width * 0.85, side)
 		idler.position = idler_pos
 		add_child(idler)
 
-		# 3. Dual Rim Road Wheels & Axle Hub Caps
+		# 3. Dual Rim Road Wheels & Axle Hub Caps along X axis
 		var wheel_y = -suspension_height * 0.5
 		for i in range(road_wheels_count):
-			var z_pos = start_z + (float(i) * wheel_diameter * 1.15)
+			var x_pos = rear_x + (float(i) * wheel_diameter * 1.15)
 			var wheel_pos = Vector3(x_pos, wheel_y, z_pos)
 			var wheel = _create_dual_road_wheel_mesh(wheel_radius, track_width * 0.85, side)
 			wheel.position = wheel_pos
 			add_child(wheel)
 			_wheel_nodes.append(wheel)
 
-		# 4. Return Rollers (Upper Track Support)
+		# 4. Return Rollers (Upper Track Support along X)
 		var return_roller_count = clamp(road_wheels_count - 2, 2, 4)
 		var roller_positions: Array[Vector3] = []
 		var roller_y = 0.35
@@ -82,18 +85,19 @@ func _create_road_wheels_and_belts() -> void:
 
 		for r in range(return_roller_count):
 			var t_r = float(r + 1) / float(return_roller_count + 1)
-			var r_z = lerp(sprocket_pos.z, idler_pos.z, t_r)
-			var r_pos = Vector3(x_pos, roller_y, r_z)
+			var r_x = lerp(rear_x, front_x, t_r)
+			var r_pos = Vector3(r_x, roller_y, z_pos)
 			roller_positions.append(r_pos)
 
 			var roller = _create_dual_road_wheel_mesh(roller_r, track_width * 0.7, side)
 			roller.position = r_pos
 			add_child(roller)
 
-		# 5. Continuous Track Belt Loop with Realistic Sag Curve
-		_build_track_loop_mesh(x_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width, start_z, end_z)
+		# 5. Continuous Track Belt Loop with Sag Curve along X axis
+		_build_track_loop_mesh(z_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width)
 
 ## Creates a detailed Dual Rim Road Wheel (Inner Rim + Outer Rim + Rubber Tire + Central Axle Hub Cap)
+## Wheels roll in XY plane, axle extends along Z axis.
 func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> MeshInstance3D:
 	var mi = MeshInstance3D.new()
 	var st = SurfaceTool.new()
@@ -101,7 +105,7 @@ func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> M
 
 	var sides = 24
 	var rim_width = width * 0.38
-	var gap = width * 0.24 # Gap down middle for track guide horn
+	var gap = width * 0.24
 
 	var rim_offsets = [-gap * 0.5 - rim_width * 0.5, gap * 0.5 + rim_width * 0.5]
 
@@ -110,59 +114,61 @@ func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> M
 		for i in range(sides):
 			var a1 = (float(i) / float(sides)) * TAU
 			var a2 = (float(i + 1) / float(sides)) * TAU
-			var u1 = float(i) / float(sides)
-			var u2 = float(i + 1) / float(sides)
 
-			var x_in = offset - rim_width * 0.5
-			var x_out = offset + rim_width * 0.5
+			# Radial normal in XY plane
+			var n1 = Vector3(cos(a1), sin(a1), 0.0)
+			var n2 = Vector3(cos(a2), sin(a2), 0.0)
 
-			# Rubber Tire Outer Tread Ring
-			var p1_l = Vector3(x_in, cos(a1) * radius, sin(a1) * radius)
-			var p2_l = Vector3(x_in, cos(a2) * radius, sin(a2) * radius)
-			var p1_r = Vector3(x_out, cos(a1) * radius, sin(a1) * radius)
-			var p2_r = Vector3(x_out, cos(a2) * radius, sin(a2) * radius)
+			var z_in = offset - rim_width * 0.5
+			var z_out = offset + rim_width * 0.5
 
-			_add_quad(st, p1_l, p2_l, p2_r, p1_r, Vector2(u1, 0), Vector2(u2, 0), Vector2(u2, 1), Vector2(u1, 1))
+			# Rubber Tire Outer Tread Ring (XY circle, extruded in Z)
+			var p1_in = Vector3(cos(a1) * radius, sin(a1) * radius, z_in)
+			var p2_in = Vector3(cos(a2) * radius, sin(a2) * radius, z_in)
+			var p1_out = Vector3(cos(a1) * radius, sin(a1) * radius, z_out)
+			var p2_out = Vector3(cos(a2) * radius, sin(a2) * radius, z_out)
 
-			# Metal Wheel Rim Dish Face
-			var pr1_l = Vector3(x_in, cos(a1) * inner_r, sin(a1) * inner_r)
-			var pr2_l = Vector3(x_in, cos(a2) * inner_r, sin(a2) * inner_r)
-			var pr1_r = Vector3(x_out, cos(a1) * inner_r, sin(a1) * inner_r)
-			var pr2_r = Vector3(x_out, cos(a2) * inner_r, sin(a2) * inner_r)
+			_add_quad_smooth_normal(st, p1_in, p1_out, p2_out, p2_in, n1, n1, n2, n2)
 
-			_add_quad(st, pr1_l, pr2_l, p2_l, p1_l)
-			_add_quad(st, p1_r, p2_r, pr2_r, pr1_r)
+			# Metal Wheel Rim Dish Face (Flat Z normals)
+			var pr1_in = Vector3(cos(a1) * inner_r, sin(a1) * inner_r, z_in)
+			var pr2_in = Vector3(cos(a2) * inner_r, sin(a2) * inner_r, z_in)
+			var pr1_out = Vector3(cos(a1) * inner_r, sin(a1) * inner_r, z_out)
+			var pr2_out = Vector3(cos(a2) * inner_r, sin(a2) * inner_r, z_out)
+
+			_add_quad_flat_normal(st, pr1_in, p1_in, p2_in, pr2_in, Vector3(0, 0, -1))
+			_add_quad_flat_normal(st, pr1_out, pr2_out, p2_out, p1_out, Vector3(0, 0, 1))
 
 	# Central Axle Hub Cap
 	var hub_r = radius * 0.32
-	var hub_out_x = side * (width * 0.52)
-	var hub_in_x = side * (width * 0.3)
+	var hub_out_z = side * (width * 0.52)
+	var hub_in_z = side * (width * 0.3)
 
 	for i in range(16):
 		var a1 = (float(i) / 16.0) * TAU
 		var a2 = (float(i + 1) / 16.0) * TAU
-		var hp1_in = Vector3(hub_in_x, cos(a1) * hub_r, sin(a1) * hub_r)
-		var hp2_in = Vector3(hub_in_x, cos(a2) * hub_r, sin(a2) * hub_r)
-		var hp1_out = Vector3(hub_out_x, cos(a1) * hub_r, sin(a1) * hub_r)
-		var hp2_out = Vector3(hub_out_x, cos(a2) * hub_r, sin(a2) * hub_r)
+		var n1 = Vector3(cos(a1), sin(a1), 0.0)
+		var n2 = Vector3(cos(a2), sin(a2), 0.0)
+
+		var hp1_in = Vector3(cos(a1) * hub_r, sin(a1) * hub_r, hub_in_z)
+		var hp2_in = Vector3(cos(a2) * hub_r, sin(a2) * hub_r, hub_in_z)
+		var hp1_out = Vector3(cos(a1) * hub_r, sin(a1) * hub_r, hub_out_z)
+		var hp2_out = Vector3(cos(a2) * hub_r, sin(a2) * hub_r, hub_out_z)
 
 		if side > 0:
-			_add_quad(st, hp1_in, hp2_in, hp2_out, hp1_out)
+			_add_quad_smooth_normal(st, hp1_in, hp1_out, hp2_out, hp2_in, n1, n1, n2, n2)
 		else:
-			_add_quad(st, hp1_out, hp2_out, hp2_in, hp1_in)
+			_add_quad_smooth_normal(st, hp1_out, hp1_in, hp2_in, hp2_out, n1, n1, n2, n2)
 
-		# Hub end cap disc
-		var uv0 = Vector2(0.5, 0.5)
-		var uv1 = Vector2(cos(a1)*0.5+0.5, sin(a1)*0.5+0.5)
-		var uv2 = Vector2(cos(a2)*0.5+0.5, sin(a2)*0.5+0.5)
-		var hub_center = Vector3(hub_out_x + side * 0.02, 0, 0)
+		# Hub end cap disc (Flat Z normal)
+		var hub_center = Vector3(0, 0, hub_out_z + side * 0.02)
+		var side_norm = Vector3(0, 0, side)
 
 		if side > 0:
-			_add_triangle(st, hub_center, hp1_out, hp2_out, uv0, uv1, uv2)
+			_add_triangle_flat_normal(st, hub_center, hp1_out, hp2_out, side_norm)
 		else:
-			_add_triangle(st, hub_center, hp2_out, hp1_out, uv0, uv2, uv1)
+			_add_triangle_flat_normal(st, hub_center, hp2_out, hp1_out, side_norm)
 
-	st.generate_normals()
 	st.generate_tangents()
 	mi.mesh = st.commit()
 	if track_material:
@@ -178,29 +184,28 @@ func _create_sprocket_mesh(radius: float, width: float, side: float) -> MeshInst
 	var teeth_count = 14
 	var half_w = width * 0.4
 
-	for ring_x in [-half_w, half_w]:
+	for ring_z in [-half_w, half_w]:
 		for i in range(teeth_count):
 			var a1 = (float(i) / float(teeth_count)) * TAU
 			var a2 = (float(i + 0.5) / float(teeth_count)) * TAU
 			var a3 = (float(i + 1.0) / float(teeth_count)) * TAU
 
-			var p_base1 = Vector3(ring_x, cos(a1) * radius, sin(a1) * radius)
-			var p_tip   = Vector3(ring_x, cos(a2) * (radius + 0.09), sin(a2) * (radius + 0.09))
-			var p_base2 = Vector3(ring_x, cos(a3) * radius, sin(a3) * radius)
+			var p_base1 = Vector3(cos(a1) * radius, sin(a1) * radius, ring_z)
+			var p_tip   = Vector3(cos(a2) * (radius + 0.09), sin(a2) * (radius + 0.09), ring_z)
+			var p_base2 = Vector3(cos(a3) * radius, sin(a3) * radius, ring_z)
 
-			# Tooth triangle
-			if ring_x > 0:
-				_add_triangle(st, p_base1, p_tip, p_base2)
+			var side_n = Vector3(0, 0, 1.0 if ring_z > 0 else -1.0)
+
+			if ring_z > 0:
+				_add_triangle_flat_normal(st, p_base1, p_tip, p_base2, side_n)
 			else:
-				_add_triangle(st, p_base1, p_base2, p_tip)
+				_add_triangle_flat_normal(st, p_base1, p_base2, p_tip, side_n)
 
-			# Tooth thickness quad
-			var p_tip_other = Vector3(ring_x - sign(ring_x) * 0.04, p_tip.y, p_tip.z)
-			var p_b1_other  = Vector3(ring_x - sign(ring_x) * 0.04, p_base1.y, p_base1.z)
-			_add_triangle(st, p_base1, p_tip, p_tip_other)
-			_add_triangle(st, p_base1, p_tip_other, p_b1_other)
+			var p_tip_other = Vector3(p_tip.x, p_tip.y, ring_z - sign(ring_z) * 0.04)
+			var p_b1_other  = Vector3(p_base1.x, p_base1.y, ring_z - sign(ring_z) * 0.04)
+			_add_triangle_flat_normal(st, p_base1, p_tip, p_tip_other, Vector3(cos(a2), sin(a2), 0))
+			_add_triangle_flat_normal(st, p_base1, p_tip_other, p_b1_other, Vector3(cos(a1), sin(a1), 0))
 
-	st.generate_normals()
 	st.generate_tangents()
 	mi.mesh = st.commit()
 	if track_material:
@@ -219,39 +224,36 @@ func _create_idler_mesh(radius: float, width: float, side: float) -> MeshInstanc
 	for i in range(sides):
 		var a1 = (float(i) / float(sides)) * TAU
 		var a2 = (float(i + 1) / float(sides)) * TAU
-		var u1 = float(i) / float(sides)
-		var u2 = float(i + 1) / float(sides)
 
-		var p1_l = Vector3(-half_w, cos(a1) * radius, sin(a1) * radius)
-		var p2_l = Vector3(-half_w, cos(a2) * radius, sin(a2) * radius)
-		var p1_r = Vector3(half_w, cos(a1) * radius, sin(a1) * radius)
-		var p2_r = Vector3(half_w, cos(a2) * radius, sin(a2) * radius)
+		var n1 = Vector3(cos(a1), sin(a1), 0.0)
+		var n2 = Vector3(cos(a2), sin(a2), 0.0)
 
-		_add_quad(st, p1_l, p2_l, p2_r, p1_r, Vector2(u1, 0), Vector2(u2, 0), Vector2(u2, 1), Vector2(u1, 1))
+		var p1_l = Vector3(cos(a1) * radius, sin(a1) * radius, -half_w)
+		var p2_l = Vector3(cos(a2) * radius, sin(a2) * radius, -half_w)
+		var p1_r = Vector3(cos(a1) * radius, sin(a1) * radius, half_w)
+		var p2_r = Vector3(cos(a2) * radius, sin(a2) * radius, half_w)
 
-		# Dished center cap
-		var center_l = Vector3(-half_w * 0.7, 0, 0)
-		var center_r = Vector3(half_w * 0.7, 0, 0)
-		_add_triangle(st, center_l, p2_l, p1_l)
-		_add_triangle(st, center_r, p1_r, p2_r)
+		_add_quad_smooth_normal(st, p1_l, p1_r, p2_r, p2_l, n1, n1, n2, n2)
 
-	st.generate_normals()
+		var center_l = Vector3(0, 0, -half_w * 0.7)
+		var center_r = Vector3(0, 0, half_w * 0.7)
+		_add_triangle_flat_normal(st, center_l, p1_l, p2_l, Vector3(0, 0, -1))
+		_add_triangle_flat_normal(st, center_r, p2_r, p1_r, Vector3(0, 0, 1))
+
 	st.generate_tangents()
 	mi.mesh = st.commit()
 	if track_material:
 		mi.material_override = track_material
 	return mi
 
-## Builds continuous track belt loop around sprockets, rollers, idler, and ground wheels with sag curve
+## Builds continuous track belt loop around sprockets, rollers, idler, and ground wheels along X axis
 func _build_track_loop_mesh(
-	x_pos: float,
+	z_pos: float,
 	sprocket_pos: Vector3,
 	idler_pos: Vector3,
 	rollers: Array[Vector3],
 	radius: float,
-	width: float,
-	start_z: float,
-	end_z: float
+	width: float
 ) -> void:
 	var mi = MeshInstance3D.new()
 	var st = SurfaceTool.new()
@@ -262,37 +264,33 @@ func _build_track_loop_mesh(
 	var track_thickness = 0.04
 	var guide_horn_h = 0.07
 
-	# Build path points around continuous track loop
 	var path_points: Array[Vector3] = []
 	var path_normals: Array[Vector3] = []
 
-	# 1. Bottom Ground Contact Run (Front to Rear)
+	# 1. Bottom Ground Contact Run (Rear -X to Front +X)
 	var segs_bot = 16
 	for i in range(segs_bot + 1):
 		var t = float(i) / float(segs_bot)
-		var z = lerp(sprocket_pos.z, idler_pos.z, t)
-		path_points.append(Vector3(x_pos, bot_y, z))
+		var x = lerp(idler_pos.x, sprocket_pos.x, t)
+		path_points.append(Vector3(x, bot_y, z_pos))
 		path_normals.append(Vector3.UP)
 
-	# 2. Rear Idler Wrap Arc
+	# 2. Front Sprocket Wrap Arc (+X, XY plane)
 	var segs_arc = 8
-	var idler_r = radius * 0.85
+	var sprocket_r = radius * 0.9
 	for i in range(1, segs_arc):
 		var a = lerp(-PI * 0.5, PI * 0.5, float(i) / float(segs_arc))
-		var pt = idler_pos + Vector3(0.0, sin(a) * idler_r, cos(a) * idler_r)
+		var pt = sprocket_pos + Vector3(cos(a) * sprocket_r, sin(a) * sprocket_r, 0.0)
 		path_points.append(pt)
-		path_normals.append(Vector3(0, sin(a), cos(a)).normalized())
+		path_normals.append(Vector3(cos(a), sin(a), 0.0).normalized())
 
-	# 3. Top Return Run with Sag Curve between rollers
+	# 3. Top Return Run with Sag Curve between rollers (Front +X to Rear -X)
 	var top_supports: Array[Vector3] = []
-	top_supports.append(idler_pos + Vector3(0, idler_r, 0))
+	top_supports.append(sprocket_pos + Vector3(0, sprocket_r, 0))
 	for r_pos in rollers:
 		top_supports.append(r_pos + Vector3(0, radius * 0.45, 0))
-	var sprocket_r = radius * 0.9
-	top_supports.append(sprocket_pos + Vector3(0, sprocket_r, 0))
-
-	# Reverse order for top run (Rear to Front)
-	top_supports.reverse()
+	var idler_r = radius * 0.85
+	top_supports.append(idler_pos + Vector3(0, idler_r, 0))
 
 	for s in range(top_supports.size() - 1):
 		var p1 = top_supports[s]
@@ -302,21 +300,20 @@ func _build_track_loop_mesh(
 		for i in range(1, segs_span + 1):
 			var t = float(i) / float(segs_span)
 			var pos = p1.lerp(p2, t)
-			# Catenary / parabolic sag curve
 			var sag = sin(t * PI) * track_sag_m
 			pos.y -= sag
 
 			path_points.append(pos)
 			path_normals.append(Vector3.DOWN)
 
-	# 4. Front Sprocket Wrap Arc
+	# 4. Rear Idler Wrap Arc (-X, XY plane)
 	for i in range(1, segs_arc):
 		var a = lerp(PI * 0.5, PI * 1.5, float(i) / float(segs_arc))
-		var pt = sprocket_pos + Vector3(0.0, sin(a) * sprocket_r, cos(a) * sprocket_r)
+		var pt = idler_pos + Vector3(cos(a) * idler_r, sin(a) * idler_r, 0.0)
 		path_points.append(pt)
-		path_normals.append(Vector3(0, sin(a), cos(a)).normalized())
+		path_normals.append(Vector3(cos(a), sin(a), 0.0).normalized())
 
-	# Extrude 3D Track Link geometry along path points
+	# Extrude 3D Track Link geometry along Z width
 	var total_pts = path_points.size()
 	for i in range(total_pts):
 		var i_next = (i + 1) % total_pts
@@ -328,13 +325,13 @@ func _build_track_loop_mesh(
 		var u1 = float(i) * 0.5
 		var u2 = float(i + 1) * 0.5
 
-		# Outer track tread quad
-		var a_out = p1 + Vector3(-half_w, 0, 0)
-		var b_out = p2 + Vector3(-half_w, 0, 0)
-		var c_out = p2 + Vector3(half_w, 0, 0)
-		var d_out = p1 + Vector3(half_w, 0, 0)
+		# Outer track tread quad (extruding Z width)
+		var a_out = p1 + Vector3(0, 0, -half_w)
+		var b_out = p2 + Vector3(0, 0, -half_w)
+		var c_out = p2 + Vector3(0, 0, half_w)
+		var d_out = p1 + Vector3(0, 0, half_w)
 
-		_add_quad(st, a_out, b_out, c_out, d_out, Vector2(0, u1), Vector2(1, u1), Vector2(1, u2), Vector2(0, u2))
+		_add_quad_smooth_normal(st, a_out, b_out, c_out, d_out, -norm1, -norm2, -norm2, -norm1)
 
 		# Inner track face quad
 		var a_in = a_out + norm1 * track_thickness
@@ -342,59 +339,85 @@ func _build_track_loop_mesh(
 		var c_in = c_out + norm2 * track_thickness
 		var d_in = d_out + norm1 * track_thickness
 
-		_add_quad(st, d_in, c_in, b_in, a_in, Vector2(0, u1), Vector2(1, u1), Vector2(1, u2), Vector2(0, u2))
+		_add_quad_smooth_normal(st, a_in, d_in, c_in, b_in, norm1, norm1, norm2, norm2)
 
-		# Central Guide Horn Ridge (runs down center of inner track face)
+		# Central Guide Horn Ridge
 		var horn_w = 0.04
-		var gh_a = p1 + norm1 * (track_thickness + guide_horn_h) + Vector3(-horn_w, 0, 0)
-		var gh_b = p2 + norm2 * (track_thickness + guide_horn_h) + Vector3(-horn_w, 0, 0)
-		var gh_c = p2 + norm2 * (track_thickness + guide_horn_h) + Vector3(horn_w, 0, 0)
-		var gh_d = p1 + norm1 * (track_thickness + guide_horn_h) + Vector3(horn_w, 0, 0)
+		var gh_a = p1 + norm1 * (track_thickness + guide_horn_h) + Vector3(0, 0, -horn_w)
+		var gh_b = p2 + norm2 * (track_thickness + guide_horn_h) + Vector3(0, 0, -horn_w)
+		var gh_c = p2 + norm2 * (track_thickness + guide_horn_h) + Vector3(0, 0, horn_w)
+		var gh_d = p1 + norm1 * (track_thickness + guide_horn_h) + Vector3(0, 0, horn_w)
 
-		_add_quad(st, gh_a, gh_b, gh_c, gh_d)
+		_add_quad_smooth_normal(st, gh_a, gh_b, gh_c, gh_d, norm1, norm2, norm2, norm1)
 
-	st.generate_normals()
 	st.generate_tangents()
 	mi.mesh = st.commit()
 	if track_material:
 		mi.material_override = track_material
 	add_child(mi)
 
-func _add_triangle(
-	st: SurfaceTool,
-	a: Vector3, b: Vector3, c: Vector3,
-	uv_a: Vector2 = Vector2(0, 0),
-	uv_b: Vector2 = Vector2(1, 0),
-	uv_c: Vector2 = Vector2(0.5, 1)
-) -> void:
-	st.set_uv(uv_a)
+func _add_quad_flat_normal(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, n: Vector3) -> void:
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
 	st.add_vertex(a)
-	st.set_uv(uv_b)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 0))
 	st.add_vertex(b)
-	st.set_uv(uv_c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
 	st.add_vertex(c)
 
-func _add_quad(
-	st: SurfaceTool,
-	a: Vector3, b: Vector3, c: Vector3, d: Vector3,
-	uv_a: Vector2 = Vector2(0, 0),
-	uv_b: Vector2 = Vector2(1, 0),
-	uv_c: Vector2 = Vector2(1, 1),
-	uv_d: Vector2 = Vector2(0, 1)
-) -> void:
-	st.set_uv(uv_a)
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
 	st.add_vertex(a)
-	st.set_uv(uv_b)
-	st.add_vertex(b)
-	st.set_uv(uv_c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
 	st.add_vertex(c)
 
-	st.set_uv(uv_a)
-	st.add_vertex(a)
-	st.set_uv(uv_c)
-	st.add_vertex(c)
-	st.set_uv(uv_d)
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 1))
 	st.add_vertex(d)
+
+func _add_quad_smooth_normal(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, na: Vector3, nb: Vector3, nc: Vector3, nd: Vector3) -> void:
+	st.set_normal(na)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(nb)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(b)
+
+	st.set_normal(nc)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(na)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(nc)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(nd)
+	st.set_uv(Vector2(0, 1))
+	st.add_vertex(d)
+
+func _add_triangle_flat_normal(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, n: Vector3) -> void:
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(b)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0.5, 1))
+	st.add_vertex(c)
 
 func set_chassis_parameters(count: int, diameter: float, width: float, clearance: float) -> void:
 	self.road_wheels_count = count

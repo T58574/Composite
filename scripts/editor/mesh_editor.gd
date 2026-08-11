@@ -10,16 +10,18 @@ enum VisualizationMode { SOLID, ARMOR_HEATMAP, XRAY }
 
 signal edit_mode_changed(mode: EditMode)
 signal visualization_mode_changed(mode: VisualizationMode)
+signal gizmo_mode_changed(mode: Gizmo3D.GizmoMode)
 signal face_hovered(thickness_mm: float, angle_deg: float, effective_rha_mm: float)
 signal selection_changed()
 
 @export var hull_builder: HullBuilder
 @export var turret_builder: TurretBuilder
+@export var track_generator: TrackGenerator
 @export var camera_3d: Camera3D
 @export var gizmo_3d: Gizmo3D
 
 @export var symmetry_x_enabled: bool = true
-@export var grid_snap_step: float = 0.1 ## Meters (0.05, 0.1, 0.5)
+@export_range(0.01, 2.0, 0.05) var grid_snap_step: float = 0.1 ## Meters (0.05, 0.1, 0.5)
 
 var current_edit_mode: EditMode = EditMode.VERTEX
 var current_vis_mode: VisualizationMode = VisualizationMode.SOLID
@@ -38,9 +40,12 @@ var hovered_face_index: int = -1
 
 # Visual Selection Overlays
 var selection_overlay_mesh: MeshInstance3D
-var selection_material: StandardMaterial3D
+var selection_fill_material: StandardMaterial3D
+var selection_line_material: StandardMaterial3D
 
 func _ready() -> void:
+	if track_generator == null and get_parent():
+		track_generator = get_parent().get_node_or_null("ProceduralVehicle/TrackGenerator")
 	_setup_selection_overlay()
 	set_edit_mode(EditMode.VERTEX)
 	set_visualization_mode(VisualizationMode.SOLID)
@@ -54,10 +59,18 @@ func _setup_selection_overlay() -> void:
 		selection_overlay_mesh.name = "SelectionOverlay"
 		add_child(selection_overlay_mesh)
 
-	selection_material = StandardMaterial3D.new()
-	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	selection_material.albedo_color = Color(1.0, 0.6, 0.1, 1.0) # Orange primary selection
-	selection_material.no_depth_test = true
+	selection_fill_material = StandardMaterial3D.new()
+	selection_fill_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	selection_fill_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	selection_fill_material.albedo_color = Color(1.0, 0.75, 0.1, 0.35) # Golden fill
+	selection_fill_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	selection_fill_material.no_depth_test = true
+
+	selection_line_material = StandardMaterial3D.new()
+	selection_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	selection_line_material.vertex_color_use_as_albedo = true
+	selection_line_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	selection_line_material.no_depth_test = true
 
 func _unhandled_input(event: InputEvent) -> void:
 	if gizmo_3d and gizmo_3d.process_input_event(camera_3d, event):
@@ -81,11 +94,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3: set_edit_mode(EditMode.FACE)
 			KEY_4: set_edit_mode(EditMode.CORNER)
 			KEY_G:
-				if gizmo_3d: gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
+				set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
 			KEY_R:
-				if gizmo_3d: gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
+				set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
 			KEY_S:
-				if gizmo_3d: gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
+				set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
 			KEY_E:
 				if current_edit_mode == EditMode.FACE and selected_face_index != -1:
 					extrude_selected_face()
@@ -94,6 +107,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F3: set_visualization_mode(VisualizationMode.XRAY)
 			KEY_DELETE, KEY_BACKSPACE:
 				_delete_selected_element()
+
+func set_gizmo_mode(mode: Gizmo3D.GizmoMode) -> void:
+	if gizmo_3d:
+		gizmo_3d.set_gizmo_mode(mode)
+	gizmo_mode_changed.emit(mode)
 
 func set_edit_mode(mode: EditMode) -> void:
 	current_edit_mode = mode
@@ -114,17 +132,32 @@ func set_visualization_mode(mode: VisualizationMode) -> void:
 
 	if hull_builder:
 		hull_builder.material_override = active_mat
-	if turret_builder and turret_builder.turret_mesh_instance:
-		turret_builder.turret_mesh_instance.material_override = active_mat
+	if turret_builder:
+		if turret_builder.turret_mesh_instance:
+			turret_builder.turret_mesh_instance.material_override = active_mat
+		if turret_builder.gun_barrel_mesh_instance:
+			turret_builder.gun_barrel_mesh_instance.material_override = active_mat
+	if track_generator:
+		track_generator.track_material = active_mat
+		for child in track_generator.get_children():
+			if child is MeshInstance3D:
+				child.material_override = active_mat
 
 	visualization_mode_changed.emit(mode)
+
+## Handles RMB click selection and deselection via 3D Raycasting against hull_builder and turret_builder.
+func handle_rmb_click(screen_pos: Vector2) -> void:
+	_pick_element_at_screen_pos(screen_pos)
 
 func _raycast_targets(ray_origin: Vector3, ray_dir: Vector3) -> Dictionary:
 	var targets: Array[MeshInstance3D] = []
 	if hull_builder and hull_builder.mesh:
 		targets.append(hull_builder)
-	if turret_builder and turret_builder.turret_mesh_instance and turret_builder.turret_mesh_instance.mesh:
-		targets.append(turret_builder.turret_mesh_instance)
+	if turret_builder:
+		if turret_builder.turret_mesh_instance and turret_builder.turret_mesh_instance.mesh:
+			targets.append(turret_builder.turret_mesh_instance)
+		if turret_builder.gun_barrel_mesh_instance and turret_builder.gun_barrel_mesh_instance.mesh:
+			targets.append(turret_builder.gun_barrel_mesh_instance)
 
 	var closest_dist = 1e9
 	var best_hit = {}
@@ -237,23 +270,48 @@ func _clear_selection() -> void:
 	_update_selection_visuals()
 	selection_changed.emit()
 
-func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _scale_delta: Vector3) -> void:
+func _on_gizmo_transform_changed(trans_delta: Vector3, rot_delta: Vector3, scale_delta: Vector3) -> void:
 	if selected_target == null:
 		return
 
 	var scale_factor = 2.0 if symmetry_x_enabled else 1.0
 
-	if selected_target == hull_builder:
-		hull_builder.length = clamp(hull_builder.length + trans_delta.z * 1.5, 2.0, 10.0)
-		hull_builder.width = clamp(hull_builder.width + trans_delta.x * scale_factor, 1.5, 5.0)
-		hull_builder.height = clamp(hull_builder.height + trans_delta.y * 1.5, 0.5, 2.5)
-		hull_builder.generate_hull_mesh()
+	if gizmo_3d and gizmo_3d.gizmo_mode == Gizmo3D.GizmoMode.SCALE:
+		var sx = (scale_delta.x - 1.0) * scale_factor
+		var sy = (scale_delta.y - 1.0) * 1.5
+		var sz = (scale_delta.z - 1.0) * 1.5
+		if selected_target == hull_builder:
+			hull_builder.length = clamp(hull_builder.length + sz, 2.0, 10.0)
+			hull_builder.width = clamp(hull_builder.width + sx, 1.5, 5.0)
+			hull_builder.height = clamp(hull_builder.height + sy, 0.5, 2.5)
+			hull_builder.generate_hull_mesh()
+		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
+			turret_builder.turret_length = clamp(turret_builder.turret_length + sz, 1.5, 4.5)
+			turret_builder.turret_width = clamp(turret_builder.turret_width + sx, 1.5, 4.5)
+			turret_builder.turret_height = clamp(turret_builder.turret_height + sy, 0.6, 2.0)
+			turret_builder.generate_turret_and_gun()
 
-	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-		turret_builder.turret_length = clamp(turret_builder.turret_length + trans_delta.z * 1.5, 1.5, 4.5)
-		turret_builder.turret_width = clamp(turret_builder.turret_width + trans_delta.x * scale_factor, 1.5, 4.5)
-		turret_builder.turret_height = clamp(turret_builder.turret_height + trans_delta.y * 1.5, 0.6, 2.0)
-		turret_builder.generate_turret_and_gun()
+	elif gizmo_3d and gizmo_3d.gizmo_mode == Gizmo3D.GizmoMode.ROTATE:
+		var rot_amount_deg = rad_to_deg(rot_delta.x + rot_delta.y + rot_delta.z)
+		if selected_target == hull_builder:
+			hull_builder.front_glacis_angle_deg = clamp(hull_builder.front_glacis_angle_deg + rot_amount_deg * 0.5, 10.0, 80.0)
+			hull_builder.generate_hull_mesh()
+		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
+			turret_builder.cheek_angle_deg = clamp(turret_builder.cheek_angle_deg + rot_amount_deg * 0.5, 15.0, 75.0)
+			turret_builder.generate_turret_and_gun()
+
+	else:
+		# GizmoMode.TRANSLATE or default
+		if selected_target == hull_builder:
+			hull_builder.length = clamp(hull_builder.length + trans_delta.z * 1.5, 2.0, 10.0)
+			hull_builder.width = clamp(hull_builder.width + trans_delta.x * scale_factor, 1.5, 5.0)
+			hull_builder.height = clamp(hull_builder.height + trans_delta.y * 1.5, 0.5, 2.5)
+			hull_builder.generate_hull_mesh()
+		elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
+			turret_builder.turret_length = clamp(turret_builder.turret_length + trans_delta.z * 1.5, 1.5, 4.5)
+			turret_builder.turret_width = clamp(turret_builder.turret_width + trans_delta.x * scale_factor, 1.5, 4.5)
+			turret_builder.turret_height = clamp(turret_builder.turret_height + trans_delta.y * 1.5, 0.6, 2.0)
+			turret_builder.generate_turret_and_gun()
 
 	_reposition_gizmo_and_selection()
 	_update_selection_visuals()
@@ -304,6 +362,32 @@ func extrude_selected_face() -> void:
 	_update_selection_visuals()
 	selection_changed.emit()
 
+func flip_selected_normals() -> void:
+	if selected_target == null or selected_face_index < 0:
+		return
+	var mesh = selected_target.mesh as ArrayMesh
+	if mesh and mesh.get_surface_count() > 0:
+		var mdt = MeshDataTool.new()
+		var err = mdt.create_from_surface(mesh, 0)
+		if err == OK and selected_face_index < mdt.get_face_count():
+			var v0 = mdt.get_face_vertex(selected_face_index, 0)
+			var v1 = mdt.get_face_vertex(selected_face_index, 1)
+			var v2 = mdt.get_face_vertex(selected_face_index, 2)
+			mdt.set_face_vertex(selected_face_index, 1, v2)
+			mdt.set_face_vertex(selected_face_index, 2, v1)
+
+			var n0 = mdt.get_vertex_normal(v0)
+			var n1 = mdt.get_vertex_normal(v1)
+			var n2 = mdt.get_vertex_normal(v2)
+			mdt.set_vertex_normal(v0, -n0)
+			mdt.set_vertex_normal(v1, -n1)
+			mdt.set_vertex_normal(v2, -n2)
+
+			mesh.clear_surfaces()
+			mdt.commit_to_surface(mesh)
+	_update_selection_visuals()
+	selection_changed.emit()
+
 func _delete_selected_element() -> void:
 	_clear_selection()
 
@@ -315,9 +399,80 @@ func _update_selection_visuals() -> void:
 		selection_overlay_mesh.mesh = null
 		return
 
-	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_LINES)
-	st.set_color(Color(1.0, 0.6, 0.1)) # Primary selection (Orange)
+	var arr_mesh = ArrayMesh.new()
+
+	# 1. Semi-transparent golden fill overlay quad (Color(1.0, 0.75, 0.1, 0.35)) when in EditMode.FACE
+	if current_edit_mode == EditMode.FACE and selected_positions.size() >= 3:
+		var st_fill = SurfaceTool.new()
+		st_fill.begin(Mesh.PRIMITIVE_TRIANGLES)
+		st_fill.set_color(Color(1.0, 0.75, 0.1, 0.35))
+
+		var p0 = selected_positions[0]
+		var p1 = selected_positions[1]
+		var p2 = selected_positions[2]
+
+		# Front face triangle
+		st_fill.set_uv(Vector2(0, 0))
+		st_fill.add_vertex(p0)
+		st_fill.set_uv(Vector2(1, 0))
+		st_fill.add_vertex(p1)
+		st_fill.set_uv(Vector2(0.5, 1))
+		st_fill.add_vertex(p2)
+
+		# Back face triangle
+		st_fill.set_uv(Vector2(0, 0))
+		st_fill.add_vertex(p0)
+		st_fill.set_uv(Vector2(0.5, 1))
+		st_fill.add_vertex(p2)
+		st_fill.set_uv(Vector2(1, 0))
+		st_fill.add_vertex(p1)
+
+		if selected_positions.size() >= 4:
+			var p3 = selected_positions[3]
+			st_fill.set_uv(Vector2(0, 0))
+			st_fill.add_vertex(p0)
+			st_fill.set_uv(Vector2(1, 0))
+			st_fill.add_vertex(p2)
+			st_fill.set_uv(Vector2(0.5, 1))
+			st_fill.add_vertex(p3)
+
+			st_fill.set_uv(Vector2(0, 0))
+			st_fill.add_vertex(p0)
+			st_fill.set_uv(Vector2(0.5, 1))
+			st_fill.add_vertex(p3)
+			st_fill.set_uv(Vector2(1, 0))
+			st_fill.add_vertex(p2)
+
+		if symmetry_x_enabled:
+			var s0 = _symmetry_x(p0)
+			var s1 = _symmetry_x(p1)
+			var s2 = _symmetry_x(p2)
+			st_fill.set_uv(Vector2(0, 0))
+			st_fill.add_vertex(s0)
+			st_fill.set_uv(Vector2(1, 0))
+			st_fill.add_vertex(s1)
+			st_fill.set_uv(Vector2(0.5, 1))
+			st_fill.add_vertex(s2)
+
+			st_fill.set_uv(Vector2(0, 0))
+			st_fill.add_vertex(s0)
+			st_fill.set_uv(Vector2(0.5, 1))
+			st_fill.add_vertex(s2)
+			st_fill.set_uv(Vector2(1, 0))
+			st_fill.add_vertex(s1)
+
+		st_fill.generate_normals()
+		st_fill.generate_tangents()
+		arr_mesh = st_fill.commit(arr_mesh)
+		arr_mesh.surface_set_material(arr_mesh.get_surface_count() - 1, selection_fill_material)
+
+	# 2. Line Overlay Surface: Contours (Bright Orange/Yellow), Red Vertex Cubes, Cyan Diamond Anchor
+	var st_lines = SurfaceTool.new()
+	st_lines.begin(Mesh.PRIMITIVE_LINES)
+
+	# Bright orange/yellow outline contours (Color(1.0, 0.85, 0.1))
+	var contour_color = Color(1.0, 0.85, 0.1)
+	st_lines.set_color(contour_color)
 
 	match current_edit_mode:
 		EditMode.FACE:
@@ -325,45 +480,73 @@ func _update_selection_visuals() -> void:
 				var p0 = selected_positions[0]
 				var p1 = selected_positions[1]
 				var p2 = selected_positions[2]
-				_add_line(st, p0, p1)
-				_add_line(st, p1, p2)
-				_add_line(st, p2, p0)
+				_add_line(st_lines, p0, p1)
+				_add_line(st_lines, p1, p2)
+				_add_line(st_lines, p2, p0)
+				if selected_positions.size() >= 4:
+					_add_line(st_lines, p2, selected_positions[3])
+					_add_line(st_lines, selected_positions[3], p0)
 		EditMode.EDGE:
 			if selected_positions.size() >= 2:
-				_add_line(st, selected_positions[0], selected_positions[1])
+				_add_line(st_lines, selected_positions[0], selected_positions[1])
 		EditMode.VERTEX, EditMode.CORNER:
-			if selected_positions.size() >= 1:
-				_add_box(st, selected_positions[0], 0.08)
+			pass
 
 	if symmetry_x_enabled:
-		st.set_color(Color(0.2, 0.8, 1.0)) # X-Symmetry selection (Cyan)
+		st_lines.set_color(contour_color)
 		match current_edit_mode:
 			EditMode.FACE:
 				if selected_positions.size() >= 3:
 					var s0 = _symmetry_x(selected_positions[0])
 					var s1 = _symmetry_x(selected_positions[1])
 					var s2 = _symmetry_x(selected_positions[2])
-					_add_line(st, s0, s1)
-					_add_line(st, s1, s2)
-					_add_line(st, s2, s0)
+					_add_line(st_lines, s0, s1)
+					_add_line(st_lines, s1, s2)
+					_add_line(st_lines, s2, s0)
+					if selected_positions.size() >= 4:
+						var s3 = _symmetry_x(selected_positions[3])
+						_add_line(st_lines, s2, s3)
+						_add_line(st_lines, s3, s0)
 			EditMode.EDGE:
 				if selected_positions.size() >= 2:
-					_add_line(st, _symmetry_x(selected_positions[0]), _symmetry_x(selected_positions[1]))
+					_add_line(st_lines, _symmetry_x(selected_positions[0]), _symmetry_x(selected_positions[1]))
 			EditMode.VERTEX, EditMode.CORNER:
-				if selected_positions.size() >= 1:
-					_add_box(st, _symmetry_x(selected_positions[0]), 0.08)
+				pass
 
-	selection_overlay_mesh.mesh = st.commit()
-	selection_overlay_mesh.material_override = selection_material
+	# Red 3D vertex handle cubes (Color(1.0, 0.2, 0.2)) at corner vertices
+	var vertex_color = Color(1.0, 0.2, 0.2)
+	for pos in selected_positions:
+		_add_box(st_lines, pos, 0.08, vertex_color)
+		if symmetry_x_enabled:
+			_add_box(st_lines, _symmetry_x(pos), 0.08, vertex_color)
+
+	# Cyan wireframe diamond anchor (Color(0.2, 0.8, 1.0)) at selected face/node center
+	var center = Vector3.ZERO
+	for pos in selected_positions:
+		center += pos
+	center /= float(selected_positions.size())
+
+	var diamond_color = Color(0.2, 0.8, 1.0)
+	_add_diamond(st_lines, center, 0.16, diamond_color)
+	if symmetry_x_enabled:
+		_add_diamond(st_lines, _symmetry_x(center), 0.16, diamond_color)
+
+	arr_mesh = st_lines.commit(arr_mesh)
+	arr_mesh.surface_set_material(arr_mesh.get_surface_count() - 1, selection_line_material)
+
+	selection_overlay_mesh.mesh = arr_mesh
 
 func _symmetry_x(pos: Vector3) -> Vector3:
 	return Vector3(-pos.x, pos.y, pos.z)
 
 func _add_line(st: SurfaceTool, a: Vector3, b: Vector3) -> void:
+	st.set_uv(Vector2.ZERO)
 	st.add_vertex(a)
+	st.set_uv(Vector2.ZERO)
 	st.add_vertex(b)
 
-func _add_box(st: SurfaceTool, center: Vector3, size: float) -> void:
+func _add_box(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
+	st.set_color(color)
 	var h = size * 0.5
 	var c = [
 		center + Vector3(-h, -h, -h), center + Vector3(h, -h, -h),
@@ -375,6 +558,34 @@ func _add_box(st: SurfaceTool, center: Vector3, size: float) -> void:
 		_add_line(st, c[i], c[(i + 1) % 4])
 		_add_line(st, c[4 + i], c[4 + (i + 1) % 4])
 		_add_line(st, c[i], c[4 + i])
+
+func _add_diamond(st: SurfaceTool, center: Vector3, size: float, color: Color) -> void:
+	st.set_color(color)
+	var h = size * 0.5
+	var top = center + Vector3(0, h, 0)
+	var bot = center + Vector3(0, -h, 0)
+	var e0 = center + Vector3(h, 0, 0)
+	var e1 = center + Vector3(0, 0, h)
+	var e2 = center + Vector3(-h, 0, 0)
+	var e3 = center + Vector3(0, 0, -h)
+
+	# Top pyramid
+	_add_line(st, top, e0)
+	_add_line(st, top, e1)
+	_add_line(st, top, e2)
+	_add_line(st, top, e3)
+
+	# Bottom pyramid
+	_add_line(st, bot, e0)
+	_add_line(st, bot, e1)
+	_add_line(st, bot, e2)
+	_add_line(st, bot, e3)
+
+	# Equator ring
+	_add_line(st, e0, e1)
+	_add_line(st, e1, e2)
+	_add_line(st, e2, e3)
+	_add_line(st, e3, e0)
 
 func inspect_hover_point(screen_pos: Vector2) -> void:
 	if camera_3d == null:
@@ -405,11 +616,11 @@ func inspect_hover_point(screen_pos: Vector2) -> void:
 	var thickness = 450.0
 	if target == hull_builder:
 		var local_norm = target.global_transform.basis.inverse() * normal
-		if local_norm.z > 0.4:
+		if local_norm.x > 0.4:
 			thickness = hull_builder.front_armor_mm
-		elif abs(local_norm.x) > 0.4:
+		elif abs(local_norm.z) > 0.4:
 			thickness = hull_builder.side_armor_mm
-		elif local_norm.z < -0.4:
+		elif local_norm.x < -0.4:
 			thickness = hull_builder.rear_armor_mm
 		else:
 			thickness = hull_builder.front_armor_mm
@@ -418,4 +629,3 @@ func inspect_hover_point(screen_pos: Vector2) -> void:
 
 	var eff_rha = ArmorCalculator.calculate_effective_thickness(thickness, normal, ray_dir)
 	face_hovered.emit(thickness, angle_deg, eff_rha)
-

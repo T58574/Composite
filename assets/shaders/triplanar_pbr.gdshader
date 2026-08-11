@@ -1,21 +1,21 @@
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap, repeat_enable, hint_default_white;
-uniform vec4 base_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform float metallic : hint_range(0.0, 1.0) = 0.85;
-uniform float roughness : hint_range(0.0, 1.0) = 0.45;
+uniform vec4 base_color : source_color = vec4(0.28, 0.32, 0.25, 1.0);
+uniform float metallic : hint_range(0.0, 1.0) = 0.55;
+uniform float roughness : hint_range(0.0, 1.0) = 0.50;
 uniform float uv_scale : hint_range(0.1, 10.0) = 0.6;
-uniform float edge_wear : hint_range(0.0, 1.0) = 0.35;
+uniform float edge_wear : hint_range(0.0, 1.0) = 0.15;
 
 // Procedural Camouflage Scheme: 0=Solid, 1=Olive Drab, 2=Desert Sand, 3=NATO 3-Color, 4=Panzer Grey
-uniform int camo_type : hint_range(0, 4) = 0;
+uniform int camo_type : hint_range(0, 4) = 1;
 uniform float camo_scale : hint_range(0.1, 10.0) = 0.8;
 
 // Dirt / Dust Weathering Gradient near ground Y
-uniform float dirt_amount : hint_range(0.0, 1.0) = 0.4;
-uniform float dirt_height : hint_range(0.1, 5.0) = 1.2;
-uniform vec4 dirt_color : source_color = vec4(0.28, 0.22, 0.15, 1.0);
+uniform float dirt_amount : hint_range(0.0, 1.0) = 0.3;
+uniform float dirt_height : hint_range(0.1, 5.0) = 1.0;
+uniform vec4 dirt_color : source_color = vec4(0.25, 0.20, 0.14, 1.0);
 
 // Procedural 3D Noise for Fallback & Camouflage
 float hash3D(vec3 p) {
@@ -105,7 +105,7 @@ void fragment() {
 
 	// Check if albedo texture is assigned and valid
 	ivec2 tex_dim = textureSize(albedo_texture, 0);
-	bool has_texture = (tex_dim.x > 1 && tex_dim.y > 1);
+	bool has_texture = (tex_dim.x > 8 && tex_dim.y > 8);
 
 	vec3 tex_color;
 	if (has_texture) {
@@ -115,8 +115,8 @@ void fragment() {
 		vec4 tex_z = texture(albedo_texture, proj_pos.xy);
 		tex_color = (tex_x * normal_weights.x + tex_y * normal_weights.y + tex_z * normal_weights.z).rgb;
 	} else {
-		// Procedural noise fallback so unassigned textures never render black
-		float noise_pattern = fbm3D(world_pos * 6.0) * 0.25 + 0.85;
+		// Subtle steel texture noise fallback
+		float noise_pattern = fbm3D(world_pos * 8.0) * 0.15 + 0.90;
 		tex_color = vec3(noise_pattern);
 	}
 
@@ -124,28 +124,27 @@ void fragment() {
 	vec3 pattern_color = (camo_type > 0) ? get_procedural_camo(world_pos, camo_type) : base_color.rgb;
 	vec3 painted_albedo = tex_color * pattern_color;
 
-	// Curvature / Edge Wear scraping calculation
+	// Subtle Edge Wear scraping along sharp contours
 	float edge_factor = 1.0 - abs(dot(NORMAL, VIEW));
 	float wear_noise = fbm3D(world_pos * 14.0);
-	float wear = pow(edge_factor, 2.5) * edge_wear * (0.6 + 0.8 * wear_noise);
+	float wear = pow(edge_factor, 3.5) * edge_wear * (0.4 + 0.6 * wear_noise);
 	wear = clamp(wear, 0.0, 1.0);
 
-	vec3 bare_steel = vec3(0.72, 0.75, 0.78);
+	vec3 bare_steel = vec3(0.55, 0.58, 0.60);
 	vec3 albedo_after_wear = mix(painted_albedo, bare_steel, wear);
-	float metallic_after_wear = mix(metallic, 0.95, wear * 0.6);
-	float roughness_after_wear = mix(roughness, 0.22, wear * 0.5);
+	float metallic_after_wear = mix(metallic, 0.85, wear * 0.4);
+	float roughness_after_wear = mix(roughness, 0.35, wear * 0.3);
 
 	// Dirt / Dust accumulation gradient near ground (Y = 0.0)
 	float height_fade = clamp(1.0 - (world_pos.y / max(dirt_height, 0.001)), 0.0, 1.0);
 	float dirt_noise = fbm3D(world_pos * 3.5);
-	float dirt_factor = clamp(pow(height_fade, 1.6) * dirt_amount * (0.5 + 0.9 * dirt_noise), 0.0, 1.0);
+	float dirt_factor = clamp(pow(height_fade, 2.0) * dirt_amount * (0.4 + 0.8 * dirt_noise), 0.0, 1.0);
 
 	vec3 final_albedo = mix(albedo_after_wear, dirt_color.rgb, dirt_factor);
-	float final_metallic = mix(metallic_after_wear, 0.05, dirt_factor);
-	float final_roughness = mix(roughness_after_wear, 0.88, dirt_factor);
+	float final_metallic = mix(metallic_after_wear, 0.10, dirt_factor);
+	float final_roughness = mix(roughness_after_wear, 0.80, dirt_factor);
 
 	ALBEDO = final_albedo;
 	METALLIC = final_metallic;
 	ROUGHNESS = final_roughness;
 }
-

@@ -44,8 +44,14 @@ extends Control
 @onready var mirror_check: CheckBox = %MirrorCheck
 @onready var smooth_angle_slider: HSlider = %SmoothAngleSlider
 @onready var grid_size_slider: HSlider = %GridSizeSlider
+
 @onready var thickness_slider: HSlider = %ThicknessSlider
+@onready var thickness_value_label: Label = get_node_or_null("%ThicknessValueLabel") as Label
 @onready var armor_type_option: OptionButton = %ArmorTypeOption
+@onready var armor_angle_los_label: Label = get_node_or_null("%ArmorAngleLosLabel") as Label
+
+@onready var extrude_btn: Button = get_node_or_null("%ExtrudeBtn") as Button
+@onready var flip_btn: Button = get_node_or_null("%FlipBtn") as Button
 
 # Category Sliders & Controls
 @onready var hull_length_slider: HSlider = get_node_or_null("%HullLengthSlider") as HSlider
@@ -67,7 +73,7 @@ extends Control
 @onready var paint_scheme_option: OptionButton = get_node_or_null("%PaintSchemeOption") as OptionButton
 @onready var decal_option: OptionButton = get_node_or_null("%DecalOption") as OptionButton
 
-# Bottom Gizmo / Viewport Toolbar
+# Bottom Gizmo / Viewport Toolbar (Transform Mode Switcher)
 @onready var tool_translate_btn: Button = %ToolTranslateBtn
 @onready var tool_rotate_btn: Button = %ToolRotateBtn
 @onready var tool_scale_btn: Button = %ToolScaleBtn
@@ -85,6 +91,7 @@ func _ready() -> void:
 
 	_setup_options()
 	_connect_signals()
+	_update_right_inspector()
 	_update_ttx()
 
 func _process(_delta: float) -> void:
@@ -103,8 +110,8 @@ func _setup_options() -> void:
 
 	if armor_type_option:
 		armor_type_option.clear()
-		armor_type_option.add_item("Homogeneous Steel (RHA)", 0)
-		armor_type_option.add_item("Composite NERA Sandwich", 1)
+		armor_type_option.add_item("RHA Steel", 0)
+		armor_type_option.add_item("NERA Composite", 1)
 		armor_type_option.add_item("Ceramic Insert", 2)
 		armor_type_option.select(0)
 
@@ -127,7 +134,9 @@ func _setup_options() -> void:
 func _connect_signals() -> void:
 	if mesh_editor:
 		mesh_editor.face_hovered.connect(_on_face_hovered)
-		mesh_editor.selection_changed.connect(_update_ttx)
+		mesh_editor.selection_changed.connect(_on_selection_changed)
+		if mesh_editor.has_signal("gizmo_mode_changed"):
+			mesh_editor.gizmo_mode_changed.connect(_on_gizmo_mode_changed)
 
 	if cat_compartments_btn: cat_compartments_btn.pressed.connect(func(): _on_category_selected(0))
 	if cat_tracks_btn: cat_tracks_btn.pressed.connect(func(): _on_category_selected(1))
@@ -155,10 +164,35 @@ func _connect_signals() -> void:
 	if barrel_length_slider: barrel_length_slider.value_changed.connect(_on_firepower_changed)
 
 	if thickness_slider: thickness_slider.value_changed.connect(_on_thickness_slider_changed)
+	if armor_type_option: armor_type_option.item_selected.connect(_on_armor_type_selected)
 
-	if tool_translate_btn: tool_translate_btn.pressed.connect(func(): if mesh_editor and mesh_editor.gizmo_3d: mesh_editor.gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE))
-	if tool_rotate_btn: tool_rotate_btn.pressed.connect(func(): if mesh_editor and mesh_editor.gizmo_3d: mesh_editor.gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE))
-	if tool_scale_btn: tool_scale_btn.pressed.connect(func(): if mesh_editor and mesh_editor.gizmo_3d: mesh_editor.gizmo_3d.set_gizmo_mode(Gizmo3D.GizmoMode.SCALE))
+	if extrude_btn: extrude_btn.pressed.connect(_on_extrude_pressed)
+	if flip_btn: flip_btn.pressed.connect(_on_flip_normals_pressed)
+
+	if tool_translate_btn: tool_translate_btn.pressed.connect(_on_tool_translate_pressed)
+	if tool_rotate_btn: tool_rotate_btn.pressed.connect(_on_tool_rotate_pressed)
+	if tool_scale_btn: tool_scale_btn.pressed.connect(_on_tool_scale_pressed)
+
+# Transform Mode Switcher Handlers (Move [G], Rotate [R], Resize [S])
+func _on_tool_translate_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
+
+func _on_tool_rotate_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
+
+func _on_tool_scale_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
+
+func _on_gizmo_mode_changed(mode: int) -> void:
+	if tool_translate_btn:
+		tool_translate_btn.flat = (mode != 0)
+	if tool_rotate_btn:
+		tool_rotate_btn.flat = (mode != 1)
+	if tool_scale_btn:
+		tool_scale_btn.flat = (mode != 2)
 
 # Header Action Handlers
 func _on_main_menu_pressed() -> void:
@@ -191,6 +225,7 @@ func _apply_preset_data(data: Dictionary) -> void:
 		var c = data["chassis"]
 		track_generator.set_chassis_parameters(c.get("road_wheel_pairs", 6), c.get("wheel_diameter", 0.65), c.get("track_width", 0.6), 0.6)
 
+	_update_right_inspector()
 	_update_ttx()
 
 # View Visualization Handlers
@@ -221,7 +256,14 @@ func _on_mode_corners_pressed() -> void:
 
 # Topology Operations
 func _on_extrude_pressed() -> void:
-	if mesh_editor: mesh_editor.extrude_selected_face()
+	if mesh_editor:
+		mesh_editor.extrude_selected_face()
+	_update_right_inspector()
+
+func _on_flip_normals_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.flip_selected_normals()
+	_update_right_inspector()
 
 # Category Sidebar Switching
 func _on_category_selected(cat_index: int) -> void:
@@ -241,12 +283,30 @@ func _on_hull_slider_changed(_val: float = 0.0) -> void:
 		var h = hull_height_slider.value if hull_height_slider else hull_builder.height
 		var g = glacis_angle_slider.value if glacis_angle_slider else hull_builder.front_glacis_angle_deg
 		hull_builder.set_dimensions(l, w, h, g)
+	_update_right_inspector()
 	_update_ttx()
 
 func _on_thickness_slider_changed(val: float) -> void:
-	if hull_builder:
+	if thickness_value_label:
+		thickness_value_label.text = "%.0f mm" % val
+
+	if mesh_editor and mesh_editor.selected_target:
+		var target = mesh_editor.selected_target
+		if target == hull_builder:
+			hull_builder.front_armor_mm = val
+			hull_builder.generate_hull_mesh()
+		elif turret_builder and (target == turret_builder.turret_mesh_instance or target == turret_builder):
+			turret_builder.front_turret_armor_mm = val
+			turret_builder.generate_turret_and_gun()
+	elif hull_builder:
 		hull_builder.front_armor_mm = val
 		hull_builder.generate_hull_mesh()
+
+	_update_right_inspector()
+	_update_ttx()
+
+func _on_armor_type_selected(_idx: int) -> void:
+	_update_right_inspector()
 	_update_ttx()
 
 func _on_chassis_changed(_val: float) -> void:
@@ -296,6 +356,91 @@ func _sync_sliders_with_builders() -> void:
 		if glacis_angle_slider and not glacis_angle_slider.has_focus():
 			glacis_angle_slider.set_value_no_signal(hull_builder.front_glacis_angle_deg)
 
+func _on_selection_changed() -> void:
+	_update_right_inspector()
+	_update_ttx()
+
+func _update_right_inspector() -> void:
+	var part_name = "Front Glacis Plate"
+	var thickness = 450.0
+	var face_normal = Vector3(0.0, 0.5, -0.866).normalized()
+
+	if mesh_editor and mesh_editor.selected_target and mesh_editor.selected_target.mesh:
+		var target = mesh_editor.selected_target
+		var face_idx = mesh_editor.selected_face_index
+		var faces = target.mesh.get_faces()
+
+		if face_idx >= 0 and face_idx * 3 + 2 < faces.size():
+			var gt = target.global_transform
+			var v0 = gt * faces[face_idx * 3]
+			var v1 = gt * faces[face_idx * 3 + 1]
+			var v2 = gt * faces[face_idx * 3 + 2]
+			face_normal = (v1 - v0).cross(v2 - v0).normalized()
+
+			var local_norm = target.global_transform.basis.inverse() * face_normal
+			if target == hull_builder:
+				if local_norm.z < -0.4:
+					part_name = "Front Glacis Plate"
+					thickness = hull_builder.front_armor_mm
+				elif local_norm.z > 0.4:
+					part_name = "Rear Hull Plate"
+					thickness = hull_builder.rear_armor_mm
+				elif abs(local_norm.x) > 0.4:
+					part_name = "Side Hull Armor"
+					thickness = hull_builder.side_armor_mm
+				elif local_norm.y > 0.4:
+					part_name = "Hull Roof Plate"
+					thickness = hull_builder.front_armor_mm * 0.2
+				elif local_norm.y < -0.4:
+					part_name = "Belly Armor Plate"
+					thickness = hull_builder.side_armor_mm * 0.5
+				else:
+					part_name = "Front Glacis Plate"
+					thickness = hull_builder.front_armor_mm
+			elif turret_builder and (target == turret_builder.turret_mesh_instance or target == turret_builder.gun_barrel_mesh_instance):
+				if local_norm.z < -0.4:
+					part_name = "Turret Front Cheek"
+					thickness = turret_builder.front_turret_armor_mm
+				elif local_norm.z > 0.4:
+					part_name = "Turret Rear Bustle"
+					thickness = turret_builder.front_turret_armor_mm * 0.2
+				elif abs(local_norm.x) > 0.4:
+					part_name = "Turret Side Armor"
+					thickness = turret_builder.front_turret_armor_mm * 0.4
+				elif local_norm.y > 0.4:
+					part_name = "Turret Roof Plate"
+					thickness = turret_builder.front_turret_armor_mm * 0.15
+				else:
+					part_name = "Turret Front Plate"
+					thickness = turret_builder.front_turret_armor_mm
+			else:
+				part_name = target.name if target.name != "" else "Structure Face"
+	elif hull_builder:
+		part_name = "Front Glacis Plate"
+		thickness = hull_builder.front_armor_mm
+
+	var threat_dir = Vector3(0, 0, -1)
+	var cos_theta = clamp(abs(face_normal.dot(-threat_dir)), 0.0, 1.0)
+	var angle_deg = rad_to_deg(acos(cos_theta))
+
+	var armor_type_idx = armor_type_option.selected if armor_type_option else 0
+	var mult = 1.0
+	match armor_type_idx:
+		0: mult = 1.0  # RHA Steel
+		1: mult = 1.45 # NERA Composite
+		2: mult = 1.8  # Ceramic Insert
+
+	var los_rha = ArmorCalculator.calculate_effective_thickness(thickness, face_normal, threat_dir) * mult
+
+	if part_name_label:
+		part_name_label.text = part_name
+	if thickness_slider and not thickness_slider.has_focus():
+		thickness_slider.set_value_no_signal(thickness)
+	if thickness_value_label:
+		thickness_value_label.text = "%.0f mm" % thickness
+	if armor_angle_los_label:
+		armor_angle_los_label.text = "Angle: %.1f° | LOS: %.0fmm RHA" % [angle_deg, los_rha]
+
 func _update_ttx() -> void:
 	var hp: float = engine_power_slider.value if engine_power_slider else 1200.0
 	var ttx = TankStatsCalculator.calculate_stats(hull_builder, turret_builder, track_generator, hp)
@@ -305,4 +450,3 @@ func _update_ttx() -> void:
 	if space_badge_label:
 		var armor_rating = hull_builder.front_armor_mm if hull_builder else 450.0
 		space_badge_label.text = "Spd: %.0f km/h | Arm: %.0fmm RHA" % [ttx.max_speed_kmh, armor_rating]
-

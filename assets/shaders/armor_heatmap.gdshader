@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_back, unshaded;
+render_mode blend_mix, depth_draw_opaque, cull_disabled, unshaded;
 
 uniform float armor_thickness_mm : hint_range(5.0, 1000.0) = 100.0;
 uniform bool is_composite = false;

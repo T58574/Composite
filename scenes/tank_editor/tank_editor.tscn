@@ -671,21 +671,25 @@ layout_mode = 2
 columns = 2
 
 [node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Delete [Del]"
 
 [node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Extrude [E]"
 
 [node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Split Face"
 
 [node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Flip Normals"
@@ -719,17 +723,29 @@ min_value = 0.0
 max_value = 500.0
 step = 10.0
 
-[node name="ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ThicknessHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
-text = "Armor Thickness (mm)"
+
+[node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+layout_mode = 2
+text = "Armor Thickness"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ThicknessValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "450 mm"
 
 [node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 5.0
-max_value = 800.0
+max_value = 1200.0
 step = 5.0
-value = 223.0
+value = 450.0
 
 [node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
@@ -738,6 +754,12 @@ text = "Material Type"
 [node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="ArmorAngleLosLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+text = "Angle: 60.0° | LOS: 900mm RHA"
 
 [node name="BottomToolbar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1
@@ -794,7 +816,7 @@ text = "Rotate [R]"
 [node name="ToolScaleBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Scale [S]"
+text = "Resize [S]"
 
 [node name="ToolSnapBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true

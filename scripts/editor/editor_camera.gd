@@ -10,6 +10,7 @@ extends Node3D
 
 @export var spring_arm: SpringArm3D
 @export var camera_3d: Camera3D
+@export var mesh_editor: MeshEditor
 
 @export var sensitivity: float = 0.003
 @export var move_speed: float = 8.0
@@ -21,7 +22,13 @@ var pitch_deg: float = -20.0
 var yaw_deg: float = 45.0
 var is_dragging: bool = false
 
+var is_rmb_down: bool = false
+var rmb_press_pos: Vector2 = Vector2.ZERO
+var rmb_drag_distance: float = 0.0
+
 func _ready() -> void:
+	if mesh_editor == null and get_parent():
+		mesh_editor = get_parent().get_node_or_null("MeshEditorController") as MeshEditor
 	_setup_nodes()
 	_update_camera_transform()
 
@@ -68,14 +75,32 @@ func _handle_keyboard_movement(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT or event.button_index == MOUSE_BUTTON_MIDDLE:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				is_rmb_down = true
+				rmb_press_pos = event.position
+				rmb_drag_distance = 0.0
+				is_dragging = true
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			else:
+				if is_rmb_down:
+					is_rmb_down = false
+					is_dragging = false
+					Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+					if rmb_drag_distance < 5.0:
+						if mesh_editor == null and get_parent():
+							mesh_editor = get_parent().get_node_or_null("MeshEditorController") as MeshEditor
+						if mesh_editor and mesh_editor.has_method("handle_rmb_click"):
+							mesh_editor.handle_rmb_click(rmb_press_pos)
+
+		elif event.button_index == MOUSE_BUTTON_MIDDLE:
 			if event.pressed:
 				is_dragging = true
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			else:
 				is_dragging = false
 				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-				
+
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			if spring_arm:
 				spring_arm.spring_length = clamp(spring_arm.spring_length - zoom_speed, min_distance, max_distance)
@@ -84,6 +109,8 @@ func _input(event: InputEvent) -> void:
 				spring_arm.spring_length = clamp(spring_arm.spring_length + zoom_speed, min_distance, max_distance)
 
 	elif event is InputEventMouseMotion and is_dragging:
+		if is_rmb_down:
+			rmb_drag_distance += event.relative.length()
 		yaw_deg -= rad_to_deg(event.relative.x * sensitivity)
 		pitch_deg -= rad_to_deg(event.relative.y * sensitivity)
 		pitch_deg = clamp(pitch_deg, -85.0, 85.0)
