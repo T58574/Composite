@@ -35,6 +35,8 @@ var camera_distance: float = 12.0
 
 func _ready() -> void:
 	_connect_ui_signals()
+	if not SettingsManager.settings_changed.is_connected(_update_stats_display):
+		SettingsManager.settings_changed.connect(_update_stats_display)
 	_update_stats_display()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,9 +128,9 @@ func _update_stats_display() -> void:
 			Vector3(0, 0, -1)
 		)
 	
-	if mass_label: mass_label.text = "Total Mass: %.1f Tons (Hull: %.1ft, Turret: %.1ft)" % [total_mass_tons, hull_mass / 1000.0, turret_mass / 1000.0]
-	if volume_label: volume_label.text = "Hull Volume: %.2f m³" % vol_m3
-	if armor_eff_label: armor_eff_label.text = "Hull Front: %.0fmm RHA (LOS Eff: %.0fmm)" % [hull_builder.front_armor_mm if hull_builder else 0.0, eff_front_armor]
+	if mass_label: mass_label.text = tr("STATS_TOTAL_MASS") % [total_mass_tons, hull_mass / 1000.0, turret_mass / 1000.0]
+	if volume_label: volume_label.text = tr("STATS_HULL_VOLUME") % vol_m3
+	if armor_eff_label: armor_eff_label.text = tr("STATS_FRONT_ARMOR") % [hull_builder.front_armor_mm if hull_builder else 0.0, eff_front_armor]
 
 # Navigation Handlers
 func _on_main_menu_pressed() -> void:

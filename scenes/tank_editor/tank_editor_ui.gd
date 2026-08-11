@@ -83,6 +83,13 @@ func _ready() -> void:
 	_connect_signals()
 	_update_ttx()
 	_sync_sliders_with_builders()
+	
+	if not SettingsManager.settings_changed.is_connected(_on_settings_changed):
+		SettingsManager.settings_changed.connect(_on_settings_changed)
+
+func _on_settings_changed() -> void:
+	_setup_options()
+	_on_selection_changed()
 
 func _process(_delta: float) -> void:
 	if fps_label:
@@ -90,35 +97,40 @@ func _process(_delta: float) -> void:
 
 func _setup_options() -> void:
 	if era_option:
+		var sel = era_option.selected if era_option.item_count > 0 else 1
 		era_option.clear()
-		era_option.add_item("Earlywar (1939-1941)", 0)
-		era_option.add_item("Midwar (1942-1944)", 1)
-		era_option.add_item("Latewar (1945-1955)", 2)
-		era_option.add_item("Modern MBT (1970-2026)", 3)
-		era_option.select(1)
+		era_option.add_item(tr("ERA_EARLY"), 0)
+		era_option.add_item(tr("ERA_MID"), 1)
+		era_option.add_item(tr("ERA_LATE"), 2)
+		era_option.add_item(tr("ERA_MODERN"), 3)
+		era_option.select(sel)
 
 	if armor_type_option:
+		var sel = armor_type_option.selected if armor_type_option.item_count > 0 else 0
 		armor_type_option.clear()
-		armor_type_option.add_item("RHA Steel", 0)
-		armor_type_option.add_item("NERA Composite", 1)
-		armor_type_option.add_item("Ceramic Insert", 2)
-		armor_type_option.select(0)
+		armor_type_option.add_item(tr("ARMOR_STEEL"), 0)
+		armor_type_option.add_item(tr("ARMOR_COMPOSITE"), 1)
+		armor_type_option.add_item(tr("ARMOR_CERAMIC"), 2)
+		armor_type_option.select(sel)
 
 	if paint_scheme_option:
+		var sel = paint_scheme_option.selected if paint_scheme_option.item_count > 0 else 0
 		paint_scheme_option.clear()
-		paint_scheme_option.add_item("Solid (Olive Drab)", 0)
-		paint_scheme_option.add_item("NATO 3-Color Camo", 1)
-		paint_scheme_option.add_item("Desert Sand", 2)
-		paint_scheme_option.add_item("Winter Solid", 3)
-		paint_scheme_option.add_item("Panzer Grey", 4)
-		paint_scheme_option.select(0)
+		paint_scheme_option.add_item(tr("PAINT_SOLID"), 0)
+		paint_scheme_option.add_item(tr("PAINT_NATO"), 1)
+		paint_scheme_option.add_item(tr("PAINT_DESERT"), 2)
+		paint_scheme_option.add_item(tr("PAINT_WINTER"), 3)
+		paint_scheme_option.add_item(tr("PAINT_GREY"), 4)
+		paint_scheme_option.select(sel)
 
 	if decal_option:
+		var sel = decal_option.selected if decal_option.item_count > 0 else 0
 		decal_option.clear()
-		decal_option.add_item("National Star", 0)
-		decal_option.add_item("Unit Number", 1)
-		decal_option.add_item("Tactical Cross", 2)
-		decal_option.select(0)
+		decal_option.add_item(tr("DECAL_STAR"), 0)
+		decal_option.add_item(tr("DECAL_NUMBER"), 1)
+		decal_option.add_item(tr("DECAL_CROSS"), 2)
+		decal_option.select(sel)
+
 
 func _safe_connect(sig: Signal, callable: Callable) -> void:
 	if not sig.is_connected(callable):
@@ -314,13 +326,13 @@ func _on_selection_changed() -> void:
 		return
 
 	if mesh_editor.selected_target != null:
-		var target_name = "Hull Plate"
+		var target_name = tr("PART_HULL_PLATE")
 		var thickness = 450.0
 		if mesh_editor.selected_target == hull_builder:
-			target_name = "Front Glacis Plate"
+			target_name = tr("PART_FRONT_GLACIS")
 			thickness = hull_builder.front_armor_mm
 		elif turret_builder and mesh_editor.selected_target == turret_builder.turret_mesh_instance:
-			target_name = "Turret Cheek Armor"
+			target_name = tr("PART_TURRET_CHEEK")
 			thickness = turret_builder.front_turret_armor_mm
 
 		if part_name_label:
@@ -331,13 +343,14 @@ func _on_selection_changed() -> void:
 			thickness_value_label.text = "%.0f mm" % thickness
 	else:
 		if part_name_label:
-			part_name_label.text = "No Selection"
+			part_name_label.text = tr("PART_NO_SELECTION")
 
 func _on_face_hovered(thickness_mm: float, angle_deg: float, effective_rha_mm: float) -> void:
 	if hover_inspection_label:
-		hover_inspection_label.text = "Thickness: %.0fmm | Angle: %.1f° | Effective: %.0fmm RHA" % [thickness_mm, angle_deg, effective_rha_mm]
+		hover_inspection_label.text = tr("HOVER_INSPECT_FMT") % [thickness_mm, angle_deg, effective_rha_mm]
 	if armor_angle_los_label:
-		armor_angle_los_label.text = "Angle: %.1f° | LOS: %.0fmm RHA" % [angle_deg, effective_rha_mm]
+		armor_angle_los_label.text = tr("ARMOR_LOS_FMT") % [angle_deg, effective_rha_mm]
+
 
 func _sync_sliders_with_builders() -> void:
 	if hull_builder:

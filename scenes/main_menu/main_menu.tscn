@@ -69,10 +69,11 @@ theme_override_font_sizes/font_size = 32
 text = "COMPOSITE"
 
 [node name="SubtitleLabel" type="Label" parent="MainLayout/HBox/LeftMenuPanel"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
 theme_override_font_sizes/font_size = 15
-text = "MODERN ARMORED VEHICLE SIMULATOR"
+text = "MENU_TITLE_SUBTITLE"
 
 [node name="HSeparator" type="HSeparator" parent="MainLayout/HBox/LeftMenuPanel"]
 layout_mode = 2
@@ -83,43 +84,49 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="SandboxBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "🛠️ 1. ПЕСОЧНИЦА КОНСТРУКТОР"
+text = "MENU_SANDBOX_BTN"
 alignment = 0
 
 [node name="SandboxDesc" type="Label" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 theme_override_font_sizes/font_size = 12
-text = "   Flat-мир для процедурного проектирования корпуса и башни"
+text = "MENU_SANDBOX_DESC"
 
 [node name="TestRangeBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "🎯 2. ПОЛИГОН ИСПЫТАНИЙ"
+text = "MENU_TEST_RANGE_BTN"
 alignment = 0
 
 [node name="TestRangeDesc" type="Label" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.65, 0.7, 1)
 theme_override_font_sizes/font_size = 12
-text = "   Полигон с кочками, мишенями и физикой Raycast-подвески Jolt"
+text = "MENU_TEST_RANGE_DESC"
 
 [node name="SettingsBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "⚙️ 3. НАСТРОЙКИ ИГРЫ"
+text = "MENU_SETTINGS_BTN"
 alignment = 0
 
 [node name="ExitBtn" type="Button" parent="MainLayout/HBox/LeftMenuPanel/MainMenuVBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "❌ 4. ВЫХОД ИЗ ИГРЫ"
+text = "MENU_EXIT_BTN"
 alignment = 0
 
 [node name="Spacer" type="Control" parent="MainLayout/HBox/LeftMenuPanel"]
@@ -138,7 +145,7 @@ size_flags_horizontal = 3
 
 [node name="SettingsPanel" type="PanelContainer" parent="MainLayout/HBox/CenterContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(480, 400)
+custom_minimum_size = Vector2(480, 440)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="MainLayout/HBox/CenterContainer/SettingsPanel"]
@@ -150,43 +157,57 @@ theme_override_constants/margin_bottom = 20
 
 [node name="VBox" type="VBoxContainer" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="SettingsTitle" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "⚙️ НАСТРОЙКИ ИГРЫ"
+text = "SETTINGS_TITLE"
 
 [node name="HSeparator" type="HSeparator" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
 layout_mode = 2
 
-[node name="WindowModeLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+[node name="LanguageLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Режим экрана (Window Mode):"
+text = "SETTINGS_LANGUAGE"
+
+[node name="LanguageOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="WindowModeLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "SETTINGS_WINDOW_MODE"
 
 [node name="WindowModeOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 
 [node name="ResolutionLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Разрешение экрана (Resolution):"
+text = "SETTINGS_RESOLUTION"
 
 [node name="ResolutionOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 
 [node name="MsaaLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Сглаживание (Anti-Aliasing / MSAA):"
+text = "SETTINGS_MSAA"
 
 [node name="MsaaOption" type="OptionButton" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 
 [node name="VolumeLabel" type="Label" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Общая громкость (Master Volume):"
+text = "SETTINGS_VOLUME"
 
 [node name="VolumeSlider" type="HSlider" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
 unique_name_in_owner = true
@@ -201,15 +222,18 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="CloseSettingsBtn" type="Button" parent="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "ПРИМЕНИТЬ И ЗАКРЫТЬ"
+text = "SETTINGS_CLOSE"
 
 [connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/SandboxBtn" to="." method="_on_sandbox_pressed"]
 [connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/TestRangeBtn" to="." method="_on_test_range_pressed"]
 [connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/SettingsBtn" to="." method="_on_settings_pressed"]
 [connection signal="pressed" from="MainLayout/HBox/LeftMenuPanel/MainMenuVBox/ExitBtn" to="." method="_on_exit_game_pressed"]
+[connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/LanguageOption" to="." method="_on_language_selected"]
 [connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/WindowModeOption" to="." method="_on_window_mode_selected"]
 [connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/ResolutionOption" to="." method="_on_resolution_selected"]
 [connection signal="item_selected" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/MsaaOption" to="." method="_on_msaa_selected"]
 [connection signal="pressed" from="MainLayout/HBox/CenterContainer/SettingsPanel/Margin/VBox/CloseSettingsBtn" to="." method="_on_close_settings_pressed"]
+

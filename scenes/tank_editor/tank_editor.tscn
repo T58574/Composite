@@ -217,11 +217,11 @@ theme_override_constants/separation = 10
 
 [node name="MainMenuBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Menu"
+text = "EDITOR_MENU"
 
 [node name="EraLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Era"
+text = "EDITOR_ERA"
 
 [node name="EraOption" type="OptionButton" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
@@ -236,22 +236,22 @@ placeholder_text = "Tank Name..."
 
 [node name="SavePresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Save"
+text = "EDITOR_SAVE"
 
 [node name="LoadPresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Load"
+text = "EDITOR_LOAD"
 
 [node name="ResetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Reset"
+text = "EDITOR_RESET"
 
 [node name="VSep1" type="VSeparator" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
 
 [node name="MassBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Mass:"
+text = "EDITOR_MASS"
 
 [node name="MassBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
@@ -260,7 +260,7 @@ text = "64.91t"
 
 [node name="SpaceBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
-text = "Volume:"
+text = "EDITOR_VOLUME"
 
 [node name="SpaceBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
@@ -274,28 +274,28 @@ size_flags_horizontal = 3
 [node name="SolidBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Solid [F1]"
+text = "EDITOR_SOLID"
 
 [node name="HeatmapBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Armor Heatmap [F2]"
+text = "EDITOR_HEATMAP"
 
 [node name="XrayBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "X-Ray [F3]"
+text = "EDITOR_XRAY"
 
 [node name="SymmetryCheck" type="CheckBox" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
-text = "Symmetry X"
+text = "EDITOR_SYMMETRY"
 
 [node name="TestDriveBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Test Range"
+text = "EDITOR_TEST_RANGE"
 
 [node name="LeftSidebar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1
@@ -321,43 +321,43 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Compartments"
+text = "CAT_COMPARTMENTS"
 
 [node name="CatTracksBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Tracks"
+text = "CAT_TRACKS"
 
 [node name="CatPowertrainBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Powertrain"
+text = "CAT_POWERTRAIN"
 
 [node name="CatFirepowerBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Firepower"
+text = "CAT_FIREPOWER"
 
 [node name="CatCrewBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Crew"
+text = "CAT_CREW"
 
 [node name="CatPaintBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Paint"
+text = "CAT_PAINT"
 
 [node name="CatDecalsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 0
-text = "Decals"
+text = "CAT_DECALS"
 
 [node name="CategoryStack" type="PanelContainer" parent="UIOverlay"]
 unique_name_in_owner = true
@@ -383,14 +383,14 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
-text = "Compartment Specs"
+text = "TITLE_COMPARTMENTS"
 
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
 
 [node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
-text = "Hull Length (m)"
+text = "LBL_HULL_LENGTH"
 
 [node name="HullLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -402,7 +402,7 @@ value = 6.8
 
 [node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
-text = "Hull Width (m)"
+text = "LBL_HULL_WIDTH"
 
 [node name="HullWidthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -414,7 +414,7 @@ value = 3.4
 
 [node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
-text = "Hull Height (m)"
+text = "LBL_HULL_HEIGHT"
 
 [node name="HullHeightSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -426,7 +426,7 @@ value = 1.4
 
 [node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
-text = "Glacis Angle (°)"
+text = "LBL_GLACIS_ANGLE"
 
 [node name="GlacisAngleSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -443,7 +443,7 @@ theme_override_constants/separation = 8
 
 [node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 layout_mode = 2
-text = "Road Wheel Pairs"
+text = "LBL_WHEEL_PAIRS"
 
 [node name="WheelsCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -455,7 +455,7 @@ value = 6.0
 
 [node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 layout_mode = 2
-text = "Wheel Diameter (m)"
+text = "LBL_WHEEL_DIAM"
 
 [node name="WheelDiamSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -467,7 +467,7 @@ value = 0.65
 
 [node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 layout_mode = 2
-text = "Track Width (m)"
+text = "LBL_TRACK_WIDTH"
 
 [node name="TrackWSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -484,14 +484,14 @@ theme_override_constants/separation = 8
 
 [node name="PowertrainTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 layout_mode = 2
-text = "Powertrain Specs"
+text = "TITLE_POWERTRAIN"
 
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 layout_mode = 2
 
 [node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 layout_mode = 2
-text = "Engine Output (HP)"
+text = "LBL_ENGINE_HP"
 
 [node name="EnginePowerSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 unique_name_in_owner = true
@@ -508,7 +508,7 @@ theme_override_constants/separation = 8
 
 [node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 layout_mode = 2
-text = "Gun Caliber (mm)"
+text = "LBL_GUN_CALIBER"
 
 [node name="GunCaliberSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 unique_name_in_owner = true
@@ -520,7 +520,7 @@ value = 120.0
 
 [node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 layout_mode = 2
-text = "Barrel Length (m)"
+text = "LBL_BARREL_LENGTH"
 
 [node name="BarrelLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 unique_name_in_owner = true
@@ -537,14 +537,14 @@ theme_override_constants/separation = 8
 
 [node name="CrewTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 layout_mode = 2
-text = "Crew Ergonomics"
+text = "TITLE_CREW"
 
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 layout_mode = 2
 
 [node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 layout_mode = 2
-text = "Crew Members"
+text = "LBL_CREW_COUNT"
 
 [node name="CrewCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 unique_name_in_owner = true
@@ -561,14 +561,14 @@ theme_override_constants/separation = 8
 
 [node name="PaintTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
 layout_mode = 2
-text = "Paint & Camouflage"
+text = "TITLE_PAINT"
 
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
 layout_mode = 2
 
 [node name="SchemeLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
 layout_mode = 2
-text = "Camouflage Pattern"
+text = "LBL_CAMO_PATTERN"
 
 [node name="PaintSchemeOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
 unique_name_in_owner = true
@@ -581,14 +581,14 @@ theme_override_constants/separation = 8
 
 [node name="DecalTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
 layout_mode = 2
-text = "Insignia & Marking"
+text = "TITLE_DECALS"
 
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
 layout_mode = 2
 
 [node name="DecalLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
 layout_mode = 2
-text = "Insignia Symbol"
+text = "LBL_INSIGNIA_SYMBOL"
 
 [node name="DecalOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
 unique_name_in_owner = true
@@ -622,7 +622,7 @@ layout_mode = 2
 
 [node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
 layout_mode = 2
-text = "Structure"
+text = "INSPECTOR_TITLE"
 
 [node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
 layout_mode = 2
@@ -632,7 +632,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
-text = "base-bashna-1"
+text = "PART_FRONT_GLACIS"
 
 [node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
@@ -642,30 +642,30 @@ theme_override_constants/separation = 4
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Points [1]"
+text = "BTN_POINTS"
 
 [node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Edges [2]"
+text = "BTN_EDGES"
 
 [node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Faces [3]"
+text = "BTN_FACES"
 
 [node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Corners [4]"
+text = "BTN_CORNERS"
 
 [node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.7, 0.2, 1)
-text = "Edit Actions"
+text = "EDIT_ACTIONS"
 
 [node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
@@ -675,35 +675,36 @@ columns = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Delete [Del]"
+text = "BTN_DELETE"
 
 [node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Extrude [E]"
+text = "BTN_EXTRUDE"
 
 [node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Split Face"
+text = "BTN_SPLIT"
 
 [node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Flip Normals"
+text = "BTN_FLIP"
 
 [node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
-text = "Mirror X"
+text = "CHK_MIRROR"
 
 [node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Smooth Angle (36.0°)"
+text = "LBL_SMOOTH_ANGLE"
 
 [node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
@@ -715,7 +716,7 @@ value = 36.0
 
 [node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
-text = "Grid Size (mm)"
+text = "LBL_GRID_SIZE"
 
 [node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
@@ -729,7 +730,7 @@ layout_mode = 2
 
 [node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
 layout_mode = 2
-text = "Armor Thickness"
+text = "TITLE_ARMOR_THICKNESS"
 
 [node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
 layout_mode = 2
@@ -750,7 +751,7 @@ value = 450.0
 
 [node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 layout_mode = 2
-text = "Material Type"
+text = "LBL_MATERIAL_TYPE"
 
 [node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
 unique_name_in_owner = true
@@ -760,7 +761,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
-text = "Angle: 60.0° | LOS: 900mm RHA"
+text = "ARMOR_LOS_FMT"
 
 [node name="BottomToolbar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1
@@ -787,15 +788,15 @@ layout_mode = 2
 
 [node name="TurretsTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
 layout_mode = 2
-text = "Turrets"
+text = "TAB_TURRETS"
 
 [node name="StructuralTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
 layout_mode = 2
-text = "Structural"
+text = "TAB_STRUCTURAL"
 
 [node name="AddonTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
 layout_mode = 2
-text = "Addon Structures"
+text = "TAB_ADDON"
 
 [node name="VSep1" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
 layout_mode = 2
@@ -807,22 +808,22 @@ theme_override_constants/separation = 4
 [node name="ToolTranslateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Move [G]"
+text = "BTN_MOVE"
 
 [node name="ToolRotateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Rotate [R]"
+text = "BTN_ROTATE"
 
 [node name="ToolScaleBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Resize [S]"
+text = "BTN_RESIZE"
 
 [node name="ToolSnapBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Snap"
+text = "BTN_SNAP"
 
 [node name="VSep2" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
 layout_mode = 2
@@ -832,7 +833,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
-text = "Hover over armor to inspect..."
+text = "HOVER_INSPECT_PROMPT"
 
 [node name="FPSLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox"]
 unique_name_in_owner = true

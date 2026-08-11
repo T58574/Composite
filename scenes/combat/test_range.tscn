@@ -92,20 +92,21 @@ layout_mode = 2
 
 [node name="MainMenuBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
 layout_mode = 2
-text = "← Главное меню"
+text = "RANGE_MAIN_MENU"
 
 [node name="SandboxBtn" type="Button" parent="UI_HUD/InfoBox/Margin/VBox/HBoxNav"]
 layout_mode = 2
-text = "🛠️ В конструктор"
+text = "RANGE_TO_BUILDER"
 
 [node name="Title" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "COMBAT TEST RANGE"
+text = "RANGE_TITLE"
 
 [node name="ControlsHelp" type="Label" parent="UI_HUD/InfoBox/Margin/VBox"]
 layout_mode = 2
-text = "WASD / Стрелки: Движение танка\nN: Оптика СУО (День/Тепловизор/ПНВ)\nR: Лазерный дальномер"
+text = "RANGE_CONTROLS"
 
 [connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/MainMenuBtn" to="UI_HUD" method="_on_main_menu_pressed"]
 [connection signal="pressed" from="UI_HUD/InfoBox/Margin/VBox/HBoxNav/SandboxBtn" to="UI_HUD" method="_on_sandbox_pressed"]
+

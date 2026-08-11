@@ -6,6 +6,7 @@ extends Control
 @onready var main_menu_vbox: VBoxContainer = %MainMenuVBox
 
 # Settings Controls
+@onready var language_option: OptionButton = %LanguageOption
 @onready var window_mode_option: OptionButton = %WindowModeOption
 @onready var resolution_option: OptionButton = %ResolutionOption
 @onready var msaa_option: OptionButton = %MsaaOption
@@ -15,14 +16,23 @@ func _ready() -> void:
 	if settings_panel:
 		settings_panel.visible = false
 		
+	if not SettingsManager.settings_changed.is_connected(_setup_settings_options):
+		SettingsManager.settings_changed.connect(_setup_settings_options)
+		
 	_setup_settings_options()
 
 func _setup_settings_options() -> void:
+	if language_option:
+		language_option.clear()
+		language_option.add_item("Русский", 0)
+		language_option.add_item("English", 1)
+		language_option.select(0 if SettingsManager.language == "ru" else 1)
+
 	if window_mode_option:
 		window_mode_option.clear()
-		window_mode_option.add_item("Windowed", 0)
-		window_mode_option.add_item("Exclusive Fullscreen", 1)
-		window_mode_option.add_item("Borderless Windowed", 2)
+		window_mode_option.add_item(tr("WIN_MODE_WINDOWED"), 0)
+		window_mode_option.add_item(tr("WIN_MODE_FULLSCREEN"), 1)
+		window_mode_option.add_item(tr("WIN_MODE_BORDERLESS"), 2)
 		window_mode_option.select(SettingsManager.window_mode)
 		
 	if resolution_option:
@@ -35,10 +45,10 @@ func _setup_settings_options() -> void:
 		
 	if msaa_option:
 		msaa_option.clear()
-		msaa_option.add_item("Disabled", 0)
-		msaa_option.add_item("FXAA Fast", 1)
-		msaa_option.add_item("MSAA 2x (Recommended)", 2)
-		msaa_option.add_item("MSAA 4x High Quality", 3)
+		msaa_option.add_item(tr("MSAA_DISABLED"), 0)
+		msaa_option.add_item(tr("MSAA_FXAA"), 1)
+		msaa_option.add_item(tr("MSAA_2X"), 2)
+		msaa_option.add_item(tr("MSAA_4X"), 3)
 		msaa_option.select(SettingsManager.msaa_index)
 		
 	if volume_slider:
@@ -67,6 +77,10 @@ func _on_exit_game_pressed() -> void:
 	get_tree().quit()
 
 # Settings Change Handlers
+func _on_language_selected(index: int) -> void:
+	var lang = "ru" if index == 0 else "en"
+	SettingsManager.set_language(lang)
+
 func _on_window_mode_selected(index: int) -> void:
 	SettingsManager.set_window_mode(index)
 
@@ -78,3 +92,4 @@ func _on_msaa_selected(index: int) -> void:
 
 func _on_volume_changed(val: float) -> void:
 	SettingsManager.set_master_volume(val)
+
