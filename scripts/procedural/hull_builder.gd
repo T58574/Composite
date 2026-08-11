@@ -2,8 +2,8 @@ class_name HullBuilder
 extends MeshInstance3D
 
 ## Procedural hard-surface tank hull generator using SurfaceTool & MeshDataTool.
-## Generates clean sloped upper & lower glacis, side sponson overhangs, engine deck grills,
-## driver hatch bump, side skirts, rear plate, with explicit flat normals and solid CCW face winding.
+## Generates a clean sloped base tank hull: upper & lower glacis, side sponson overhangs,
+## roof deck, and rear plate with explicit flat normals and solid CCW face winding.
 
 @export_group("Hull Dimensions")
 @export_range(2.0, 10.0, 0.1) var length: float = 6.8 ## Meters
@@ -11,7 +11,6 @@ extends MeshInstance3D
 @export_range(0.5, 2.5, 0.1) var height: float = 1.4 ## Meters
 @export_range(10.0, 80.0, 1.0) var front_glacis_angle_deg: float = 60.0 ## Front slope angle (deg)
 @export_range(0.1, 0.5, 0.02) var sponson_width_ratio: float = 0.25 ## Sponson overhang fraction of width
-@export_range(0.1, 0.8, 0.05) var skirt_depth: float = 0.35 ## Side skirt drop below sponson
 
 @export_group("Armor Parameters")
 @export_range(10.0, 1000.0, 5.0) var front_armor_mm: float = 450.0 ## Front armor thickness in mm RHA
@@ -31,7 +30,7 @@ var collision_shape_node: CollisionShape3D = null
 func _ready() -> void:
 	generate_hull_mesh()
 
-## Generate clean hard-surface 3D Hull Mesh via SurfaceTool with explicit flat normals
+## Generate clean hard-surface 3D Base Hull Mesh via SurfaceTool with explicit flat normals
 func generate_hull_mesh() -> void:
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -52,8 +51,6 @@ func generate_hull_mesh() -> void:
 	var nose_x = half_l + 0.15
 	var nose_y = sponson_y
 	var nose_w = belly_w * 0.85
-
-	var engine_x = -half_l * 0.15
 
 	# ---------------------------------------------------------
 	# 1. LOWER BELLY & LOWER GLACIS
@@ -114,59 +111,11 @@ func generate_hull_mesh() -> void:
 	# ---------------------------------------------------------
 	# 4. UPPER CREW DECK & ENGINE DECK
 	# ---------------------------------------------------------
-	var v_eng_l = Vector3(engine_x, half_h, -half_w)
-	var v_eng_r = Vector3(engine_x, half_h, half_w)
-
-	# Front crew roof deck
-	_add_quad(st, v_top_fl, v_eng_l, v_eng_r, v_top_fr)
-
-	# Engine deck base panel
-	_add_quad(st, v_eng_l, v_top_bl, v_top_br, v_eng_r)
-
-	# Engine deck ventilation grill louvres
-	var grill_w = half_w * 0.55
-	var grill_start_x = engine_x - 0.15
-	var grill_end_x = -half_l + 0.35
-	var grill_h = 0.04
-
-	var g_tl = Vector3(grill_start_x, half_h + grill_h, -grill_w)
-	var g_tr = Vector3(grill_start_x, half_h + grill_h, grill_w)
-	var g_bl = Vector3(grill_end_x, half_h + grill_h, -grill_w)
-	var g_br = Vector3(grill_end_x, half_h + grill_h, grill_w)
-
-	_add_quad(st, g_tl, g_bl, g_br, g_tr) # Grill top
-	_add_quad(st, Vector3(grill_start_x, half_h, -grill_w), Vector3(grill_end_x, half_h, -grill_w), g_bl, g_tl)
-	_add_quad(st, Vector3(grill_start_x, half_h, grill_w), g_tr, g_br, Vector3(grill_end_x, half_h, grill_w))
-	_add_quad(st, g_tl, g_tr, Vector3(grill_start_x, half_h, grill_w), Vector3(grill_start_x, half_h, -grill_w))
-	_add_quad(st, g_br, g_bl, Vector3(grill_end_x, half_h, -grill_w), Vector3(grill_end_x, half_h, grill_w))
+	# Roof deck
+	_add_quad(st, v_top_fl, v_top_bl, v_top_br, v_top_fr)
 
 	# ---------------------------------------------------------
-	# 5. DRIVER HATCH BUMP
-	# ---------------------------------------------------------
-	var hatch_x = top_front_x * 0.7
-	var hatch_z = -half_w * 0.35
-	var hatch_l = 0.45
-	var hatch_w = 0.4
-	var hatch_h = 0.12
-
-	var h_fl = Vector3(hatch_x + hatch_l * 0.5, half_h + hatch_h, hatch_z - hatch_w * 0.5)
-	var h_fr = Vector3(hatch_x + hatch_l * 0.5, half_h + hatch_h, hatch_z + hatch_w * 0.5)
-	var h_bl = Vector3(hatch_x - hatch_l * 0.5, half_h + hatch_h, hatch_z - hatch_w * 0.5)
-	var h_br = Vector3(hatch_x - hatch_l * 0.5, half_h + hatch_h, hatch_z + hatch_w * 0.5)
-
-	var hb_fl = Vector3(hatch_x + hatch_l * 0.6, half_h, hatch_z - hatch_w * 0.55)
-	var hb_fr = Vector3(hatch_x + hatch_l * 0.6, half_h, hatch_z + hatch_w * 0.55)
-	var hb_bl = Vector3(hatch_x - hatch_l * 0.55, half_h, hatch_z - hatch_w * 0.55)
-	var hb_br = Vector3(hatch_x - hatch_l * 0.55, half_h, hatch_z + hatch_w * 0.55)
-
-	_add_quad(st, h_fl, h_bl, h_br, h_fr) # Hatch top
-	_add_quad(st, hb_fl, hb_fr, h_fr, h_fl) # Front visor slope
-	_add_quad(st, hb_bl, h_bl, h_fl, hb_fl)
-	_add_quad(st, hb_fr, h_fr, h_br, hb_br)
-	_add_quad(st, hb_br, h_br, h_bl, hb_bl)
-
-	# ---------------------------------------------------------
-	# 6. REAR HULL PLATE & EXHAUST BOX
+	# 5. REAR HULL PLATE
 	# ---------------------------------------------------------
 	var v_rear_top_l = Vector3(-half_l, half_h, -half_w)
 	var v_rear_top_r = Vector3(-half_l, half_h, half_w)
@@ -179,57 +128,6 @@ func generate_hull_mesh() -> void:
 	# Rear corner fills
 	_add_triangle(st, v_rear_top_l, v_spons_bl, v_rear_bot_l)
 	_add_triangle(st, v_rear_top_r, v_rear_bot_r, v_spons_br)
-
-	# Exhaust box protruding on rear plate
-	var ex_w = half_w * 0.4
-	var ex_h = 0.25
-	var ex_depth = 0.18
-	var ex_y = 0.0
-
-	var ex_tl = Vector3(-half_l - ex_depth, ex_y + ex_h, -ex_w)
-	var ex_tr = Vector3(-half_l - ex_depth, ex_y + ex_h, ex_w)
-	var ex_bl = Vector3(-half_l - ex_depth, ex_y - ex_h, -ex_w)
-	var ex_br = Vector3(-half_l - ex_depth, ex_y - ex_h, ex_w)
-
-	var ex_stl = Vector3(-half_l + 0.1, ex_y + ex_h, -ex_w)
-	var ex_str = Vector3(-half_l + 0.1, ex_y + ex_h, ex_w)
-	var ex_sbl = Vector3(-half_l + 0.15, ex_y - ex_h, -ex_w)
-	var ex_sbr = Vector3(-half_l + 0.15, ex_y - ex_h, ex_w)
-
-	_add_quad(st, ex_tr, ex_tl, ex_bl, ex_br)
-	_add_quad(st, ex_stl, ex_str, ex_tr, ex_tl)
-	_add_quad(st, ex_bl, ex_sbl, ex_sbr, ex_br)
-	_add_quad(st, ex_tl, ex_stl, ex_sbl, ex_bl)
-	_add_quad(st, ex_str, ex_tr, ex_br, ex_sbr)
-
-	# ---------------------------------------------------------
-	# 7. SIDE SKIRTS & MUDGUARDS
-	# ---------------------------------------------------------
-	var skirt_y_bot = sponson_y - skirt_depth
-	for side in [-1.0, 1.0]:
-		var z_out = side * (half_w + 0.02)
-
-		# Front mudguard curve
-		var mg_front_x = half_l + 0.2
-		var mg_top = Vector3(top_front_x, half_h - 0.05, z_out)
-		var mg_front = Vector3(mg_front_x, sponson_y - 0.05, z_out)
-		var mg_bot = Vector3(mg_front_x - 0.2, skirt_y_bot, z_out)
-
-		if side < 0:
-			_add_triangle(st, mg_top, mg_bot, mg_front)
-		else:
-			_add_triangle(st, mg_top, mg_front, mg_bot)
-
-		# Main hanging skirt panel
-		var sk_fl = Vector3(mg_front_x - 0.2, sponson_y, z_out)
-		var sk_fr = Vector3(-half_l + 0.1, sponson_y, z_out)
-		var sk_bl = Vector3(mg_front_x - 0.2, skirt_y_bot, z_out)
-		var sk_br = Vector3(-half_l + 0.1, skirt_y_bot, z_out)
-
-		if side < 0:
-			_add_quad(st, sk_fl, sk_bl, sk_br, sk_fr)
-		else:
-			_add_quad(st, sk_fl, sk_fr, sk_br, sk_bl)
 
 	# ---------------------------------------------------------
 	# GENERATE TANGENTS & COMMIT

@@ -1,9 +1,9 @@
 class_name Gizmo3D
 extends Node3D
 
-## Interactive 3D Transform Gizmo for Composite tank editor.
-## Renders RGB translation arrows, rotation rings, and scale cubes.
-## Supports hotkeys G (Move), R (Rotate), S (Scale) and grid snapping.
+## Interactive 3D Transform Gizmo for Sprocket-style editor.
+## Renders solid 3D RGB translation arrows, rotation rings, and scale cubes.
+## Supports hotkeys G (Move), R (Rotate), S (Scale).
 
 enum GizmoMode { TRANSLATE, ROTATE, SCALE }
 enum TransformSpace { LOCAL, GLOBAL }
@@ -15,8 +15,8 @@ signal transform_ended()
 @export var gizmo_mode: GizmoMode = GizmoMode.TRANSLATE
 @export var transform_space: TransformSpace = TransformSpace.LOCAL
 @export var grid_snap_enabled: bool = true
-@export_range(0.01, 2.0, 0.05) var grid_snap_step: float = 0.1 ## Grid size in meters (0.05, 0.1, 0.5)
-@export_range(1.0, 45.0, 1.0) var rotation_snap_deg: float = 15.0 ## Rotation snap in degrees
+@export var grid_snap_step: float = 0.1 ## Grid size in meters (0.05, 0.1, 0.5)
+@export var rotation_snap_deg: float = 5.0 ## Degrees (5, 15, 45)
 
 var active_axis: int = -1 # -1: None, 0: X (Red), 1: Y (Green), 2: Z (Blue)
 var is_dragging: bool = false
@@ -45,17 +45,17 @@ func set_gizmo_mode(mode: GizmoMode) -> void:
 func _setup_materials() -> void:
 	red_mat = StandardMaterial3D.new()
 	red_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	red_mat.albedo_color = Color(1.0, 0.25, 0.25)
+	red_mat.albedo_color = Color(1.0, 0.2, 0.2)
 	red_mat.no_depth_test = true
 
 	green_mat = StandardMaterial3D.new()
 	green_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	green_mat.albedo_color = Color(0.25, 0.9, 0.25)
+	green_mat.albedo_color = Color(0.2, 0.9, 0.2)
 	green_mat.no_depth_test = true
 
 	blue_mat = StandardMaterial3D.new()
 	blue_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	blue_mat.albedo_color = Color(0.25, 0.45, 1.0)
+	blue_mat.albedo_color = Color(0.2, 0.5, 1.0)
 	blue_mat.no_depth_test = true
 
 	highlight_mat = StandardMaterial3D.new()
@@ -68,102 +68,45 @@ func _build_gizmo_visuals() -> void:
 	if y_axis_mesh: y_axis_mesh.queue_free()
 	if z_axis_mesh: z_axis_mesh.queue_free()
 
-	# X Axis (Red)
 	x_axis_mesh = _create_axis_mesh(Vector3.RIGHT, red_mat)
 	x_axis_mesh.name = "AxisX"
 	add_child(x_axis_mesh)
 
-	# Y Axis (Green)
 	y_axis_mesh = _create_axis_mesh(Vector3.UP, green_mat)
 	y_axis_mesh.name = "AxisY"
 	add_child(y_axis_mesh)
 
-	# Z Axis (Blue)
 	z_axis_mesh = _create_axis_mesh(Vector3.BACK, blue_mat)
 	z_axis_mesh.name = "AxisZ"
 	add_child(z_axis_mesh)
 
+## Generates SOLID 3D meshes (Cylinders, Cones, Cubes) for gizmo handles
 func _create_axis_mesh(dir: Vector3, mat: Material) -> MeshInstance3D:
 	var mi = MeshInstance3D.new()
 	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_LINES)
-	st.set_color(Color.WHITE)
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	match gizmo_mode:
 		GizmoMode.TRANSLATE:
-			# Stem line
-			_add_line(st, Vector3.ZERO, dir * 1.0)
-
-			# 3D Arrowhead cone wireframe at tip
-			var tip = dir * 1.0
-			var base_center = tip - dir * 0.25
-			var side1 = Vector3(-dir.z, dir.x, dir.y).normalized() * 0.08
-			if side1.length() < 0.01:
-				side1 = Vector3(dir.y, -dir.z, dir.x).normalized() * 0.08
-			var side2 = dir.cross(side1).normalized() * 0.08
-
-			var p1 = base_center + side1
-			var p2 = base_center + side2
-			var p3 = base_center - side1
-			var p4 = base_center - side2
-
-			_add_line(st, tip, p1)
-			_add_line(st, tip, p2)
-			_add_line(st, tip, p3)
-			_add_line(st, tip, p4)
-
-			_add_line(st, p1, p2)
-			_add_line(st, p2, p3)
-			_add_line(st, p3, p4)
-			_add_line(st, p4, p1)
+			# 3D Solid Cylinder Shaft
+			_add_solid_cylinder(st, Vector3.ZERO, dir * 0.8, 0.025)
+			# 3D Solid Cone Arrow Tip
+			_add_solid_cone(st, dir * 0.8, dir * 1.15, 0.09)
 
 		GizmoMode.ROTATE:
-			# Circular ring perpendicular to dir
-			var radius = 0.9
-			var segs = 32
-			var u_axis = Vector3(-dir.z, dir.x, dir.y).normalized()
-			if u_axis.length() < 0.01:
-				u_axis = Vector3(dir.y, -dir.z, dir.x).normalized()
-			var v_axis = dir.cross(u_axis).normalized()
-
-			for i in range(segs):
-				var a1 = (float(i) / segs) * TAU
-				var a2 = (float(i + 1) / segs) * TAU
-				var v1 = (u_axis * cos(a1) + v_axis * sin(a1)) * radius
-				var v2 = (u_axis * cos(a2) + v_axis * sin(a2)) * radius
-				_add_line(st, v1, v2)
+			# 3D Solid Circular Torus Ring perpendicular to dir
+			_add_solid_torus_ring(st, dir, 0.9, 0.025)
 
 		GizmoMode.SCALE:
-			# Stem line
-			_add_line(st, Vector3.ZERO, dir * 1.0)
+			# 3D Solid Cylinder Shaft
+			_add_solid_cylinder(st, Vector3.ZERO, dir * 0.85, 0.025)
+			# 3D Solid Box Handle at tip
+			_add_solid_box(st, dir * 0.95, Vector3(0.12, 0.12, 0.12))
 
-			# 3D Box handle at tip
-			var tip = dir * 1.0
-			var box_size = 0.12
-			_add_box(st, tip, box_size)
-
+	st.generate_tangents()
 	mi.mesh = st.commit()
 	mi.material_override = mat
 	return mi
-
-func _add_line(st: SurfaceTool, a: Vector3, b: Vector3) -> void:
-	st.set_uv(Vector2.ZERO)
-	st.add_vertex(a)
-	st.set_uv(Vector2.ZERO)
-	st.add_vertex(b)
-
-func _add_box(st: SurfaceTool, center: Vector3, size: float) -> void:
-	var h = size * 0.5
-	var c = [
-		center + Vector3(-h, -h, -h), center + Vector3(h, -h, -h),
-		center + Vector3(h, -h, h), center + Vector3(-h, -h, h),
-		center + Vector3(-h, h, -h), center + Vector3(h, h, -h),
-		center + Vector3(h, h, h), center + Vector3(-h, h, h)
-	]
-	for i in range(4):
-		_add_line(st, c[i], c[(i + 1) % 4])
-		_add_line(st, c[4 + i], c[4 + (i + 1) % 4])
-		_add_line(st, c[i], c[4 + i])
 
 func attach_to_position(pos: Vector3) -> void:
 	global_position = pos
@@ -173,7 +116,6 @@ func detach() -> void:
 	hide()
 	is_dragging = false
 	active_axis = -1
-	_update_axis_materials()
 
 func process_input_event(camera: Camera3D, event: InputEvent) -> bool:
 	if not visible or camera == null:
@@ -247,45 +189,35 @@ func process_input_event(camera: Camera3D, event: InputEvent) -> bool:
 						proj_dist = snapped(proj_dist, grid_snap_step)
 
 					if abs(proj_dist) > 0.0001:
-						var scale_delta = Vector3.ONE + axis_vec * proj_dist
+						var scale_factor = 1.0 + proj_dist * 0.5
+						scale_factor = max(scale_factor, 0.1)
+						var scale_delta = Vector3.ONE
+						match active_axis:
+							0: scale_delta.x = scale_factor
+							1: scale_delta.y = scale_factor
+							2: scale_delta.z = scale_factor
 						drag_start_plane_pos = current_plane_pos
 						transform_changed.emit(Vector3.ZERO, Vector3.ZERO, scale_delta)
 
 			return true
-		else:
-			var hover_axis = _pick_axis(camera, event.position)
-			_highlight_axis(hover_axis)
 
 	return false
 
 func _pick_axis(camera: Camera3D, screen_pos: Vector2) -> int:
 	var ray_origin = camera.project_ray_origin(screen_pos)
 	var ray_dir = camera.project_ray_normal(screen_pos)
+
 	var axes = [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
-
+	var min_dist = 0.45
 	var best_axis = -1
-	var min_dist = 0.35
 
-	if gizmo_mode == GizmoMode.ROTATE:
-		var radius = 0.9
-		for i in range(3):
-			var axis_vec = axes[i]
-			var plane = Plane(axis_vec, global_position.dot(axis_vec))
-			var intersect = plane.intersects_ray(ray_origin, ray_dir)
-			if intersect != null:
-				var dist_to_center = intersect.distance_to(global_position)
-				var ring_dist = abs(dist_to_center - radius)
-				if ring_dist < min_dist:
-					min_dist = ring_dist
-					best_axis = i
-	else:
-		for i in range(3):
-			var axis_start = global_position
-			var axis_end = global_position + axes[i] * 1.0
-			var dist = _ray_to_segment_distance(ray_origin, ray_dir, axis_start, axis_end)
-			if dist < min_dist:
-				min_dist = dist
-				best_axis = i
+	for i in range(3):
+		var axis_start = global_position
+		var axis_end = global_position + axes[i] * 1.15
+		var dist = _ray_to_segment_distance(ray_origin, ray_dir, axis_start, axis_end)
+		if dist < min_dist:
+			min_dist = dist
+			best_axis = i
 
 	return best_axis
 
@@ -295,6 +227,11 @@ func _get_axis_vector(axis_idx: int) -> Vector3:
 		1: return Vector3.UP
 		2: return Vector3.BACK
 		_: return Vector3.ZERO
+
+func _update_axis_materials() -> void:
+	if x_axis_mesh: x_axis_mesh.material_override = highlight_mat if active_axis == 0 else red_mat
+	if y_axis_mesh: y_axis_mesh.material_override = highlight_mat if active_axis == 1 else green_mat
+	if z_axis_mesh: z_axis_mesh.material_override = highlight_mat if active_axis == 2 else blue_mat
 
 func _get_ray_plane_intersection(camera: Camera3D, screen_pos: Vector2, plane_point: Vector3, axis_vec: Vector3) -> Vector3:
 	var ray_origin = camera.project_ray_origin(screen_pos)
@@ -308,12 +245,11 @@ func _get_ray_plane_intersection(camera: Camera3D, screen_pos: Vector2, plane_po
 	var intersect = plane.intersects_ray(ray_origin, ray_dir)
 	return intersect if intersect != null else plane_point
 
-func _get_ray_plane_intersection_perp(camera: Camera3D, screen_pos: Vector2, plane_point: Vector3, plane_normal: Vector3) -> Vector3:
+func _get_ray_plane_intersection_perp(camera: Camera3D, screen_pos: Vector2, plane_point: Vector3, normal: Vector3) -> Vector3:
 	var ray_origin = camera.project_ray_origin(screen_pos)
 	var ray_dir = camera.project_ray_normal(screen_pos)
 
-	var norm = plane_normal.normalized()
-	var plane = Plane(norm, plane_point.dot(norm))
+	var plane = Plane(normal, plane_point.dot(normal))
 	var intersect = plane.intersects_ray(ray_origin, ray_dir)
 	return intersect if intersect != null else plane_point
 
@@ -335,14 +271,124 @@ func _ray_to_segment_distance(ray_o: Vector3, ray_d: Vector3, seg_a: Vector3, se
 	var closest_seg = seg_a + v * clamp(tc, 0.0, 1.0)
 	return closest_ray.distance_to(closest_seg)
 
-func _update_axis_materials() -> void:
-	if x_axis_mesh: x_axis_mesh.material_override = highlight_mat if active_axis == 0 else red_mat
-	if y_axis_mesh: y_axis_mesh.material_override = highlight_mat if active_axis == 1 else green_mat
-	if z_axis_mesh: z_axis_mesh.material_override = highlight_mat if active_axis == 2 else blue_mat
+# ---------------------------------------------------------
+# Solid 3D Procedural Geometry Mesh Generators for Gizmo
+# ---------------------------------------------------------
+func _add_solid_cylinder(st: SurfaceTool, start: Vector3, end: Vector3, radius: float) -> void:
+	var dir = (end - start).normalized()
+	var side1 = Vector3(-dir.z, dir.x, dir.y).normalized() * radius
+	if side1.length_squared() < 0.0001:
+		side1 = Vector3(dir.y, -dir.z, dir.x).normalized() * radius
+	var side2 = dir.cross(side1).normalized() * radius
 
-func _highlight_axis(hover_axis: int) -> void:
-	if is_dragging:
-		return
-	if x_axis_mesh: x_axis_mesh.material_override = highlight_mat if hover_axis == 0 else red_mat
-	if y_axis_mesh: y_axis_mesh.material_override = highlight_mat if hover_axis == 1 else green_mat
-	if z_axis_mesh: z_axis_mesh.material_override = highlight_mat if hover_axis == 2 else blue_mat
+	var segs = 8
+	for i in range(segs):
+		var a1 = (float(i) / segs) * TAU
+		var a2 = (float(i + 1) / segs) * TAU
+
+		var r1 = side1 * cos(a1) + side2 * sin(a1)
+		var r2 = side1 * cos(a2) + side2 * sin(a2)
+
+		var p1 = start + r1
+		var p2 = start + r2
+		var p3 = end + r2
+		var p4 = end + r1
+
+		_add_quad_simple(st, p1, p2, p3, p4)
+
+func _add_solid_cone(st: SurfaceTool, base: Vector3, tip: Vector3, radius: float) -> void:
+	var dir = (tip - base).normalized()
+	var side1 = Vector3(-dir.z, dir.x, dir.y).normalized() * radius
+	if side1.length_squared() < 0.0001:
+		side1 = Vector3(dir.y, -dir.z, dir.x).normalized() * radius
+	var side2 = dir.cross(side1).normalized() * radius
+
+	var segs = 8
+	for i in range(segs):
+		var a1 = (float(i) / segs) * TAU
+		var a2 = (float(i + 1) / segs) * TAU
+
+		var r1 = side1 * cos(a1) + side2 * sin(a1)
+		var r2 = side1 * cos(a2) + side2 * sin(a2)
+
+		var p1 = base + r1
+		var p2 = base + r2
+
+		var n = (p2 - p1).cross(tip - p1).normalized()
+		st.set_normal(n)
+		st.set_uv(Vector2(0, 0))
+		st.add_vertex(p1)
+		st.set_normal(n)
+		st.set_uv(Vector2(1, 0))
+		st.add_vertex(p2)
+		st.set_normal(n)
+		st.set_uv(Vector2(0.5, 1))
+		st.add_vertex(tip)
+
+func _add_solid_torus_ring(st: SurfaceTool, dir: Vector3, radius: float, thickness: float) -> void:
+	var u_axis = Vector3(-dir.z, dir.x, dir.y).normalized()
+	if u_axis.length_squared() < 0.0001:
+		u_axis = Vector3(dir.y, -dir.z, dir.x).normalized()
+	var v_axis = dir.cross(u_axis).normalized()
+
+	var segs = 24
+	for i in range(segs):
+		var a1 = (float(i) / segs) * TAU
+		var a2 = (float(i + 1) / segs) * TAU
+
+		var c1 = (u_axis * cos(a1) + v_axis * sin(a1)) * radius
+		var c2 = (u_axis * cos(a2) + v_axis * sin(a2)) * radius
+
+		var out1 = c1.normalized() * thickness
+		var out2 = c2.normalized() * thickness
+
+		var p1 = c1 - dir * (thickness * 0.5)
+		var p2 = c2 - dir * (thickness * 0.5)
+		var p3 = c2 + dir * (thickness * 0.5)
+		var p4 = c1 + dir * (thickness * 0.5)
+
+		_add_quad_simple(st, p1, p2, p3, p4)
+
+func _add_solid_box(st: SurfaceTool, center: Vector3, size: Vector3) -> void:
+	var h = size * 0.5
+	var c0 = center + Vector3(-h.x, -h.y, -h.z)
+	var c1 = center + Vector3(h.x, -h.y, -h.z)
+	var c2 = center + Vector3(h.x, -h.y, h.z)
+	var c3 = center + Vector3(-h.x, -h.y, h.z)
+	var c4 = center + Vector3(-h.x, h.y, -h.z)
+	var c5 = center + Vector3(h.x, h.y, -h.z)
+	var c6 = center + Vector3(h.x, h.y, h.z)
+	var c7 = center + Vector3(-h.x, h.y, h.z)
+
+	_add_quad_simple(st, c0, c1, c5, c4)
+	_add_quad_simple(st, c3, c7, c6, c2)
+	_add_quad_simple(st, c0, c4, c7, c3)
+	_add_quad_simple(st, c1, c2, c6, c5)
+	_add_quad_simple(st, c4, c5, c6, c7)
+	_add_quad_simple(st, c0, c3, c2, c1)
+
+func _add_quad_simple(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	var n = (b - a).cross(d - a).normalized()
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(b)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(a)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(c)
+
+	st.set_normal(n)
+	st.set_uv(Vector2(0, 1))
+	st.add_vertex(d)

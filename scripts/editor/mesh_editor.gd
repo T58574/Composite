@@ -139,11 +139,8 @@ func _raycast_targets(ray_origin: Vector3, ray_dir: Vector3) -> Dictionary:
 	var targets: Array[MeshInstance3D] = []
 	if hull_builder and hull_builder.mesh:
 		targets.append(hull_builder)
-	if turret_builder:
-		if turret_builder.turret_mesh_instance and turret_builder.turret_mesh_instance.mesh:
-			targets.append(turret_builder.turret_mesh_instance)
-		if turret_builder.gun_barrel_mesh_instance and turret_builder.gun_barrel_mesh_instance.mesh:
-			targets.append(turret_builder.gun_barrel_mesh_instance)
+	if turret_builder and turret_builder.turret_mesh_instance and turret_builder.turret_mesh_instance.mesh:
+		targets.append(turret_builder.turret_mesh_instance)
 
 	var closest_dist = 1e9
 	var best_hit = {}
@@ -257,61 +254,61 @@ func _clear_selection() -> void:
 	_update_selection_visuals()
 	selection_changed.emit()
 
+## Moves ALL co-located vertices sharing target 3D positions together and updates selection state for continuous drag
 func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _scale_delta: Vector3) -> void:
-	if selected_target == null:
+	if selected_target == null or selected_target.mesh == null or selected_positions.is_empty():
 		return
 
-	var scale_factor = 2.0 if symmetry_x_enabled else 1.0
+	var array_mesh = selected_target.mesh as ArrayMesh
+	if array_mesh == null or array_mesh.get_surface_count() == 0:
+		return
 
-	if selected_target == hull_builder:
-		hull_builder.length = clamp(hull_builder.length + trans_delta.x * 1.5, 2.0, 10.0)
-		hull_builder.width = clamp(hull_builder.width + trans_delta.z * scale_factor, 1.5, 5.0)
-		hull_builder.height = clamp(hull_builder.height + trans_delta.y * 1.5, 0.5, 2.5)
-		hull_builder.generate_hull_mesh()
+	var mdt = MeshDataTool.new()
+	var err = mdt.create_from_surface(array_mesh, 0)
+	if err != OK:
+		return
 
-	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-		turret_builder.turret_length = clamp(turret_builder.turret_length + trans_delta.x * 1.5, 1.5, 4.5)
-		turret_builder.turret_width = clamp(turret_builder.turret_width + trans_delta.z * scale_factor, 1.5, 4.5)
-		turret_builder.turret_height = clamp(turret_builder.turret_height + trans_delta.y * 1.5, 0.6, 2.0)
-		turret_builder.generate_turret_and_gun()
+	var target_gt = selected_target.global_transform
+	var inv_gt = target_gt.basis.inverse()
+	var local_trans_delta = inv_gt * trans_delta
 
-	_reposition_gizmo_and_selection()
+	# Convert current selected global positions to local space targets
+	var target_local_positions: Array[Vector3] = []
+	for pos in selected_positions:
+		target_local_positions.append(inv_gt * pos)
+
+	# Identify all co-located vertex indices that share target 3D positions
+	var move_delta_per_vert: Dictionary = {}
+
+	for i in range(mdt.get_vertex_count()):
+		var v_pos = mdt.get_vertex(i)
+		for target_pos in target_local_positions:
+			if v_pos.distance_to(target_pos) < 0.05:
+				move_delta_per_vert[i] = local_trans_delta
+				break
+
+		if symmetry_x_enabled and not move_delta_per_vert.has(i):
+			for target_pos in target_local_positions:
+				var sym_target = Vector3(-target_pos.x, target_pos.y, target_pos.z)
+				if v_pos.distance_to(sym_target) < 0.05:
+					var sym_delta = Vector3(-local_trans_delta.x, local_trans_delta.y, local_trans_delta.z)
+					move_delta_per_vert[i] = sym_delta
+					break
+
+	# Apply local displacements to all co-located vertices
+	for v_idx in move_delta_per_vert.keys():
+		var current_p = mdt.get_vertex(v_idx)
+		mdt.set_vertex(v_idx, current_p + move_delta_per_vert[v_idx])
+
+	array_mesh.clear_surfaces()
+	mdt.commit_to_surface(array_mesh)
+
+	# Crucial: update selected_positions by trans_delta so subsequent drag frames continue smoothly!
+	for k in range(selected_positions.size()):
+		selected_positions[k] += trans_delta
+
 	_update_selection_visuals()
 	selection_changed.emit()
-
-func _reposition_gizmo_and_selection() -> void:
-	if selected_target == null or selected_face_index == -1:
-		return
-
-	var mesh = selected_target.mesh
-	if mesh == null:
-		return
-
-	var faces = mesh.get_faces()
-	if faces.is_empty():
-		return
-
-	var tri_count = faces.size() / 3
-	var face_idx = clamp(selected_face_index, 0, tri_count - 1)
-	var gt = selected_target.global_transform
-	var tri_offset = face_idx * 3
-	var f0 = gt * faces[tri_offset]
-	var f1 = gt * faces[tri_offset + 1]
-	var f2 = gt * faces[tri_offset + 2]
-
-	match current_edit_mode:
-		EditMode.FACE:
-			selected_positions = [f0, f1, f2]
-			if gizmo_3d:
-				gizmo_3d.global_position = (f0 + f1 + f2) / 3.0
-		EditMode.VERTEX, EditMode.CORNER:
-			selected_positions = [f0]
-			if gizmo_3d:
-				gizmo_3d.global_position = f0
-		EditMode.EDGE:
-			selected_positions = [f0, f1]
-			if gizmo_3d:
-				gizmo_3d.global_position = (f0 + f1) * 0.5
 
 func extrude_selected_face() -> void:
 	if selected_target == hull_builder:
@@ -320,7 +317,6 @@ func extrude_selected_face() -> void:
 	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
 		turret_builder.turret_length = clamp(turret_builder.turret_length + 0.4, 1.5, 4.5)
 		turret_builder.generate_turret_and_gun()
-	_reposition_gizmo_and_selection()
 	_update_selection_visuals()
 	selection_changed.emit()
 
@@ -410,13 +406,22 @@ func _update_selection_visuals() -> void:
 	elif selected_positions.size() >= 2:
 		_add_thick_line(st, selected_positions[0], selected_positions[1], Color(1.0, 0.85, 0.1), 0.015)
 
-	# 3. Corner Vertex Handle Nodes (Red Cubes)
+	# 3. Unique Corner Vertex Handle Nodes (Red Cubes) - Deduplicated by 3D position
 	if selected_target and selected_target.mesh:
 		var faces = selected_target.mesh.get_faces()
 		var gt = selected_target.global_transform
-		for i in range(min(faces.size(), 48)):
+		var added_positions: Array[Vector3] = []
+
+		for i in range(faces.size()):
 			var v_g = gt * faces[i]
-			_add_box(st, v_g, 0.07, Color(1.0, 0.2, 0.2))
+			var is_duplicate = false
+			for existing in added_positions:
+				if existing.distance_to(v_g) < 0.02:
+					is_duplicate = true
+					break
+			if not is_duplicate:
+				added_positions.append(v_g)
+				_add_box(st, v_g, 0.07, Color(1.0, 0.2, 0.2))
 
 	# 4. Center Cyan Wireframe Diamond Anchor
 	if selected_positions.size() > 0:

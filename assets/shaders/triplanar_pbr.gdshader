@@ -2,18 +2,18 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap, repeat_enable, hint_default_white;
-uniform vec4 base_color : source_color = vec4(0.28, 0.32, 0.25, 1.0);
-uniform float metallic : hint_range(0.0, 1.0) = 0.55;
-uniform float roughness : hint_range(0.0, 1.0) = 0.50;
+uniform vec4 base_color : source_color = vec4(0.22, 0.26, 0.18, 1.0); // Authentic Matte Olive Drab
+uniform float metallic : hint_range(0.0, 1.0) = 0.20; // Low reflectivity for CARC matte armor
+uniform float roughness : hint_range(0.0, 1.0) = 0.78; // High roughness for non-reflective military paint
 uniform float uv_scale : hint_range(0.1, 10.0) = 0.6;
-uniform float edge_wear : hint_range(0.0, 1.0) = 0.15;
+uniform float edge_wear : hint_range(0.0, 1.0) = 0.12;
 
 // Procedural Camouflage Scheme: 0=Solid, 1=Olive Drab, 2=Desert Sand, 3=NATO 3-Color, 4=Panzer Grey
 uniform int camo_type : hint_range(0, 4) = 1;
 uniform float camo_scale : hint_range(0.1, 10.0) = 0.8;
 
 // Dirt / Dust Weathering Gradient near ground Y
-uniform float dirt_amount : hint_range(0.0, 1.0) = 0.3;
+uniform float dirt_amount : hint_range(0.0, 1.0) = 0.25;
 uniform float dirt_height : hint_range(0.1, 5.0) = 1.0;
 uniform vec4 dirt_color : source_color = vec4(0.25, 0.20, 0.14, 1.0);
 
@@ -67,27 +67,27 @@ vec3 get_procedural_camo(vec3 p, int scheme) {
 	float n2 = fbm3D(p * 1.6 + vec3(4.3, 1.7, 2.9));
 
 	if (scheme == 1) { // Olive Drab
-		vec3 olive_base = vec3(0.24, 0.28, 0.18);
-		vec3 olive_dark = vec3(0.16, 0.20, 0.12);
+		vec3 olive_base = vec3(0.22, 0.26, 0.18);
+		vec3 olive_dark = vec3(0.14, 0.18, 0.11);
 		return mix(olive_dark, olive_base, smoothstep(0.3, 0.7, n1));
 	} else if (scheme == 2) { // Desert Sand
-		vec3 tan_base = vec3(0.74, 0.66, 0.49);
-		vec3 brown_patch = vec3(0.48, 0.38, 0.26);
-		vec3 light_sand = vec3(0.82, 0.75, 0.58);
+		vec3 tan_base = vec3(0.68, 0.60, 0.45);
+		vec3 brown_patch = vec3(0.42, 0.33, 0.22);
+		vec3 light_sand = vec3(0.76, 0.69, 0.53);
 		float pattern = smoothstep(0.42, 0.58, n1 + n2 * 0.25);
 		vec3 c = mix(tan_base, brown_patch, pattern);
 		return mix(c, light_sand, smoothstep(0.65, 0.8, n2) * 0.4);
 	} else if (scheme == 3) { // NATO 3-Color
-		vec3 nato_green = vec3(0.19, 0.26, 0.15);
-		vec3 nato_brown = vec3(0.35, 0.23, 0.14);
-		vec3 nato_black = vec3(0.09, 0.10, 0.09);
+		vec3 nato_green = vec3(0.17, 0.23, 0.13);
+		vec3 nato_brown = vec3(0.31, 0.20, 0.12);
+		vec3 nato_black = vec3(0.08, 0.09, 0.08);
 		float mask1 = smoothstep(0.38, 0.46, n1);
 		float mask2 = smoothstep(0.58, 0.66, n2);
 		vec3 c = mix(nato_green, nato_brown, mask1);
 		return mix(c, nato_black, mask2);
 	} else if (scheme == 4) { // Panzer Grey
-		vec3 grey_base = vec3(0.27, 0.29, 0.32);
-		vec3 grey_dark = vec3(0.17, 0.19, 0.21);
+		vec3 grey_base = vec3(0.24, 0.26, 0.28);
+		vec3 grey_dark = vec3(0.15, 0.16, 0.18);
 		return mix(grey_dark, grey_base, smoothstep(0.35, 0.65, n1));
 	}
 	// Default Solid
@@ -116,7 +116,7 @@ void fragment() {
 		tex_color = (tex_x * normal_weights.x + tex_y * normal_weights.y + tex_z * normal_weights.z).rgb;
 	} else {
 		// Subtle steel texture noise fallback
-		float noise_pattern = fbm3D(world_pos * 8.0) * 0.15 + 0.90;
+		float noise_pattern = fbm3D(world_pos * 8.0) * 0.12 + 0.94;
 		tex_color = vec3(noise_pattern);
 	}
 
@@ -127,13 +127,13 @@ void fragment() {
 	// Subtle Edge Wear scraping along sharp contours
 	float edge_factor = 1.0 - abs(dot(NORMAL, VIEW));
 	float wear_noise = fbm3D(world_pos * 14.0);
-	float wear = pow(edge_factor, 3.5) * edge_wear * (0.4 + 0.6 * wear_noise);
+	float wear = pow(edge_factor, 3.8) * edge_wear * (0.3 + 0.7 * wear_noise);
 	wear = clamp(wear, 0.0, 1.0);
 
-	vec3 bare_steel = vec3(0.55, 0.58, 0.60);
+	vec3 bare_steel = vec3(0.48, 0.50, 0.52);
 	vec3 albedo_after_wear = mix(painted_albedo, bare_steel, wear);
-	float metallic_after_wear = mix(metallic, 0.85, wear * 0.4);
-	float roughness_after_wear = mix(roughness, 0.35, wear * 0.3);
+	float metallic_after_wear = mix(metallic, 0.70, wear * 0.4);
+	float roughness_after_wear = mix(roughness, 0.40, wear * 0.3);
 
 	// Dirt / Dust accumulation gradient near ground (Y = 0.0)
 	float height_fade = clamp(1.0 - (world_pos.y / max(dirt_height, 0.001)), 0.0, 1.0);
@@ -141,8 +141,8 @@ void fragment() {
 	float dirt_factor = clamp(pow(height_fade, 2.0) * dirt_amount * (0.4 + 0.8 * dirt_noise), 0.0, 1.0);
 
 	vec3 final_albedo = mix(albedo_after_wear, dirt_color.rgb, dirt_factor);
-	float final_metallic = mix(metallic_after_wear, 0.10, dirt_factor);
-	float final_roughness = mix(roughness_after_wear, 0.80, dirt_factor);
+	float final_metallic = mix(metallic_after_wear, 0.05, dirt_factor);
+	float final_roughness = mix(roughness_after_wear, 0.88, dirt_factor);
 
 	ALBEDO = final_albedo;
 	METALLIC = final_metallic;
