@@ -627,11 +627,147 @@ func _get_current_target_builder() -> Object:
 # 4. HEADER & MAIN ACTIONS
 # ==============================================================================
 
+var _in_constructor_test_drive: bool = false
+var _test_vehicle_body: RigidBody3D = null
+var _test_chase_cam: Node3D = null
+var _test_shooting_sys: ShootingSystem = null
+var _test_drive_hud_overlay: Control = null
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			var focus_owner = get_viewport().gui_get_focus_owner()
+			if focus_owner is LineEdit:
+				return
+			get_viewport().set_input_as_handled()
+			toggle_in_constructor_test_drive()
+
 func _on_main_menu_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
 
 func _on_test_drive_pressed() -> void:
+	var name_str = tank_name_edit.text if tank_name_edit and tank_name_edit.text != "" else "Temp_Tank"
+	var era_str = era_option.get_item_text(era_option.selected) if (era_option and era_option.selected >= 0 and era_option.item_count > era_option.selected) else "Midwar"
+	TankSerializer.save_preset("user://temp_tank.json", name_str, era_str, hull_builder, turret_builder, track_generator, firepower_builder)
 	get_tree().change_scene_to_file("res://scenes/combat/test_range.tscn")
+
+func toggle_in_constructor_test_drive() -> void:
+	_in_constructor_test_drive = not _in_constructor_test_drive
+	if _in_constructor_test_drive:
+		_start_in_constructor_test_drive()
+	else:
+		_stop_in_constructor_test_drive()
+
+func _start_in_constructor_test_drive() -> void:
+	if left_sidebar: left_sidebar.visible = false
+	if right_structure_inspector: right_structure_inspector.visible = false
+	if category_stack: category_stack.visible = false
+	if bounding_box_overlay: bounding_box_overlay.visible = false
+	var top_header = get_node_or_null("%TopHeader") if has_node("%TopHeader") else null
+	if top_header: top_header.visible = false
+
+	var scene_root = get_tree().current_scene
+
+	if _test_vehicle_body == null:
+		_test_vehicle_body = RigidBody3D.new()
+		_test_vehicle_body.name = "ConstructorTestVehicle"
+		_test_vehicle_body.script = load("res://scripts/physics/raycast_suspension.gd")
+		scene_root.add_child(_test_vehicle_body)
+
+	_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
+	_test_vehicle_body.freeze = false
+	_test_vehicle_body.linear_velocity = Vector3.ZERO
+	_test_vehicle_body.angular_velocity = Vector3.ZERO
+
+	if hull_builder and hull_builder.get_parent() != _test_vehicle_body:
+		hull_builder.reparent(_test_vehicle_body)
+		hull_builder.transform = Transform3D.IDENTITY
+	if turret_builder and turret_builder.get_parent() != _test_vehicle_body:
+		turret_builder.reparent(_test_vehicle_body)
+		turret_builder.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
+	if track_generator and track_generator.get_parent() != _test_vehicle_body:
+		track_generator.reparent(_test_vehicle_body)
+		track_generator.transform = Transform3D.IDENTITY
+
+	var power_hp = engine_power_slider.value if engine_power_slider else 1200.0
+	_test_vehicle_body.setup_vehicle_from_builder(hull_builder, turret_builder, track_generator, power_hp)
+
+	if _test_chase_cam == null:
+		var cam_script = load("res://scripts/combat/chase_camera.gd")
+		_test_chase_cam = Node3D.new()
+		_test_chase_cam.name = "TestDriveChaseCam"
+		_test_chase_cam.script = cam_script
+		var cam3d = Camera3D.new()
+		cam3d.name = "Camera3D"
+		_test_chase_cam.add_child(cam3d)
+		scene_root.add_child(_test_chase_cam)
+
+	_test_chase_cam.set("target", _test_vehicle_body.get_path())
+	var cam_node = _test_chase_cam.get_node_or_null("Camera3D")
+	if cam_node is Camera3D:
+		cam_node.make_current()
+
+	if editor_camera:
+		editor_camera.enabled = false
+
+	if _test_shooting_sys == null:
+		_test_shooting_sys = ShootingSystem.new()
+		_test_shooting_sys.name = "TestDriveShootingSys"
+		_test_vehicle_body.add_child(_test_shooting_sys)
+		_test_shooting_sys.turret_builder = turret_builder
+
+	if _test_drive_hud_overlay == null:
+		_test_drive_hud_overlay = Control.new()
+		_test_drive_hud_overlay.name = "TestDriveHUD"
+		_test_drive_hud_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_test_drive_hud_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var banner = Label.new()
+		banner.name = "HUDLabel"
+		banner.text = "🎯 [ПРОБЕЛ] - ВЕРНУТЬСЯ В РЕДАКТОР  |  WASD - ДВИЖЕНИЕ  |  ЛКМ - СТРЕЛЬБА"
+		banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		banner.offset_top = 25
+		banner.offset_left = -400
+		banner.offset_right = 400
+		banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		banner.add_theme_font_size_override("font_size", 22)
+		banner.add_theme_color_override("font_color", Color(1, 0.9, 0.2))
+		_test_drive_hud_overlay.add_child(banner)
+		add_child(_test_drive_hud_overlay)
+
+	_test_drive_hud_overlay.visible = true
+
+func _stop_in_constructor_test_drive() -> void:
+	if _test_drive_hud_overlay:
+		_test_drive_hud_overlay.visible = false
+
+	if _test_vehicle_body:
+		_test_vehicle_body.freeze = true
+		_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 0, 0))
+
+	var scene_root = get_tree().current_scene
+	if hull_builder and is_instance_valid(hull_builder):
+		hull_builder.reparent(scene_root)
+		hull_builder.transform = Transform3D.IDENTITY
+	if turret_builder and is_instance_valid(turret_builder):
+		turret_builder.reparent(scene_root)
+		turret_builder.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
+	if track_generator and is_instance_valid(track_generator):
+		track_generator.reparent(scene_root)
+		track_generator.transform = Transform3D.IDENTITY
+
+	if editor_camera:
+		editor_camera.enabled = true
+		var main_cam = editor_camera.get_node_or_null("Camera3D")
+		if main_cam is Camera3D:
+			main_cam.make_current()
+
+	if left_sidebar: left_sidebar.visible = not _left_sidebar_collapsed
+	if right_structure_inspector: right_structure_inspector.visible = not _right_inspector_collapsed
+	if category_stack: category_stack.visible = not _left_sidebar_collapsed
+	if bounding_box_overlay: bounding_box_overlay.visible = true
+	var top_header = get_node_or_null("%TopHeader") if has_node("%TopHeader") else null
+	if top_header: top_header.visible = true
 
 func _on_save_preset_pressed() -> void:
 	var name_str = tank_name_edit.text if tank_name_edit and tank_name_edit.text != "" else "Custom_Tank"

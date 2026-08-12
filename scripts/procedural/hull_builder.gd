@@ -338,6 +338,16 @@ func _update_collision_shape() -> void:
 	static_collision_body.set_meta("armor_thickness_mm", front_armor_mm)
 	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
 
+## Creates a convex or box Shape3D suitable for a parent RigidBody3D tank chassis
+func create_rigidbody_shape() -> Shape3D:
+	if mesh != null:
+		var convex = mesh.create_convex_shape(true, true)
+		if convex != null:
+			return convex
+	var box = BoxShape3D.new()
+	box.size = Vector3(width * 0.9, height * 0.85, length * 0.9)
+	return box
+
 ## Public API to update hull dimensions dynamically from UI
 func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float, p_glacis_style: GlacisStyle = glacis_style, immediate: bool = false) -> void:
 	self.length = p_length

@@ -33,6 +33,7 @@ var road_wheel_pairs: int:
 		road_wheels_count = value
 
 var _wheel_nodes: Array[MeshInstance3D] = []
+var _road_wheels_data: Array[Dictionary] = []
 
 func _ready() -> void:
 	generate_tracks_and_wheels()
@@ -43,6 +44,8 @@ func generate_tracks_and_wheels() -> void:
 	_create_road_wheels_and_belts()
 
 func _ensure_default_material() -> void:
+	if track_material != null:
+		return
 	var mat = StandardMaterial3D.new()
 	mat.albedo_color = Color(0.38, 0.40, 0.42, 1.0)
 	mat.metallic = 0.45
@@ -53,6 +56,7 @@ func _clear_existing() -> void:
 	for child in get_children():
 		child.queue_free()
 	_wheel_nodes.clear()
+	_road_wheels_data.clear()
 
 func _create_road_wheels_and_belts() -> void:
 	var wheel_radius = wheel_diameter * 0.5
@@ -95,6 +99,14 @@ func _create_road_wheels_and_belts() -> void:
 			wheel.material_override = track_material
 			add_child(wheel)
 			_wheel_nodes.append(wheel)
+			_road_wheels_data.append({
+				"node": wheel,
+				"initial_pos": wheel_pos,
+				"side": side,
+				"index": i,
+				"x_pos": x_pos,
+				"z_pos": z_pos
+			})
 
 		# 4. Return Rollers (Upper Track Support along X)
 		var roller_count = max(2, int(road_wheels_count * 0.5))
@@ -439,4 +451,20 @@ func animate_tracks_and_wheels(speed_ms: float, delta: float) -> void:
 			shader_mat.set_shader_parameter("uv_offset", current_uv + Vector3(speed_ms * 0.2 * delta, 0.0, 0.0))
 		else:
 			shader_mat.set_shader_parameter("uv_offset", Vector2(speed_ms * 0.2 * delta, 0.0))
+
+## Get list of road wheel metadata (positions, sides, indices) for raycast suspension binding
+func get_road_wheel_specs() -> Array[Dictionary]:
+	return _road_wheels_data
+
+## Moves a visual road wheel vertically (+Y) based on suspension compression over obstacles
+func update_road_wheel_suspension(side: float, index: int, compression_m: float) -> void:
+	for data in _road_wheels_data:
+		if abs(float(data["side"]) - side) < 0.1 and int(data["index"]) == index:
+			var node: MeshInstance3D = data["node"]
+			if is_instance_valid(node):
+				var init_pos: Vector3 = data["initial_pos"]
+				# Displace wheel upward in local space by compression amount (smoothly clamped)
+				var clamped_disp = clamp(compression_m, 0.0, 0.6)
+				node.position = Vector3(init_pos.x, init_pos.y + clamped_disp, init_pos.z)
+			break
 
