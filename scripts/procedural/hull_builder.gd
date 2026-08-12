@@ -206,8 +206,13 @@ func _add_triangle(
 	st.add_vertex(c)
 
 func _calculate_physical_properties() -> void:
-	calculated_volume_m3 = length * width * height * 0.82
-	var surface_area_m2 = 2.3 * (length * width + length * height + width * height)
+	var surface_area_m2: float = 0.0
+	if mesh != null:
+		calculated_volume_m3 = TankStatsCalculator.calculate_mesh_volume(mesh)
+		surface_area_m2 = TankStatsCalculator.calculate_mesh_surface_area(mesh)
+	else:
+		calculated_volume_m3 = length * width * height
+		surface_area_m2 = 2.0 * (length * width + length * height + width * height)
 	var sandwich = armor_sandwich if armor_sandwich != null else ArmorCalculator.ArmorSandwich.create_default_glacis()
 	var front_mass = (surface_area_m2 * 0.4) * sandwich.get_area_mass_kg_m2()
 	var side_mass = (surface_area_m2 * 0.4) * (side_armor_mm / 1000.0) * 7850.0
@@ -229,6 +234,13 @@ func _update_collision_shape() -> void:
 		static_collision_body.add_child(collision_shape_node)
 
 	collision_shape_node.shape = mesh.create_convex_shape()
+
+	if armor_sandwich == null:
+		armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
+
+	static_collision_body.set_meta("armor_sandwich", armor_sandwich)
+	static_collision_body.set_meta("armor_thickness_mm", front_armor_mm)
+	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
 
 ## Public API to update hull dimensions dynamically from UI
 func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float) -> void:

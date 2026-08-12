@@ -28,6 +28,8 @@ signal turret_rotated(yaw_deg: float, pitch_deg: float)
 var turret_mesh_instance: MeshInstance3D
 var gun_mantlet_node: Node3D
 var gun_barrel_mesh_instance: MeshInstance3D
+var static_collision_body: StaticBody3D = null
+var collision_shape_node: CollisionShape3D = null
 
 # Internal Aim state
 var current_yaw_deg: float = 0.0
@@ -67,6 +69,7 @@ func generate_turret_and_gun() -> void:
 	_generate_turret_mesh()
 	_generate_gun_mesh()
 	_calculate_turret_mass()
+	_update_collision_shape()
 
 func _generate_turret_mesh() -> void:
 	var st = SurfaceTool.new()
@@ -371,12 +374,39 @@ func _add_triangle(
 	st.add_vertex(c)
 
 func _calculate_turret_mass() -> void:
-	var surface_area_m2 = 2.0 * (turret_length * turret_width + turret_length * turret_height + turret_width * turret_height) * 0.6
+	var surface_area_m2: float = 0.0
+	if turret_mesh_instance != null and turret_mesh_instance.mesh != null:
+		surface_area_m2 = TankStatsCalculator.calculate_mesh_surface_area(turret_mesh_instance.mesh)
+	else:
+		surface_area_m2 = 2.0 * (turret_length * turret_width + turret_length * turret_height + turret_width * turret_height) * 0.6
 	var sandwich = armor_sandwich if armor_sandwich != null else ArmorCalculator.ArmorSandwich.create_default_turret()
 	var cheek_mass = (surface_area_m2 * 0.45) * sandwich.get_area_mass_kg_m2()
 	var side_rear_mass = (surface_area_m2 * 0.55) * (front_turret_armor_mm * 0.3 / 1000.0) * 7850.0
 	var gun_mass = barrel_length * 450.0
 	calculated_turret_mass_kg = cheek_mass + side_rear_mass + gun_mass
+
+func _update_collision_shape() -> void:
+	if turret_mesh_instance == null or turret_mesh_instance.mesh == null:
+		return
+
+	if static_collision_body == null:
+		static_collision_body = StaticBody3D.new()
+		static_collision_body.name = "TurretCollisionBody"
+		turret_mesh_instance.add_child(static_collision_body)
+
+	if collision_shape_node == null:
+		collision_shape_node = CollisionShape3D.new()
+		collision_shape_node.name = "CollisionShape3D"
+		static_collision_body.add_child(collision_shape_node)
+
+	collision_shape_node.shape = turret_mesh_instance.mesh.create_convex_shape()
+
+	if armor_sandwich == null:
+		armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
+
+	static_collision_body.set_meta("armor_sandwich", armor_sandwich)
+	static_collision_body.set_meta("armor_thickness_mm", front_turret_armor_mm)
+	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
 
 func _smooth_rotate_turret(delta: float) -> void:
 	var step = rotation_speed_deg_s * delta

@@ -109,6 +109,17 @@ func _apply_lateral_friction(point: Vector3, velocity: Vector3, delta: float) ->
 	apply_force(counter_force, point - global_position)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
+	var total_rays = _raycasts.size()
+	if total_rays == 0:
+		return
+
+	var grounded_rays: int = 0
+	for ray in _raycasts:
+		if ray.is_colliding():
+			grounded_rays += 1
+
+	var ground_contact_ratio: float = float(grounded_rays) / float(total_rays)
+
 	var forward_dir = -global_transform.basis.z
 	var current_speed_ms = linear_velocity.dot(forward_dir)
 	var current_speed_kmh = current_speed_ms * 3.6
@@ -117,12 +128,12 @@ func _apply_propulsion_and_steering(delta: float) -> void:
 	if abs(_inputs.y) > 0.05 and abs(current_speed_kmh) < max_speed_kmh:
 		# Convert engine HP to force N: P = F * v => F = P / max(v, 1)
 		var max_torque_force = (engine_horsepower * 745.7) / max(5.0, abs(current_speed_ms))
-		var drive_force = forward_dir * (_inputs.y * max_torque_force)
+		var drive_force = forward_dir * (_inputs.y * max_torque_force * ground_contact_ratio)
 		apply_central_force(drive_force)
 		
 	# Tank Skid Steering (Differential torque)
 	if abs(_inputs.x) > 0.05:
-		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 1.5)
+		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 1.5 * ground_contact_ratio)
 		apply_torque(torque_vector)
 
 func _get_point_velocity(point: Vector3) -> Vector3:

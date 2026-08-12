@@ -33,6 +33,15 @@ var selected_vertex_indices: Array[int] = []
 var selected_positions: Array[Vector3] = []
 var hovered_face_index: int = -1
 
+# UndoRedo & Optimization Caching
+var undo_redo: UndoRedo = UndoRedo.new()
+var cached_colocated_vertex_indices: Array[int] = []
+var cached_symmetric_vertex_indices: Array[int] = []
+
+var _drag_start_target: MeshInstance3D = null
+var _drag_start_mesh_arrays: Array = []
+var _drag_start_selected_positions: Array[Vector3] = []
+
 # Materials for visualization modes
 @export var pbr_material: Material
 @export var heatmap_material: ShaderMaterial
@@ -52,6 +61,10 @@ func _ready() -> void:
 	if gizmo_3d:
 		if not gizmo_3d.transform_changed.is_connected(_on_gizmo_transform_changed):
 			gizmo_3d.transform_changed.connect(_on_gizmo_transform_changed)
+		if not gizmo_3d.transform_started.is_connected(_on_gizmo_transform_started):
+			gizmo_3d.transform_started.connect(_on_gizmo_transform_started)
+		if not gizmo_3d.transform_ended.is_connected(_on_gizmo_transform_ended):
+			gizmo_3d.transform_ended.connect(_on_gizmo_transform_ended)
 
 func _setup_selection_overlay() -> void:
 	if selection_overlay_mesh == null:
@@ -76,6 +89,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		var focused = get_viewport().gui_get_focus_owner()
 		if focused is LineEdit or focused is TextEdit:
 			return
+
+		if event.is_command_or_control_pressed():
+			if event.keycode == KEY_Z:
+				if event.shift_pressed:
+					undo_redo.redo()
+				else:
+					undo_redo.undo()
+				return
+			elif event.keycode == KEY_Y:
+				undo_redo.redo()
+				return
 
 		match event.keycode:
 			KEY_1: set_edit_mode(EditMode.VERTEX)
@@ -237,6 +261,7 @@ func _pick_element_at_screen_pos(screen_pos: Vector2) -> void:
 			selected_positions = [target_gt * face_verts[best_edge[0]], target_gt * face_verts[best_edge[1]]]
 			gizmo_pos = (selected_positions[0] + selected_positions[1]) * 0.5
 
+	_update_cached_colocated_vertices()
 	selection_changed.emit()
 
 	if gizmo_3d:
@@ -249,10 +274,63 @@ func _clear_selection() -> void:
 	selected_face_index = -1
 	selected_vertex_indices.clear()
 	selected_positions.clear()
+	cached_colocated_vertex_indices.clear()
+	cached_symmetric_vertex_indices.clear()
 	if gizmo_3d:
 		gizmo_3d.detach()
 	_update_selection_visuals()
 	selection_changed.emit()
+
+func _update_cached_colocated_vertices() -> void:
+	cached_colocated_vertex_indices.clear()
+	cached_symmetric_vertex_indices.clear()
+
+	if selected_target == null or selected_target.mesh == null or selected_positions.is_empty():
+		return
+
+	var array_mesh = selected_target.mesh as ArrayMesh
+	if array_mesh == null or array_mesh.get_surface_count() == 0:
+		return
+
+	var mdt = MeshDataTool.new()
+	var err = mdt.create_from_surface(array_mesh, 0)
+	if err != OK:
+		return
+
+	var target_gt = selected_target.global_transform
+	var inv_gt = target_gt.basis.inverse()
+
+	var target_local_positions: Array[Vector3] = []
+	for pos in selected_positions:
+		target_local_positions.append(inv_gt * pos)
+
+	var vertex_count = mdt.get_vertex_count()
+	for i in range(vertex_count):
+		var v_pos = mdt.get_vertex(i)
+		var matched = false
+		for target_pos in target_local_positions:
+			if v_pos.distance_to(target_pos) < 0.05:
+				cached_colocated_vertex_indices.append(i)
+				matched = true
+				break
+
+		if not matched and symmetry_x_enabled:
+			for target_pos in target_local_positions:
+				var sym_target = Vector3(-target_pos.x, target_pos.y, target_pos.z)
+				if v_pos.distance_to(sym_target) < 0.05:
+					cached_symmetric_vertex_indices.append(i)
+					break
+
+func _on_gizmo_transform_started() -> void:
+	_update_cached_colocated_vertices()
+	if selected_target and selected_target.mesh is ArrayMesh and (selected_target.mesh as ArrayMesh).get_surface_count() > 0:
+		_drag_start_target = selected_target
+		_drag_start_mesh_arrays = _duplicate_surface_arrays((selected_target.mesh as ArrayMesh).surface_get_arrays(0))
+		_drag_start_selected_positions = selected_positions.duplicate()
+	else:
+		_drag_start_target = null
+		_drag_start_mesh_arrays.clear()
+		_drag_start_selected_positions.clear()
 
 ## Moves ALL co-located vertices sharing target 3D positions together and updates selection state for continuous drag
 func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _scale_delta: Vector3) -> void:
@@ -271,34 +349,19 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 	var target_gt = selected_target.global_transform
 	var inv_gt = target_gt.basis.inverse()
 	var local_trans_delta = inv_gt * trans_delta
+	var sym_trans_delta = Vector3(-local_trans_delta.x, local_trans_delta.y, local_trans_delta.z)
 
-	# Convert current selected global positions to local space targets
-	var target_local_positions: Array[Vector3] = []
-	for pos in selected_positions:
-		target_local_positions.append(inv_gt * pos)
+	if cached_colocated_vertex_indices.is_empty() and not selected_positions.is_empty():
+		_update_cached_colocated_vertices()
 
-	# Identify all co-located vertex indices that share target 3D positions
-	var move_delta_per_vert: Dictionary = {}
-
-	for i in range(mdt.get_vertex_count()):
-		var v_pos = mdt.get_vertex(i)
-		for target_pos in target_local_positions:
-			if v_pos.distance_to(target_pos) < 0.05:
-				move_delta_per_vert[i] = local_trans_delta
-				break
-
-		if symmetry_x_enabled and not move_delta_per_vert.has(i):
-			for target_pos in target_local_positions:
-				var sym_target = Vector3(-target_pos.x, target_pos.y, target_pos.z)
-				if v_pos.distance_to(sym_target) < 0.05:
-					var sym_delta = Vector3(-local_trans_delta.x, local_trans_delta.y, local_trans_delta.z)
-					move_delta_per_vert[i] = sym_delta
-					break
-
-	# Apply local displacements to all co-located vertices
-	for v_idx in move_delta_per_vert.keys():
+	for v_idx in cached_colocated_vertex_indices:
 		var current_p = mdt.get_vertex(v_idx)
-		mdt.set_vertex(v_idx, current_p + move_delta_per_vert[v_idx])
+		mdt.set_vertex(v_idx, current_p + local_trans_delta)
+
+	if symmetry_x_enabled:
+		for v_idx in cached_symmetric_vertex_indices:
+			var current_p = mdt.get_vertex(v_idx)
+			mdt.set_vertex(v_idx, current_p + sym_trans_delta)
 
 	array_mesh.clear_surfaces()
 	mdt.commit_to_surface(array_mesh)
@@ -310,15 +373,74 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 	_update_selection_visuals()
 	selection_changed.emit()
 
+func _on_gizmo_transform_ended() -> void:
+	if _drag_start_target != null and is_instance_valid(_drag_start_target) and _drag_start_target.mesh is ArrayMesh:
+		var drag_end_mesh_arrays = _duplicate_surface_arrays((_drag_start_target.mesh as ArrayMesh).surface_get_arrays(0))
+		var drag_end_selected_positions = selected_positions.duplicate()
+		var target = _drag_start_target
+		var start_arrays = _drag_start_mesh_arrays
+		var start_positions = _drag_start_selected_positions.duplicate()
+
+		undo_redo.create_action("Transform Mesh")
+		undo_redo.add_do_method(self, "_restore_mesh_state", target, drag_end_mesh_arrays, drag_end_selected_positions)
+		undo_redo.add_undo_method(self, "_restore_mesh_state", target, start_arrays, start_positions)
+		undo_redo.commit_action(false)
+
+	_drag_start_target = null
+	_drag_start_mesh_arrays.clear()
+	_drag_start_selected_positions.clear()
+
 func extrude_selected_face() -> void:
+	if selected_target == null or selected_target.mesh == null:
+		return
+
+	var target = selected_target
+	var old_hull_len = hull_builder.length if hull_builder else 0.0
+	var old_turret_len = turret_builder.turret_length if turret_builder else 0.0
+	var old_arrays: Array = []
+	if target.mesh is ArrayMesh and (target.mesh as ArrayMesh).get_surface_count() > 0:
+		old_arrays = _duplicate_surface_arrays((target.mesh as ArrayMesh).surface_get_arrays(0))
+	var old_positions = selected_positions.duplicate()
+
 	if selected_target == hull_builder:
 		hull_builder.length = clamp(hull_builder.length + 0.4, 2.0, 10.0)
 		hull_builder.generate_hull_mesh()
 	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
 		turret_builder.turret_length = clamp(turret_builder.turret_length + 0.4, 1.5, 4.5)
 		turret_builder.generate_turret_and_gun()
+
+	_update_cached_colocated_vertices()
 	_update_selection_visuals()
 	selection_changed.emit()
+
+	var new_hull_len = hull_builder.length if hull_builder else 0.0
+	var new_turret_len = turret_builder.turret_length if turret_builder else 0.0
+	var new_arrays: Array = []
+	if target.mesh is ArrayMesh and (target.mesh as ArrayMesh).get_surface_count() > 0:
+		new_arrays = _duplicate_surface_arrays((target.mesh as ArrayMesh).surface_get_arrays(0))
+	var new_positions = selected_positions.duplicate()
+
+	undo_redo.create_action("Extrude Face")
+	undo_redo.add_do_method(self, "_apply_extrude_state", target, new_hull_len, new_turret_len, new_arrays, new_positions)
+	undo_redo.add_undo_method(self, "_apply_extrude_state", target, old_hull_len, old_turret_len, old_arrays, old_positions)
+	undo_redo.commit_action(false)
+
+func _apply_extrude_state(target: MeshInstance3D, hull_len: float, turret_len: float, surface_arrays: Array, sel_positions: Array[Vector3]) -> void:
+	if target == hull_builder and hull_builder:
+		hull_builder.length = hull_len
+		hull_builder.generate_hull_mesh()
+	elif turret_builder and target == turret_builder.turret_mesh_instance:
+		turret_builder.turret_length = turret_len
+		turret_builder.generate_turret_and_gun()
+	elif target and target.mesh and not surface_arrays.is_empty():
+		_restore_mesh_state(target, surface_arrays, sel_positions)
+		return
+
+	if selected_target == target:
+		selected_positions = sel_positions.duplicate()
+		_update_cached_colocated_vertices()
+		_update_selection_visuals()
+		selection_changed.emit()
 
 func flip_selected_normals() -> void:
 	if selected_target == null or selected_face_index < 0:
@@ -347,6 +469,37 @@ func flip_selected_normals() -> void:
 	selection_changed.emit()
 
 func _delete_selected_element() -> void:
+	if selected_target == null or selected_target.mesh == null:
+		_clear_selection()
+		return
+
+	match current_edit_mode:
+		EditMode.FACE:
+			if selected_face_index >= 0:
+				var faces_to_delete: Array[int] = [selected_face_index]
+				if symmetry_x_enabled:
+					var sym_idx = MeshTopologyOps.find_symmetric_face_index(array_mesh, selected_face_index)
+					if sym_idx >= 0 and sym_idx != selected_face_index:
+						faces_to_delete.append(sym_idx)
+
+				faces_to_delete.sort()
+				faces_to_delete.reverse()
+
+				for f_idx in faces_to_delete:
+					array_mesh = MeshTopologyOps.delete_face(array_mesh, f_idx)
+
+		EditMode.VERTEX, EditMode.CORNER:
+			if selected_face_index >= 0:
+				array_mesh = MeshTopologyOps.delete_face(array_mesh, selected_face_index)
+
+		EditMode.EDGE:
+			if selected_face_index >= 0:
+				array_mesh = MeshTopologyOps.delete_face(array_mesh, selected_face_index)
+
+	selected_target.mesh = array_mesh
+	if selected_target == hull_builder and hull_builder.has_method("_update_collision_shape"):
+		hull_builder.call("_update_collision_shape")
+
 	_clear_selection()
 
 func _update_selection_visuals() -> void:
