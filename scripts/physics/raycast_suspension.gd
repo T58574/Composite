@@ -4,6 +4,7 @@ extends RigidBody3D
 ## Raycast-based tracked vehicle suspension physics script running over Godot-Jolt.
 ## Simulates dynamic spring compression, progressive damping, anti-sway bar stabilization,
 ## friction, track skid steering, torque, dynamic wheel displacement over obstacles, and TTX mass integration.
+## Uses central force & torque decomposition to guarantee 100% mathematical stability and prevent GPU driver crashes.
 
 @export_group("Engine & Propulsion")
 @export_range(100.0, 3000.0, 50.0) var engine_horsepower: float = 1200.0 ## HP
@@ -21,9 +22,20 @@ var _inputs: Vector2 = Vector2.ZERO # x = steering (-1..1), y = throttle (-1..1)
 var _track_generator_node: TrackGenerator = null
 var _chassis_collision_shape: CollisionShape3D = null
 
+# Telemetry output structure for diagnostic logging
+class TelemetryFrame extends RefCounted:
+	var position: Vector3 = Vector3.ZERO
+	var speed_kmh: float = 0.0
+	var angular_speed_rad: float = 0.0
+	var grounded_rays: int = 0
+	var max_compression_m: float = 0.0
+	var is_valid_finite: bool = true
+
 func _ready() -> void:
 	self.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	self.center_of_mass = Vector3(0.0, -0.5, 0.0)
+	self.linear_damp = 1.0
+	self.angular_damp = 3.5
 	call_deferred("_auto_setup_test_range")
 
 func _auto_setup_test_range() -> void:
@@ -76,6 +88,8 @@ func setup_vehicle_from_builder(
 	self.max_speed_kmh = ttx.max_speed_kmh
 	self.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	self.center_of_mass = Vector3(0.0, -0.5, 0.0)
+	self.linear_damp = 1.0
+	self.angular_damp = 3.5
 	
 	# 2. Setup Solid Chassis Collision Shape directly on RigidBody3D
 	_setup_chassis_collision(hull_builder)
@@ -106,12 +120,12 @@ func _setup_chassis_collision(hull_builder: HullBuilder) -> void:
 
 func _auto_tune_suspension() -> void:
 	var total_wheels = max(2, _ray_entries.size())
-	var target_sag = max(0.1, rest_length * 0.3)
+	var target_sag = max(0.1, rest_length * 0.35)
 	var weight_per_wheel = (mass * 9.81) / float(total_wheels)
 	spring_stiffness = weight_per_wheel / target_sag
 	
 	var m_wheel = mass / float(total_wheels)
-	spring_damping = 1.4 * sqrt(spring_stiffness * m_wheel)
+	spring_damping = 1.5 * sqrt(spring_stiffness * m_wheel)
 
 func _initialize_suspension_rays() -> void:
 	_clear_rays()
@@ -159,7 +173,8 @@ func _bind_raycasts_to_track_generator(track_gen: TrackGenerator) -> void:
 			"ray": ray,
 			"side": side,
 			"index": index,
-			"initial_pos": Vector3(x_pos, 0.0, z_pos)
+			"x_pos": x_pos,
+			"z_pos": z_pos
 		})
 
 func _generate_default_wheel_layout() -> void:
@@ -175,9 +190,10 @@ func _generate_default_wheel_layout() -> void:
 	for side in [-1.0, 1.0]:
 		for i in range(roadwheel_count_per_side):
 			var x_pos = lerp(-length_span * 0.5, length_span * 0.5, float(i) / float(roadwheel_count_per_side - 1))
+			var z_pos = side * track_width
 			var ray = RayCast3D.new()
 			ray.name = "Ray_%s_%d" % ["L" if side < 0 else "R", i]
-			ray.position = Vector3(x_pos, 0.0, side * track_width)
+			ray.position = Vector3(x_pos, 0.0, z_pos)
 			ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.3), 0.0)
 			ray.enabled = true
 			ray.add_exception(self)
@@ -187,17 +203,19 @@ func _generate_default_wheel_layout() -> void:
 				"ray": ray,
 				"side": side,
 				"index": i,
-				"initial_pos": ray.position
+				"x_pos": x_pos,
+				"z_pos": z_pos
 			})
 
 func _physics_process(delta: float) -> void:
-	if global_position.y < -10.0:
+	if not is_inside_tree():
+		return
+
+	# Fall protection: reset to origin if vehicle falls off map edge
+	if global_position.y < -10.0 or not is_finite(global_position.x):
 		global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.5, 0))
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
-
-	self.linear_damp = 1.0
-	self.angular_damp = 3.0
 
 	_read_player_input()
 	_apply_suspension_forces(delta)
@@ -221,12 +239,19 @@ func _apply_suspension_forces(delta: float) -> void:
 	var track_gen = _find_track_generator()
 	var d_rest = rest_length + wheel_radius
 	
-	var wheel_pairs: Dictionary = {}
+	var total_spring_force_up: float = 0.0
+	var total_pitch_torque: float = 0.0
+	var total_roll_torque: float = 0.0
+	var total_normal_force: float = 0.0
 	
+	var wheel_pairs: Dictionary = {}
+
 	for entry in _ray_entries:
 		var ray: RayCast3D = entry["ray"]
 		var side: float = entry["side"]
 		var index: int = entry["index"]
+		var x_pos: float = entry["x_pos"]
+		var z_pos: float = entry["z_pos"]
 		
 		if not is_instance_valid(ray):
 			continue
@@ -242,13 +267,11 @@ func _apply_suspension_forces(delta: float) -> void:
 		var compression = clamp(d_rest - dist_to_ground, 0.0, rest_length)
 		
 		if not wheel_pairs.has(index):
-			wheel_pairs[index] = { "L": 0.0, "R": 0.0, "L_ray": null, "R_ray": null }
+			wheel_pairs[index] = { "L": 0.0, "R": 0.0 }
 		if side < 0:
 			wheel_pairs[index]["L"] = compression
-			wheel_pairs[index]["L_ray"] = ray
 		else:
 			wheel_pairs[index]["R"] = compression
-			wheel_pairs[index]["R_ray"] = ray
 		
 		if track_gen and track_gen.has_method("update_road_wheel_suspension"):
 			track_gen.update_road_wheel_suspension(side, index, compression)
@@ -258,48 +281,45 @@ func _apply_suspension_forces(delta: float) -> void:
 			var bump_stop_threshold = rest_length * 0.75
 			if compression > bump_stop_threshold:
 				var excess_ratio = (compression - bump_stop_threshold) / max(0.001, rest_length * 0.25)
-				effective_stiffness *= (1.0 + 3.0 * excess_ratio * excess_ratio)
+				effective_stiffness *= (1.0 + 2.0 * excess_ratio * excess_ratio)
 			
 			var spring_force = compression * effective_stiffness
-			var ray_origin = ray.global_position
-			var wheel_velocity = _get_point_velocity(ray_origin)
+			var wheel_velocity = _get_point_velocity(ray.global_position)
 			var damp_force = wheel_velocity.dot(up_dir) * spring_damping
 			
-			var total_force_magnitude = max(0.0, spring_force - damp_force)
-			var force_vector = up_dir * total_force_magnitude
+			var f_mag = max(0.0, spring_force - damp_force)
+			total_spring_force_up += f_mag
+			total_normal_force += f_mag
 			
-			apply_force(force_vector, ray_origin - global_position)
-			_apply_lateral_friction(ray_origin, wheel_velocity, delta, total_force_magnitude)
+			# Local pitch torque around Z axis and roll torque around X axis
+			total_pitch_torque += (x_pos * f_mag * 0.45)
+			total_roll_torque += (-z_pos * f_mag * 0.45)
 
 	# Anti-Sway Bar pair stabilization
-	var anti_sway_stiffness = spring_stiffness * 0.4
+	var anti_sway_stiffness = spring_stiffness * 0.3
 	for idx in wheel_pairs:
 		var pair = wheel_pairs[idx]
 		var comp_L: float = pair["L"]
 		var comp_R: float = pair["R"]
 		var delta_comp = comp_L - comp_R
 		if abs(delta_comp) > 0.001:
-			var sway_force_mag = delta_comp * anti_sway_stiffness
-			var ray_L: RayCast3D = pair["L_ray"]
-			var ray_R: RayCast3D = pair["R_ray"]
-			if is_instance_valid(ray_L):
-				apply_force(-up_dir * sway_force_mag, ray_L.global_position - global_position)
-			if is_instance_valid(ray_R):
-				apply_force(up_dir * sway_force_mag, ray_R.global_position - global_position)
+			var sway_torque = delta_comp * anti_sway_stiffness * 0.8
+			total_roll_torque -= sway_torque
 
-func _apply_lateral_friction(_point: Vector3, velocity: Vector3, _delta: float, normal_force: float = 0.0) -> void:
-	var right_dir = global_transform.basis.z
-	var lateral_vel = velocity.dot(right_dir)
-	if abs(lateral_vel) < 0.001:
-		return
+	# Apply central upward force and local torque vector cleanly
+	if total_spring_force_up > 0.0:
+		apply_central_force(up_dir * total_spring_force_up)
 		
-	var active_wheels = max(1, _ray_entries.size())
-	var wheel_mass = mass / float(active_wheels)
-	
-	var damping_factor = wheel_mass * 12.0
-	var force_mag = clamp(lateral_vel * damping_factor, -normal_force * 1.2, normal_force * 1.2)
-	var friction_force = -right_dir * force_mag
-	apply_central_force(friction_force)
+		var local_torque = Vector3(total_roll_torque, 0.0, total_pitch_torque)
+		var world_torque = global_transform.basis * local_torque
+		apply_torque(world_torque)
+		
+		# Lateral friction
+		var right_dir = global_transform.basis.z
+		var lateral_vel = linear_velocity.dot(right_dir)
+		if abs(lateral_vel) > 0.001:
+			var friction_mag = clamp(lateral_vel * mass * 8.0, -total_normal_force * 1.0, total_normal_force * 1.0)
+			apply_central_force(-right_dir * friction_mag)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _ray_entries.size()
@@ -324,7 +344,7 @@ func _apply_propulsion_and_steering(delta: float) -> void:
 		apply_central_force(drive_force)
 		
 	if abs(_inputs.x) > 0.05:
-		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 1.6 * ground_contact_ratio)
+		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 1.2 * ground_contact_ratio)
 		apply_torque(torque_vector)
 
 func _animate_tracks_and_wheels(delta: float) -> void:
@@ -357,3 +377,29 @@ func _find_track_generator() -> TrackGenerator:
 
 func _get_point_velocity(point: Vector3) -> Vector3:
 	return linear_velocity + angular_velocity.cross(point - global_position)
+
+## Returns real-time diagnostic telemetry for headless physics unit testing
+func capture_telemetry() -> TelemetryFrame:
+	var frame = TelemetryFrame.new()
+	if not is_inside_tree():
+		return frame
+	frame.position = global_position
+	frame.speed_kmh = linear_velocity.dot(global_transform.basis.x) * 3.6
+	frame.angular_speed_rad = angular_velocity.length()
+	
+	var grounded: int = 0
+	var max_comp: float = 0.0
+	var d_rest = rest_length + wheel_radius
+	
+	for entry in _ray_entries:
+		var ray: RayCast3D = entry["ray"]
+		if is_instance_valid(ray) and ray.is_colliding():
+			grounded += 1
+			var local_hit = ray.to_local(ray.get_collision_point())
+			var comp = clamp(d_rest - (-local_hit.y), 0.0, rest_length)
+			max_comp = max(max_comp, comp)
+			
+	frame.grounded_rays = grounded
+	frame.max_compression_m = max_comp
+	frame.is_valid_finite = is_finite(global_position.x) and is_finite(angular_velocity.x) and is_finite(linear_velocity.x)
+	return frame

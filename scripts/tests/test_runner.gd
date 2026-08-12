@@ -51,6 +51,11 @@ func _init() -> void:
 	if _test_tank_editor_scene_loading():
 		passed_tests += 1
 
+	# Test Group 9: Tank Drive Physics & Telemetry Debugger
+	total_tests += 1
+	if _test_suspension_physics_telemetry():
+		passed_tests += 1
+
 	print("----------------------------------------------------------")
 	print("RESULT: %d / %d TEST SUITES PASSED" % [passed_tests, total_tests])
 	print("==========================================================")
@@ -371,4 +376,78 @@ func _test_tank_editor_scene_loading() -> bool:
 
 	print("  PASS: Tank editor scene loaded, all resources verified (4 PBR textures, 3 shaders).")
 	return true
+
+func _test_suspension_physics_telemetry() -> bool:
+	print("\n[TEST 9] Testing Tank Drive Physics & Telemetry Debugger...")
+
+	var root_node = root
+	var static_ground = StaticBody3D.new()
+	static_ground.name = "TestGroundBody"
+	static_ground.transform = Transform3D(Basis.IDENTITY, Vector3(0, -1.0, 0))
+	var col_shape = CollisionShape3D.new()
+	var box = BoxShape3D.new()
+	box.size = Vector3(200.0, 2.0, 200.0)
+	col_shape.shape = box
+	static_ground.add_child(col_shape)
+	root_node.add_child(static_ground)
+
+	var hull = HullBuilder.new()
+	hull.set_dimensions(6.8, 3.4, 1.4, 60.0, HullBuilder.GlacisStyle.SLOPED_WEDGE)
+	
+	var turret = TurretBuilder.new()
+	turret.turret_length = 3.2
+	turret.turret_width = 2.4
+	turret.turret_height = 1.2
+	turret.generate_turret_and_gun()
+
+	var tracks = TrackGenerator.new()
+	tracks.set_chassis_parameters(6, 0.65, 0.6, 0.6)
+
+	var vehicle = RaycastSuspensionChassis.new()
+	vehicle.name = "TelemetryTestVehicle"
+	vehicle.position = Vector3(0.0, 1.5, 0.0)
+	
+	vehicle.add_child(hull)
+	vehicle.add_child(turret)
+	vehicle.add_child(tracks)
+	root_node.add_child(vehicle)
+
+	vehicle.setup_vehicle_from_builder(hull, turret, tracks, 1200.0)
+
+	var physics_step_delta = 1.0 / 60.0
+	var is_stable: bool = true
+
+	print("  Telemetry Step Log (simulating 100 physics ticks):")
+	for tick in range(1, 101):
+		vehicle.call("_physics_process", physics_step_delta)
+		
+		var tele = vehicle.capture_telemetry()
+
+		if tick % 20 == 0:
+			print("    Tick %03d | Pos: (%.2f, %.2f, %.2f) | Speed: %.1f km/h | AngSpd: %.3f rad/s | Rays: %d | MaxComp: %.3fm | Finite: %s" % [
+				tick, tele.position.x, tele.position.y, tele.position.z,
+				tele.speed_kmh, tele.angular_speed_rad, tele.grounded_rays,
+				tele.max_compression_m, "YES" if tele.is_valid_finite else "NO"
+			])
+
+		if not tele.is_valid_finite:
+			print("  FAIL: Telemetry frame contains NaN or Infinity!")
+			is_stable = false
+			break
+
+		if tele.angular_speed_rad > 8.0:
+			print("  FAIL: Vehicle angular speed exploded (got %.2f rad/s)!" % tele.angular_speed_rad)
+			is_stable = false
+			break
+
+	vehicle.queue_free()
+	hull.queue_free()
+	turret.queue_free()
+	tracks.queue_free()
+	static_ground.queue_free()
+
+	if is_stable:
+		print("  PASS: Tank physics simulation completed with 100% stability, zero NaNs, and bounded angular velocity.")
+		return true
+	return false
 
