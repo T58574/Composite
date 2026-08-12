@@ -600,7 +600,7 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -300.0
+offset_left = -320.0
 offset_top = 46.0
 offset_bottom = -60.0
 grow_horizontal = 0
@@ -613,100 +613,105 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStructureInspector/Margin"]
+[node name="ScrollContainer" type="ScrollContainer" parent="UIOverlay/RightStructureInspector/Margin"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="InspectorHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="InspectorHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+[node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
 layout_mode = 2
 text = "INSPECTOR_TITLE"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="PartNameLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/InspectorHeader"]
+[node name="PartNameLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "PART_FRONT_GLACIS"
 
-[node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ModePointsBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+[node name="ModePointsBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_POINTS"
 
-[node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+[node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_EDGES"
 
-[node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+[node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_FACES"
 
-[node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer"]
+[node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_CORNERS"
 
-[node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.7, 0.2, 1)
 text = "EDIT_ACTIONS"
 
-[node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 columns = 2
 
-[node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+[node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_DELETE"
 
-[node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+[node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_EXTRUDE"
 
-[node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+[node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_SPLIT"
 
-[node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid"]
+[node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_FLIP"
 
-[node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "CHK_MIRROR"
 
-[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "LBL_SMOOTH_ANGLE"
 
-[node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.0
@@ -714,34 +719,34 @@ max_value = 90.0
 step = 1.0
 value = 36.0
 
-[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 text = "LBL_GRID_SIZE"
 
-[node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.0
 max_value = 500.0
 step = 10.0
 
-[node name="ThicknessHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ThicknessHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 
-[node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+[node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
 layout_mode = 2
 text = "TITLE_ARMOR_THICKNESS"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ThicknessValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox/ThicknessHeader"]
+[node name="ThicknessValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "450 mm"
 
-[node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 5.0
@@ -749,19 +754,168 @@ max_value = 1200.0
 step = 5.0
 value = 450.0
 
-[node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 layout_mode = 2
 text = "LBL_MATERIAL_TYPE"
 
-[node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ArmorAngleLosLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/VBox"]
+[node name="ArmorAngleLosLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 text = "ARMOR_LOS_FMT"
+
+[node name="HSeparatorSandwich" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="SandwichTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
+text = "Sandwich Construction"
+
+[node name="Layer1Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+text = "Layer 1 Outer Material"
+
+[node name="Layer1MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Layer1HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="L1ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+layout_mode = 2
+text = "Layer 1 Thickness:"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Layer1ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "60 mm"
+
+[node name="Layer1ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 5.0
+max_value = 300.0
+step = 5.0
+value = 60.0
+
+[node name="Layer2Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+text = "Layer 2 Filler Material"
+
+[node name="Layer2MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Layer2HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="L2ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+layout_mode = 2
+text = "Layer 2 Thickness:"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Layer2ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "105 mm"
+
+[node name="Layer2ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.0
+max_value = 500.0
+step = 5.0
+value = 105.0
+
+[node name="Layer3Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+text = "Layer 3 Rear Material"
+
+[node name="Layer3MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Layer3HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="L3ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+layout_mode = 2
+text = "Layer 3 Thickness:"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Layer3ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "50 mm"
+
+[node name="Layer3ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 5.0
+max_value = 300.0
+step = 5.0
+value = 50.0
+
+[node name="SpallLinerCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Spall Liner (Kevlar)"
+
+[node name="AddonProtectionLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+text = "Add-on Protection"
+
+[node name="AddonProtectionOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HSeparatorReadout" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="ProtectionSummaryLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
+text = "Protection Summary"
+
+[node name="SandwichTotalThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "Physical: 215 mm"
+
+[node name="SandwichWeightLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "Weight: 850 kg/m²"
+
+[node name="SandwichEffectiveKeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+text = "KE (APFSDS): 450 mm RHA"
+
+[node name="SandwichEffectiveHeatLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1.0, 0.75, 0.2, 1)
+text = "HEAT (ATGM): 650 mm RHA"
 
 [node name="BottomToolbar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1

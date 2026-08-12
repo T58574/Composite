@@ -36,6 +36,7 @@ var target_yaw_deg: float = 0.0
 var target_pitch_deg: float = 0.0
 
 var calculated_turret_mass_kg: float = 0.0
+var armor_sandwich: ArmorCalculator.ArmorSandwich = null
 
 func _ready() -> void:
 	_setup_nodes()
@@ -370,9 +371,12 @@ func _add_triangle(
 	st.add_vertex(c)
 
 func _calculate_turret_mass() -> void:
-	var turret_vol = turret_length * turret_width * turret_height * 0.75
-	var armor_m = front_turret_armor_mm / 1000.0
-	calculated_turret_mass_kg = turret_vol * armor_m * 7850.0 + (barrel_length * 450.0)
+	var surface_area_m2 = 2.0 * (turret_length * turret_width + turret_length * turret_height + turret_width * turret_height) * 0.6
+	var sandwich = armor_sandwich if armor_sandwich != null else ArmorCalculator.ArmorSandwich.create_default_turret()
+	var cheek_mass = (surface_area_m2 * 0.45) * sandwich.get_area_mass_kg_m2()
+	var side_rear_mass = (surface_area_m2 * 0.55) * (front_turret_armor_mm * 0.3 / 1000.0) * 7850.0
+	var gun_mass = barrel_length * 450.0
+	calculated_turret_mass_kg = cheek_mass + side_rear_mass + gun_mass
 
 func _smooth_rotate_turret(delta: float) -> void:
 	var step = rotation_speed_deg_s * delta

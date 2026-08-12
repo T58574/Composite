@@ -24,6 +24,7 @@ extends MeshInstance3D
 # Calculated output stats
 var calculated_volume_m3: float = 0.0
 var calculated_mass_kg: float = 0.0
+var armor_sandwich: ArmorCalculator.ArmorSandwich = null
 var static_collision_body: StaticBody3D = null
 var collision_shape_node: CollisionShape3D = null
 
@@ -207,8 +208,11 @@ func _add_triangle(
 func _calculate_physical_properties() -> void:
 	calculated_volume_m3 = length * width * height * 0.82
 	var surface_area_m2 = 2.3 * (length * width + length * height + width * height)
-	var avg_armor_thickness_m = ((front_armor_mm * 0.4) + (side_armor_mm * 0.4) + (rear_armor_mm * 0.2)) / 1000.0
-	calculated_mass_kg = surface_area_m2 * avg_armor_thickness_m * armor_density_kg_m3
+	var sandwich = armor_sandwich if armor_sandwich != null else ArmorCalculator.ArmorSandwich.create_default_glacis()
+	var front_mass = (surface_area_m2 * 0.4) * sandwich.get_area_mass_kg_m2()
+	var side_mass = (surface_area_m2 * 0.4) * (side_armor_mm / 1000.0) * 7850.0
+	var rear_mass = (surface_area_m2 * 0.2) * (rear_armor_mm / 1000.0) * 7850.0
+	calculated_mass_kg = front_mass + side_mass + rear_mass
 
 func _update_collision_shape() -> void:
 	if mesh == null:

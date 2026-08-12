@@ -60,6 +60,27 @@ extends Control
 @onready var extrude_btn: Button = %ExtrudeBtn
 @onready var flip_btn: Button = %FlipBtn
 
+# Sandwich Construction UI Controls
+@onready var layer1_material_option: OptionButton = %Layer1MaterialOption
+@onready var layer1_thickness_slider: HSlider = %Layer1ThicknessSlider
+@onready var layer1_thickness_label: Label = %Layer1ThicknessLabel
+
+@onready var layer2_material_option: OptionButton = %Layer2MaterialOption
+@onready var layer2_thickness_slider: HSlider = %Layer2ThicknessSlider
+@onready var layer2_thickness_label: Label = %Layer2ThicknessLabel
+
+@onready var layer3_material_option: OptionButton = %Layer3MaterialOption
+@onready var layer3_thickness_slider: HSlider = %Layer3ThicknessSlider
+@onready var layer3_thickness_label: Label = %Layer3ThicknessLabel
+
+@onready var spall_liner_check: CheckBox = %SpallLinerCheck
+@onready var addon_protection_option: OptionButton = %AddonProtectionOption
+
+@onready var sandwich_total_thickness_label: Label = %SandwichTotalThicknessLabel
+@onready var sandwich_weight_label: Label = %SandwichWeightLabel
+@onready var sandwich_effective_ke_label: Label = %SandwichEffectiveKeLabel
+@onready var sandwich_effective_heat_label: Label = %SandwichEffectiveHeatLabel
+
 # Left Chassis / Gun Sliders
 @onready var wheels_count_slider: HSlider = %WheelsCountSlider
 @onready var wheel_diam_slider: HSlider = %WheelDiamSlider
@@ -76,14 +97,17 @@ extends Control
 @onready var hover_inspection_label: Label = %HoverInspectionLabel
 @onready var fps_label: Label = %FPSLabel
 
+var _updating_ui: bool = false
+
 func _ready() -> void:
 	# Enforce MOUSE_FILTER_IGNORE on overlay root to allow 3D Viewport raycasting
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_setup_options()
 	_connect_signals()
+	_sync_sandwich_ui_from_target()
 	_update_ttx()
 	_sync_sliders_with_builders()
-	
+
 	if not SettingsManager.settings_changed.is_connected(_on_settings_changed):
 		SettingsManager.settings_changed.connect(_on_settings_changed)
 
@@ -131,6 +155,60 @@ func _setup_options() -> void:
 		decal_option.add_item(tr("DECAL_CROSS"), 2)
 		decal_option.select(sel)
 
+	# Populate Layer 1 Outer Material
+	if layer1_material_option:
+		var sel_id = layer1_material_option.get_selected_id() if layer1_material_option.item_count > 0 else ArmorCalculator.MaterialType.RHA_STEEL
+		layer1_material_option.clear()
+		layer1_material_option.add_item("RHA Steel", ArmorCalculator.MaterialType.RHA_STEEL)
+		layer1_material_option.add_item("Cast Steel", ArmorCalculator.MaterialType.CAST_STEEL)
+		layer1_material_option.add_item("HHRA Steel", ArmorCalculator.MaterialType.HHRA_STEEL)
+		layer1_material_option.add_item("Face-Hardened", ArmorCalculator.MaterialType.FACE_HARDENED)
+		_select_option_by_id(layer1_material_option, sel_id)
+
+	# Populate Layer 2 Filler Material
+	if layer2_material_option:
+		var sel_id = layer2_material_option.get_selected_id() if layer2_material_option.item_count > 0 else ArmorCalculator.MaterialType.GLASS_TEXTOLITE_STK
+		layer2_material_option.clear()
+		layer2_material_option.add_item("None", -1)
+		layer2_material_option.add_item("Glass Composite STK", ArmorCalculator.MaterialType.GLASS_TEXTOLITE_STK)
+		layer2_material_option.add_item("Ceramic Chobham", ArmorCalculator.MaterialType.CERAMIC_SIC_AL2O3)
+		layer2_material_option.add_item("NERA Air/Rubber", ArmorCalculator.MaterialType.NERA_AIR_RUBBER)
+		layer2_material_option.add_item("Depleted Uranium", ArmorCalculator.MaterialType.DEPLETED_URANIUM)
+		_select_option_by_id(layer2_material_option, sel_id)
+
+	# Populate Layer 3 Rear Material
+	if layer3_material_option:
+		var sel_id = layer3_material_option.get_selected_id() if layer3_material_option.item_count > 0 else ArmorCalculator.MaterialType.RHA_STEEL
+		layer3_material_option.clear()
+		layer3_material_option.add_item("RHA Steel", ArmorCalculator.MaterialType.RHA_STEEL)
+		layer3_material_option.add_item("HHRA Steel", ArmorCalculator.MaterialType.HHRA_STEEL)
+		_select_option_by_id(layer3_material_option, sel_id)
+
+	# Populate Add-on Protection Options
+	if addon_protection_option:
+		var sel_id = addon_protection_option.get_selected_id() if addon_protection_option.item_count > 0 else ArmorCalculator.AddonProtectionType.NONE
+		addon_protection_option.clear()
+		addon_protection_option.add_item("None", ArmorCalculator.AddonProtectionType.NONE)
+		addon_protection_option.add_item("Kontakt-1 ERA", ArmorCalculator.AddonProtectionType.ERA_KONTAKT1)
+		addon_protection_option.add_item("Kontakt-5 ERA", ArmorCalculator.AddonProtectionType.ERA_KONTAKT5)
+		addon_protection_option.add_item("Relikt ERA", ArmorCalculator.AddonProtectionType.ERA_RELIKT)
+		addon_protection_option.add_item("Slat Grid", ArmorCalculator.AddonProtectionType.SLAT_CAGE_GRID)
+		addon_protection_option.add_item("Soft Side Skirts", ArmorCalculator.AddonProtectionType.SIDE_SKIRTS_SOFT)
+		addon_protection_option.add_item("Roof Cope Cage", ArmorCalculator.AddonProtectionType.COPE_CAGE_MANGAL)
+		addon_protection_option.add_item("Nakidka Stealth", ArmorCalculator.AddonProtectionType.STEALTH_NAKIDKA)
+		_select_option_by_id(addon_protection_option, sel_id)
+
+
+func _select_option_by_id(opt: OptionButton, target_id: int) -> void:
+	if opt == null:
+		return
+	for i in range(opt.item_count):
+		if opt.get_item_id(i) == target_id:
+			opt.select(i)
+			return
+	if opt.item_count > 0:
+		opt.select(0)
+
 
 func _safe_connect(sig: Signal, callable: Callable) -> void:
 	if not sig.is_connected(callable):
@@ -170,12 +248,189 @@ func _connect_signals() -> void:
 	if thickness_slider: _safe_connect(thickness_slider.value_changed, _on_thickness_slider_changed)
 	if armor_type_option: _safe_connect(armor_type_option.item_selected, _on_armor_type_selected)
 
+	# Sandwich UI signal connections
+	if layer1_material_option: _safe_connect(layer1_material_option.item_selected, func(_idx): _update_sandwich_from_ui())
+	if layer1_thickness_slider: _safe_connect(layer1_thickness_slider.value_changed, func(val):
+		if layer1_thickness_label: layer1_thickness_label.text = "%.0f mm" % val
+		_update_sandwich_from_ui()
+	)
+
+	if layer2_material_option: _safe_connect(layer2_material_option.item_selected, func(_idx): _update_sandwich_from_ui())
+	if layer2_thickness_slider: _safe_connect(layer2_thickness_slider.value_changed, func(val):
+		if layer2_thickness_label: layer2_thickness_label.text = "%.0f mm" % val
+		_update_sandwich_from_ui()
+	)
+
+	if layer3_material_option: _safe_connect(layer3_material_option.item_selected, func(_idx): _update_sandwich_from_ui())
+	if layer3_thickness_slider: _safe_connect(layer3_thickness_slider.value_changed, func(val):
+		if layer3_thickness_label: layer3_thickness_label.text = "%.0f mm" % val
+		_update_sandwich_from_ui()
+	)
+
+	if spall_liner_check: _safe_connect(spall_liner_check.toggled, func(_toggled): _update_sandwich_from_ui())
+	if addon_protection_option: _safe_connect(addon_protection_option.item_selected, func(_idx): _update_sandwich_from_ui())
+
 	if extrude_btn: _safe_connect(extrude_btn.pressed, _on_extrude_pressed)
 	if flip_btn: _safe_connect(flip_btn.pressed, _on_flip_normals_pressed)
 
 	if tool_translate_btn: _safe_connect(tool_translate_btn.pressed, _on_tool_translate_pressed)
 	if tool_rotate_btn: _safe_connect(tool_rotate_btn.pressed, _on_tool_rotate_pressed)
 	if tool_scale_btn: _safe_connect(tool_scale_btn.pressed, _on_tool_scale_pressed)
+
+
+func _get_current_target_builder() -> Object:
+	if mesh_editor != null and mesh_editor.selected_target != null:
+		if mesh_editor.selected_target == hull_builder:
+			return hull_builder
+		elif turret_builder and (mesh_editor.selected_target == turret_builder or mesh_editor.selected_target == turret_builder.turret_mesh_instance):
+			return turret_builder
+	return hull_builder
+
+
+func _update_sandwich_from_ui() -> void:
+	if _updating_ui:
+		return
+
+	var target = _get_current_target_builder()
+	if target == null:
+		return
+
+	if not ("armor_sandwich" in target) or target.armor_sandwich == null:
+		target.armor_sandwich = ArmorCalculator.ArmorSandwich.new()
+
+	var sandwich: ArmorCalculator.ArmorSandwich = target.armor_sandwich
+
+	# Layer 1 Outer
+	if layer1_material_option:
+		var mat1_id = layer1_material_option.get_selected_id()
+		var thick1 = layer1_thickness_slider.value if layer1_thickness_slider else 60.0
+		if sandwich.outer_layer == null:
+			sandwich.outer_layer = ArmorCalculator.ArmorLayer.new(mat1_id, thick1)
+		else:
+			sandwich.outer_layer.material = mat1_id
+			sandwich.outer_layer.thickness_mm = thick1
+
+	# Layer 2 Filler
+	if layer2_material_option:
+		var mat2_id = layer2_material_option.get_selected_id()
+		var thick2 = layer2_thickness_slider.value if layer2_thickness_slider else 0.0
+		if mat2_id == -1 or thick2 <= 0.0:
+			sandwich.filler_layer = null
+		else:
+			if sandwich.filler_layer == null:
+				sandwich.filler_layer = ArmorCalculator.ArmorLayer.new(mat2_id, thick2)
+			else:
+				sandwich.filler_layer.material = mat2_id
+				sandwich.filler_layer.thickness_mm = thick2
+
+	# Layer 3 Rear
+	if layer3_material_option:
+		var mat3_id = layer3_material_option.get_selected_id()
+		var thick3 = layer3_thickness_slider.value if layer3_thickness_slider else 50.0
+		if sandwich.rear_layer == null:
+			sandwich.rear_layer = ArmorCalculator.ArmorLayer.new(mat3_id, thick3)
+		else:
+			sandwich.rear_layer.material = mat3_id
+			sandwich.rear_layer.thickness_mm = thick3
+
+	# Spall Liner
+	if spall_liner_check:
+		sandwich.has_spall_liner = spall_liner_check.button_pressed
+
+	# Addon Protection
+	if addon_protection_option:
+		var addon_id = addon_protection_option.get_selected_id()
+		sandwich.addon_protection = addon_id
+
+	var total_phys = sandwich.get_total_physical_thickness_mm()
+	if thickness_slider:
+		thickness_slider.value = total_phys
+	if thickness_value_label:
+		thickness_value_label.text = "%.0f mm" % total_phys
+
+	if target == hull_builder:
+		hull_builder.front_armor_mm = total_phys
+		hull_builder.generate_hull_mesh()
+	elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance):
+		turret_builder.front_turret_armor_mm = total_phys
+		turret_builder.generate_turret_and_gun()
+
+	_update_sandwich_ui_readout()
+	_update_ttx()
+
+
+func _update_sandwich_ui_readout() -> void:
+	var target = _get_current_target_builder()
+	if target == null or not ("armor_sandwich" in target) or target.armor_sandwich == null:
+		return
+
+	var sandwich: ArmorCalculator.ArmorSandwich = target.armor_sandwich
+	var total_phys_mm = sandwich.get_total_physical_thickness_mm()
+	var mass_kg_m2 = sandwich.get_area_mass_kg_m2()
+	var ke_rha_mm = sandwich.get_effective_rha_mm(ArmorCalculator.AmmoType.APFSDS, 1.0)
+	var heat_rha_mm = sandwich.get_effective_rha_mm(ArmorCalculator.AmmoType.HEAT, 1.0)
+
+	if sandwich_total_thickness_label:
+		sandwich_total_thickness_label.text = "Physical: %.0f mm" % total_phys_mm
+	if sandwich_weight_label:
+		sandwich_weight_label.text = "Weight: %.0f kg/m²" % mass_kg_m2
+	if sandwich_effective_ke_label:
+		sandwich_effective_ke_label.text = "Effective KE: %.0f mm RHA" % ke_rha_mm
+	if sandwich_effective_heat_label:
+		sandwich_effective_heat_label.text = "Effective HEAT: %.0f mm RHA" % heat_rha_mm
+
+
+func _sync_sandwich_ui_from_target() -> void:
+	_updating_ui = true
+
+	var target = _get_current_target_builder()
+	if target != null:
+		if not ("armor_sandwich" in target) or target.armor_sandwich == null:
+			if target == hull_builder:
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
+			elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance):
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
+			else:
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.new()
+
+		var sandwich: ArmorCalculator.ArmorSandwich = target.armor_sandwich
+
+		if layer1_material_option and sandwich.outer_layer != null:
+			_select_option_by_id(layer1_material_option, sandwich.outer_layer.material)
+			if layer1_thickness_slider:
+				layer1_thickness_slider.value = sandwich.outer_layer.thickness_mm
+			if layer1_thickness_label:
+				layer1_thickness_label.text = "%.0f mm" % sandwich.outer_layer.thickness_mm
+
+		if layer2_material_option:
+			if sandwich.filler_layer != null:
+				_select_option_by_id(layer2_material_option, sandwich.filler_layer.material)
+				if layer2_thickness_slider:
+					layer2_thickness_slider.value = sandwich.filler_layer.thickness_mm
+				if layer2_thickness_label:
+					layer2_thickness_label.text = "%.0f mm" % sandwich.filler_layer.thickness_mm
+			else:
+				_select_option_by_id(layer2_material_option, -1)
+				if layer2_thickness_slider:
+					layer2_thickness_slider.value = 0.0
+				if layer2_thickness_label:
+					layer2_thickness_label.text = "0 mm"
+
+		if layer3_material_option and sandwich.rear_layer != null:
+			_select_option_by_id(layer3_material_option, sandwich.rear_layer.material)
+			if layer3_thickness_slider:
+				layer3_thickness_slider.value = sandwich.rear_layer.thickness_mm
+			if layer3_thickness_label:
+				layer3_thickness_label.text = "%.0f mm" % sandwich.rear_layer.thickness_mm
+
+		if spall_liner_check:
+			spall_liner_check.button_pressed = sandwich.has_spall_liner
+
+		if addon_protection_option:
+			_select_option_by_id(addon_protection_option, sandwich.addon_protection)
+
+	_updating_ui = false
+	_update_sandwich_ui_readout()
 
 # Transform Mode Switcher Handlers (Move [G], Rotate [R], Resize [S])
 func _on_tool_translate_pressed() -> void:
@@ -285,6 +540,17 @@ func _on_thickness_slider_changed(val: float) -> void:
 	if thickness_value_label:
 		thickness_value_label.text = "%.0f mm" % val
 
+	if not _updating_ui:
+		var target = _get_current_target_builder()
+		if target and "armor_sandwich" in target and target.armor_sandwich != null:
+			if target.armor_sandwich.outer_layer != null:
+				target.armor_sandwich.outer_layer.thickness_mm = val
+				if layer1_thickness_slider:
+					layer1_thickness_slider.value = val
+				if layer1_thickness_label:
+					layer1_thickness_label.text = "%.0f mm" % val
+				_update_sandwich_ui_readout()
+
 	if mesh_editor and mesh_editor.selected_target == hull_builder:
 		hull_builder.front_armor_mm = val
 		hull_builder.generate_hull_mesh()
@@ -345,11 +611,15 @@ func _on_selection_changed() -> void:
 		if part_name_label:
 			part_name_label.text = tr("PART_NO_SELECTION")
 
-func _on_face_hovered(thickness_mm: float, angle_deg: float, effective_rha_mm: float) -> void:
+	_sync_sandwich_ui_from_target()
+
+func _on_face_hovered(thickness_mm: float, angle_deg: float, eff_ke_mm: float, eff_heat_mm: float = 0.0) -> void:
+	if eff_heat_mm == 0.0:
+		eff_heat_mm = eff_ke_mm
 	if hover_inspection_label:
-		hover_inspection_label.text = tr("HOVER_INSPECT_FMT") % [thickness_mm, angle_deg, effective_rha_mm]
+		hover_inspection_label.text = "Thickness: %.0fmm | Angle: %.1f° | Effective KE: %.0fmm RHA | HEAT: %.0fmm RHA" % [thickness_mm, angle_deg, eff_ke_mm, eff_heat_mm]
 	if armor_angle_los_label:
-		armor_angle_los_label.text = tr("ARMOR_LOS_FMT") % [angle_deg, effective_rha_mm]
+		armor_angle_los_label.text = "Angle: %.1f° | KE: %.0fmm | HEAT: %.0fmm RHA" % [angle_deg, eff_ke_mm, eff_heat_mm]
 
 
 func _sync_sliders_with_builders() -> void:
@@ -376,3 +646,4 @@ func _update_ttx() -> void:
 
 	if mass_badge_label: mass_badge_label.text = "%.2ft" % ttx.total_mass_tons
 	if space_badge_label: space_badge_label.text = "%.2fk" % (ttx.total_mass_tons * 0.8)
+

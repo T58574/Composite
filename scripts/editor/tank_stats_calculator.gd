@@ -2,7 +2,8 @@ class_name TankStatsCalculator
 extends RefCounted
 
 ## Computes real-time tactical & technical characteristics (TTX) for tank editor.
-## Calculates total mass, center of mass, engine power-to-weight ratio, and top speed.
+## Calculates total mass, center of mass, engine power-to-weight ratio, and top speed,
+## taking into account multi-layer sandwich armor area densities (kg/m2) and add-on module weights.
 
 class TankTTX:
 	var total_mass_tons: float = 0.0
@@ -24,12 +25,41 @@ static func calculate_stats(
 	ttx.engine_horsepower = engine_hp
 	
 	if hull_builder:
-		ttx.hull_mass_tons = hull_builder.calculated_mass_kg / 1000.0
+		var hull_sandwich: ArmorCalculator.ArmorSandwich = null
+		if "armor_sandwich" in hull_builder and hull_builder.armor_sandwich != null:
+			hull_sandwich = hull_builder.armor_sandwich
+		else:
+			hull_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
+			
+		var surface_area_m2 = 2.3 * (hull_builder.length * hull_builder.width + hull_builder.length * hull_builder.height + hull_builder.width * hull_builder.height)
+		var front_area = surface_area_m2 * 0.4
+		var side_area = surface_area_m2 * 0.4
+		var rear_area = surface_area_m2 * 0.2
+		
+		var front_mass_kg = front_area * hull_sandwich.get_area_mass_kg_m2()
+		var side_mass_kg = side_area * (hull_builder.side_armor_mm / 1000.0) * 7850.0
+		var rear_mass_kg = rear_area * (hull_builder.rear_armor_mm / 1000.0) * 7850.0
+		
+		ttx.hull_mass_tons = (front_mass_kg + side_mass_kg + rear_mass_kg) / 1000.0
 	else:
 		ttx.hull_mass_tons = 25.0
 		
 	if turret_builder:
-		ttx.turret_mass_tons = turret_builder.calculated_turret_mass_kg / 1000.0
+		var turret_sandwich: ArmorCalculator.ArmorSandwich = null
+		if "armor_sandwich" in turret_builder and turret_builder.armor_sandwich != null:
+			turret_sandwich = turret_builder.armor_sandwich
+		else:
+			turret_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
+			
+		var turret_surf_m2 = 2.0 * (turret_builder.turret_length * turret_builder.turret_width + turret_builder.turret_length * turret_builder.turret_height + turret_builder.turret_width * turret_builder.turret_height) * 0.6
+		var cheek_area = turret_surf_m2 * 0.45
+		var side_rear_area = turret_surf_m2 * 0.55
+		
+		var cheek_mass_kg = cheek_area * turret_sandwich.get_area_mass_kg_m2()
+		var side_rear_mass_kg = side_rear_area * (turret_builder.front_turret_armor_mm * 0.3 / 1000.0) * 7850.0
+		var gun_mass_kg = turret_builder.barrel_length * 450.0
+		
+		ttx.turret_mass_tons = (cheek_mass_kg + side_rear_mass_kg + gun_mass_kg) / 1000.0
 	else:
 		ttx.turret_mass_tons = 12.0
 		
@@ -57,3 +87,4 @@ static func calculate_stats(
 		ttx.center_of_mass = (hull_pos * ttx.hull_mass_tons + turret_pos * ttx.turret_mass_tons) / ttx.total_mass_tons
 		
 	return ttx
+

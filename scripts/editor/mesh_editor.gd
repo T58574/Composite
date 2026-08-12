@@ -11,7 +11,7 @@ enum VisualizationMode { SOLID, ARMOR_HEATMAP, XRAY }
 signal edit_mode_changed(mode: EditMode)
 signal visualization_mode_changed(mode: VisualizationMode)
 signal gizmo_mode_changed(mode: Gizmo3D.GizmoMode)
-signal face_hovered(thickness_mm: float, angle_deg: float, effective_rha_mm: float)
+signal face_hovered(thickness_mm: float, angle_deg: float, eff_ke_mm: float, eff_heat_mm: float)
 signal selection_changed()
 
 @export var hull_builder: HullBuilder
@@ -563,20 +563,41 @@ func inspect_hover_point(screen_pos: Vector2) -> void:
 
 	var cos_theta = clamp(abs(normal.dot(-ray_dir)), 0.0, 1.0)
 	var angle_deg = rad_to_deg(acos(cos_theta))
+	var los_factor = 1.0 / max(cos_theta, 0.087)
+
+	var sandwich: ArmorCalculator.ArmorSandwich = null
+	if target == hull_builder:
+		if hull_builder.armor_sandwich == null:
+			hull_builder.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
+		sandwich = hull_builder.armor_sandwich
+	elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance):
+		if turret_builder.armor_sandwich == null:
+			turret_builder.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
+		sandwich = turret_builder.armor_sandwich
 
 	var thickness = 450.0
-	if target == hull_builder:
-		var local_norm = target.global_transform.basis.inverse() * normal
-		if local_norm.x > 0.4:
-			thickness = hull_builder.front_armor_mm
-		elif abs(local_norm.z) > 0.4:
-			thickness = hull_builder.side_armor_mm
-		elif local_norm.x < -0.4:
-			thickness = hull_builder.rear_armor_mm
-		else:
-			thickness = hull_builder.front_armor_mm
-	elif turret_builder and target == turret_builder.turret_mesh_instance:
-		thickness = turret_builder.front_turret_armor_mm
+	var eff_ke_mm = 0.0
+	var eff_heat_mm = 0.0
 
-	var eff_rha = ArmorCalculator.calculate_effective_thickness(thickness, normal, ray_dir)
-	face_hovered.emit(thickness, angle_deg, eff_rha)
+	if sandwich != null:
+		thickness = sandwich.get_total_physical_thickness_mm()
+		eff_ke_mm = sandwich.get_effective_rha_mm(ArmorCalculator.AmmoType.APFSDS, los_factor)
+		eff_heat_mm = sandwich.get_effective_rha_mm(ArmorCalculator.AmmoType.HEAT, los_factor)
+	else:
+		if target == hull_builder:
+			var local_norm = target.global_transform.basis.inverse() * normal
+			if local_norm.x > 0.4:
+				thickness = hull_builder.front_armor_mm
+			elif abs(local_norm.z) > 0.4:
+				thickness = hull_builder.side_armor_mm
+			elif local_norm.x < -0.4:
+				thickness = hull_builder.rear_armor_mm
+			else:
+				thickness = hull_builder.front_armor_mm
+		elif turret_builder and target == turret_builder.turret_mesh_instance:
+			thickness = turret_builder.front_turret_armor_mm
+
+		eff_ke_mm = ArmorCalculator.calculate_effective_thickness(thickness, normal, ray_dir)
+		eff_heat_mm = eff_ke_mm
+
+	face_hovered.emit(thickness, angle_deg, eff_ke_mm, eff_heat_mm)
