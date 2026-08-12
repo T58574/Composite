@@ -403,7 +403,8 @@ func _test_suspension_physics_telemetry() -> bool:
 	var tracks = TrackGenerator.new()
 	tracks.set_chassis_parameters(6, 0.65, 0.6, 0.6)
 
-	var vehicle = RaycastSuspensionChassis.new()
+	var chassis_script = load("res://scripts/physics/raycast_suspension.gd")
+	var vehicle = chassis_script.new() as RigidBody3D
 	vehicle.name = "TelemetryTestVehicle"
 	vehicle.position = Vector3(0.0, 1.5, 0.0)
 	

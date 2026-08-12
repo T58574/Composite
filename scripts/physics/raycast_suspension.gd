@@ -58,12 +58,26 @@ func _auto_setup_test_range() -> void:
 				hull.front_armor_mm = h.get("front_armor_mm", 450.0)
 			if data.has("turret") and turret:
 				var t = data["turret"]
-				turret.turret_length = t.get("turret_length", 3.2)
-				turret.turret_width = t.get("turret_width", 2.4)
-				turret.turret_height = t.get("turret_height", 1.2)
-				turret.barrel_length = t.get("barrel_length", 5.5)
-				turret.barrel_caliber_mm = t.get("gun_caliber_mm", 120.0)
+				var t_len = t.get("length", t.get("turret_length", 3.2))
+				var t_wid = t.get("width", t.get("turret_width", 2.4))
+				var t_hei = t.get("height", t.get("turret_height", 1.2))
+				var b_len = t.get("barrel_length", 5.5)
+				turret.turret_length = t_len
+				turret.turret_width = t_wid
+				turret.turret_height = t_hei
+				turret.barrel_length = b_len
 				turret.generate_turret_and_gun()
+			if data.has("firepower"):
+				var fp = data["firepower"]
+				var cal = fp.get("caliber_mm", 120.0)
+				var b_len = fp.get("barrel_length_m", 6.2)
+				if turret:
+					turret.barrel_length = b_len
+					turret.generate_turret_and_gun()
+				var shooting_sys = get_node_or_null("ShootingSystem") as ShootingSystem
+				if shooting_sys:
+					shooting_sys.caliber_mm = cal
+					shooting_sys.penetration_mm = 600.0 if cal >= 120.0 else 450.0
 			if data.has("chassis") and tracks:
 				var c = data["chassis"]
 				tracks.set_chassis_parameters(c.get("road_wheel_pairs", 6), c.get("wheel_diameter", 0.65), c.get("track_width", 0.6), 0.6)
@@ -87,8 +101,8 @@ func setup_vehicle_from_builder(
 	self.engine_horsepower = ttx.engine_horsepower
 	self.max_speed_kmh = ttx.max_speed_kmh
 	self.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	self.center_of_mass = Vector3(0.0, -0.5, 0.0)
-	self.linear_damp = 1.0
+	self.center_of_mass = Vector3(0.0, -0.4, 0.0)
+	self.linear_damp = 0.8
 	self.angular_damp = 3.5
 	
 	# 2. Setup Solid Chassis Collision Shape directly on RigidBody3D
@@ -116,7 +130,7 @@ func _setup_chassis_collision(hull_builder: HullBuilder) -> void:
 		_chassis_collision_shape.position = Vector3(0.0, hull_builder.height * 0.25, 0.0)
 	else:
 		var default_box = BoxShape3D.new()
-		default_box.size = Vector3(3.2, 1.0, 6.5)
+		default_box.size = Vector3(6.5, 1.0, 3.2)
 		_chassis_collision_shape.shape = default_box
 		_chassis_collision_shape.position = Vector3(0.0, 0.3, 0.0)
 
@@ -127,7 +141,7 @@ func _auto_tune_suspension() -> void:
 	spring_stiffness = weight_per_wheel / target_sag
 	
 	var m_wheel = mass / float(total_wheels)
-	spring_damping = 1.5 * sqrt(spring_stiffness * m_wheel)
+	spring_damping = 1.2 * sqrt(spring_stiffness * m_wheel)
 
 func _initialize_suspension_rays() -> void:
 	_clear_rays()
@@ -213,8 +227,8 @@ func _physics_process(delta: float) -> void:
 	if not is_inside_tree():
 		return
 
-	# Fall protection: reset to origin if vehicle falls off map edge
-	if global_position.y < -10.0 or not is_finite(global_position.x):
+	# Fall protection & Reset Key ('R'): reset to origin if vehicle falls off map edge or user presses R
+	if global_position.y < -10.0 or not is_finite(global_position.x) or Input.is_key_pressed(KEY_R):
 		global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.5, 0))
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
@@ -241,8 +255,10 @@ func _apply_suspension_forces(delta: float) -> void:
 	var right_dir = global_transform.basis.z
 	var track_gen = _find_track_generator()
 	var d_rest = rest_length + wheel_radius
-	
 	var total_rays = max(1, _ray_entries.size())
+
+	# Track wheel compressions for anti-sway stabilizer bar
+	var wheel_compressions: Dictionary = {}
 
 	for entry in _ray_entries:
 		var ray: RayCast3D = entry["ray"]
@@ -263,6 +279,7 @@ func _apply_suspension_forces(delta: float) -> void:
 		var local_hit = ray.to_local(hit_point)
 		var dist_to_ground = -local_hit.y
 		var compression = clamp(d_rest - dist_to_ground, 0.0, rest_length)
+		wheel_compressions["%s_%d" % ["L" if side < 0 else "R", index]] = compression
 		
 		if track_gen and track_gen.has_method("update_road_wheel_suspension"):
 			track_gen.update_road_wheel_suspension(side, index, compression)
@@ -273,16 +290,28 @@ func _apply_suspension_forces(delta: float) -> void:
 			var damp_force = wheel_velocity.dot(up_dir) * spring_damping
 			
 			var f_mag = max(0.0, spring_force - damp_force)
-			var local_wheel_offset = Vector3(x_pos, -rest_length * 0.5, z_pos) - center_of_mass
 			
-			# Apply upward spring force at wheel local position
-			apply_force(up_dir * f_mag, local_wheel_offset)
+			# Apply upward spring force at center of mass height to prevent pitch/roll torque feedback loops
+			var local_offset_com = Vector3(x_pos, center_of_mass.y, z_pos) - center_of_mass
+			apply_force(up_dir * f_mag, local_offset_com)
 			
-			# Lateral track friction
+			# Coulomb lateral track friction (bounded strictly by F_normal * 0.85)
+			var max_lateral_f = f_mag * 0.85
 			var lateral_vel = wheel_velocity.dot(right_dir)
 			if abs(lateral_vel) > 0.01:
-				var f_frict = clamp(lateral_vel * (mass / float(total_rays)) * 12.0, -f_mag * 1.2, f_mag * 1.2)
-				apply_force(-right_dir * f_frict, local_wheel_offset)
+				var f_frict = clamp(lateral_vel * (mass / float(total_rays)) * 6.0, -max_lateral_f, max_lateral_f)
+				apply_force(-right_dir * f_frict, local_offset_com)
+
+	# Apply Anti-Sway Stabilizer Bar Forces between paired Left & Right wheels
+	var wheels_per_side = total_rays / 2
+	var anti_sway_k = spring_stiffness * 0.4
+	for i in range(wheels_per_side):
+		var comp_l: float = wheel_compressions.get("L_%d" % i, 0.0)
+		var comp_r: float = wheel_compressions.get("R_%d" % i, 0.0)
+		var diff = comp_l - comp_r
+		if abs(diff) > 0.01:
+			var sway_f = diff * anti_sway_k
+			apply_torque(-global_transform.basis.x * sway_f * 0.15)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _ray_entries.size()
@@ -296,21 +325,25 @@ func _apply_propulsion_and_steering(delta: float) -> void:
 			grounded_rays += 1
 
 	var ground_contact_ratio: float = float(grounded_rays) / float(total_rays)
+	if ground_contact_ratio < 0.05:
+		return
 
 	var forward_dir = global_transform.basis.x
 	var current_speed_ms = linear_velocity.dot(forward_dir)
 	var current_speed_kmh = current_speed_ms * 3.6
 	
+	# Throttle Drive / Braking Force along +X
 	if abs(_inputs.y) > 0.05 and abs(current_speed_kmh) < max_speed_kmh:
-		var max_torque_force = (engine_horsepower * 745.7) / max(4.0, abs(current_speed_ms))
+		var max_torque_force = (engine_horsepower * 745.7) / max(3.0, abs(current_speed_ms))
 		var drive_force = forward_dir * (_inputs.y * max_torque_force * ground_contact_ratio)
 		apply_central_force(drive_force)
 	elif abs(_inputs.y) <= 0.05 and ground_contact_ratio > 0.1:
-		var brake_force = -forward_dir * (current_speed_ms * mass * 4.0 * ground_contact_ratio)
+		var brake_force = -forward_dir * (current_speed_ms * mass * 3.0 * ground_contact_ratio)
 		apply_central_force(brake_force)
 		
+	# Skid Steering & Stationary Pivot Turn Torque around Y axis
 	if abs(_inputs.x) > 0.05:
-		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 1.4 * ground_contact_ratio)
+		var torque_vector = -global_transform.basis.y * (_inputs.x * steer_sensitivity * mass * 0.85 * ground_contact_ratio)
 		apply_torque(torque_vector)
 
 func _animate_tracks_and_wheels(delta: float) -> void:

@@ -341,7 +341,7 @@ func _update_collision_shape() -> void:
 ## Creates an inset BoxShape3D suitable for a parent RigidBody3D tank chassis (leaves suspension clearance free)
 func create_rigidbody_shape() -> Shape3D:
 	var box = BoxShape3D.new()
-	box.size = Vector3(width * 0.85, height * 0.60, length * 0.88)
+	box.size = Vector3(length * 0.88, height * 0.60, width * 0.85)
 	return box
 
 ## Public API to update hull dimensions dynamically from UI

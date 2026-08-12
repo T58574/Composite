@@ -137,11 +137,11 @@ func _build_hud() -> void:
 	## Top-right: Controls help
 	var help_label := Label.new()
 	help_label.name = "ControlsHelp"
-	help_label.text = "W/S Forward/Back | A/D Steer | LMB Fire | R Rangefinder | N Optics | V Camera"
+	help_label.text = "W/S Drive | A/D Pivot | Mouse Aim | LMB Fire | RMB Free Look | R Reset | V Scope"
 	help_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	help_label.offset_right = -20
 	help_label.offset_top = 20
-	help_label.offset_left = -600
+	help_label.offset_left = -650
 	help_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help_label.add_theme_font_size_override("font_size", 14)
 	help_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
@@ -166,8 +166,8 @@ func _process(_delta: float) -> void:
 		var speed_kmh := vehicle.linear_velocity.length() * 3.6
 		speed_label.text = "%.0f km/h" % speed_kmh
 		
-		var forward := -vehicle.global_transform.basis.z
-		var heading := rad_to_deg(atan2(forward.x, forward.z))
+		var forward := vehicle.global_transform.basis.x
+		var heading := rad_to_deg(atan2(-forward.z, forward.x))
 		if heading < 0:
 			heading += 360.0
 		heading_label.text = "HDG: %03.0f°" % heading

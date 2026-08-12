@@ -39,9 +39,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			chase_distance = clampf(chase_distance - 1.0, 4.0, 20.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			chase_distance = clampf(chase_distance + 1.0, 4.0, 20.0)
-	if event is InputEventMouseMotion and _rmb_held:
+	if event is InputEventMouseMotion:
 		_yaw -= event.relative.x * look_sensitivity
-		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.2, 0.2)
+		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.2, 0.4)
 
 func _physics_process(delta: float) -> void:
 	if target == null:
@@ -52,32 +52,48 @@ func _physics_process(delta: float) -> void:
 		CameraMode.GUNNER_SCOPE:
 			_update_gunner(delta)
 
+	_update_turret_aiming()
+
 func _update_chase(delta: float) -> void:
 	var target_pos := target.global_position
+	# Camera offset behind vehicle (-X is behind when +X is front)
 	var offset := Vector3(
-		sin(_yaw) * cos(_pitch) * chase_distance,
+		-cos(_yaw) * cos(_pitch) * chase_distance,
 		sin(-_pitch) * chase_distance + chase_height,
-		cos(_yaw) * cos(_pitch) * chase_distance
+		sin(_yaw) * cos(_pitch) * chase_distance
 	)
 	var desired_pos := target_pos + offset
 	global_position = global_position.lerp(desired_pos, follow_speed * delta)
 	if camera_3d:
-		camera_3d.look_at(target_pos + Vector3.UP * 1.5)
+		camera_3d.look_at(target_pos + Vector3.UP * 1.2)
 
 func _update_gunner(delta: float) -> void:
-	## Position camera at turret/gun position looking forward
+	## Position camera at turret/gun position looking forward along +X
 	var turret := target.get_node_or_null("ProceduralTurret") as Node3D
 	if turret:
-		var gun_tip := turret.global_position + turret.global_transform.basis.z * -3.0 + Vector3.UP * 0.5
+		var gun_tip := turret.global_position + turret.global_transform.basis.x * 3.0 + Vector3.UP * 0.4
 		global_position = global_position.lerp(gun_tip, follow_speed * 2.0 * delta)
 		if camera_3d:
-			camera_3d.look_at(global_position - turret.global_transform.basis.z * 100.0)
+			camera_3d.look_at(global_position + turret.global_transform.basis.x * 100.0)
 	else:
-		var forward := -target.global_transform.basis.z
-		var scope_pos := target.global_position + Vector3.UP * 2.5 + forward * 2.0
+		var forward := target.global_transform.basis.x
+		var scope_pos := target.global_position + Vector3.UP * 2.2 + forward * 2.0
 		global_position = global_position.lerp(scope_pos, follow_speed * 2.0 * delta)
 		if camera_3d:
 			camera_3d.look_at(global_position + forward * 100.0)
+
+func _update_turret_aiming() -> void:
+	if target == null or camera_3d == null or _rmb_held:
+		return
+	var turret = target.get_node_or_null("ProceduralTurret") as TurretBuilder
+	if turret == null:
+		return
+	var cam_forward = -camera_3d.global_transform.basis.z
+	var local_dir = target.global_transform.basis.inverse() * cam_forward
+	var aim_yaw_deg = rad_to_deg(atan2(-local_dir.z, local_dir.x))
+	var horiz_dist = Vector2(local_dir.x, local_dir.z).length()
+	var aim_pitch_deg = rad_to_deg(atan2(local_dir.y, horiz_dist))
+	turret.set_aim_target(aim_yaw_deg, aim_pitch_deg)
 
 func toggle_camera_mode() -> void:
 	if current_mode == CameraMode.THIRD_PERSON:

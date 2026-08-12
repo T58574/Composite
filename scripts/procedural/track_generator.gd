@@ -69,8 +69,8 @@ func _create_road_wheels_and_belts() -> void:
 	for side in [-1.0, 1.0]: # Left (-1, -Z) and Right (1, +Z)
 		var z_pos = side * track_span_width
 
-		var front_wheel_pos = Vector3(front_x + (wheel_radius * 1.3), 0.1, z_pos)
-		var rear_wheel_pos = Vector3(rear_x - (wheel_radius * 1.3), 0.1, z_pos)
+		var front_wheel_pos = Vector3(front_x + (wheel_radius * 1.3), -suspension_height * 0.35, z_pos)
+		var rear_wheel_pos = Vector3(rear_x - (wheel_radius * 1.3), -suspension_height * 0.35, z_pos)
 
 		var sprocket_pos = front_wheel_pos if front_drive_sprocket else rear_wheel_pos
 		var idler_pos = rear_wheel_pos if front_drive_sprocket else front_wheel_pos
@@ -138,62 +138,33 @@ func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> M
 	var sides = 24
 	var rim_width = width * 0.38
 	var gap = width * 0.24
-	var rim_offsets = [-gap * 0.5 - rim_width * 0.5, gap * 0.5 + rim_width * 0.5]
 
-	for offset in rim_offsets:
-		var inner_r = radius * 0.70
-		for i in range(sides):
-			var a1 = (float(i) / float(sides)) * TAU
-			var a2 = (float(i + 1) / float(sides)) * TAU
-
-			var n1 = Vector3(cos(a1), sin(a1), 0.0)
-			var n2 = Vector3(cos(a2), sin(a2), 0.0)
-
-			var o1_in = Vector3(cos(a1) * inner_r, sin(a1) * inner_r, offset - rim_width * 0.5)
-			var o2_in = Vector3(cos(a2) * inner_r, sin(a2) * inner_r, offset - rim_width * 0.5)
-			var o1_out = Vector3(cos(a1) * radius, sin(a1) * radius, offset - rim_width * 0.5)
-			var o2_out = Vector3(cos(a2) * radius, sin(a2) * radius, offset - rim_width * 0.5)
-
-			var i1_in = Vector3(cos(a1) * inner_r, sin(a1) * inner_r, offset + rim_width * 0.5)
-			var i2_in = Vector3(cos(a2) * inner_r, sin(a2) * inner_r, offset + rim_width * 0.5)
-			var i1_out = Vector3(cos(a1) * radius, sin(a1) * radius, offset + rim_width * 0.5)
-			var i2_out = Vector3(cos(a2) * radius, sin(a2) * radius, offset + rim_width * 0.5)
-
-			# 1. Rubber tread outer face (smooth cylinder)
-			_add_quad_smooth_normal(st, o1_out, o2_out, i2_out, i1_out, n1, n2, n2, n1)
-
-			# 2. Outer Tire Sidewall ring (Radius inner_r to radius)
-			var cap_n_outer = Vector3(0, 0, -1.0)
-			_add_quad_flat_normal(st, o1_in, o2_in, o2_out, o1_out, cap_n_outer)
-
-			# 3. Inner Tire Sidewall ring
-			var cap_n_inner = Vector3(0, 0, 1.0)
-			_add_quad_flat_normal(st, i1_out, i2_out, i2_in, i1_in, cap_n_inner)
-
-			# 4. Solid Wheel Center Metal Dish (Center (0,0) to inner_r)
-			var center_back = Vector3(0, 0, offset - rim_width * 0.2)
-			var center_front = Vector3(0, 0, offset + rim_width * 0.2)
-			_add_triangle_flat_normal(st, center_back, o2_in, o1_in, cap_n_outer)
-			_add_triangle_flat_normal(st, center_front, i1_in, i2_in, cap_n_inner)
-
-	# Axle hub cap (Solid 3D Hub Cap)
-	var hub_r = radius * 0.38
-	var hub_h = width * 0.18
-	var hub_z = side * (width * 0.5)
 	for i in range(sides):
 		var a1 = (float(i) / float(sides)) * TAU
 		var a2 = (float(i + 1) / float(sides)) * TAU
-		var h1 = Vector3(cos(a1) * hub_r, sin(a1) * hub_r, hub_z)
-		var h2 = Vector3(cos(a2) * hub_r, sin(a2) * hub_r, hub_z)
-		var hc = Vector3(0, 0, hub_z + side * hub_h)
-		_add_triangle_flat_normal(st, h1, h2, hc, Vector3(0, 0, side))
+
+		var n1 = Vector3(cos(a1), sin(a1), 0.0)
+		var n2 = Vector3(cos(a2), sin(a2), 0.0)
+
+		# Outer Tire Tread
+		var r1 = Vector3(cos(a1) * radius, sin(a1) * radius, -gap * 0.5 - rim_width)
+		var r2 = Vector3(cos(a2) * radius, sin(a2) * radius, -gap * 0.5 - rim_width)
+		var r1_b = Vector3(cos(a1) * radius, sin(a1) * radius, -gap * 0.5)
+		var r2_b = Vector3(cos(a2) * radius, sin(a2) * radius, -gap * 0.5)
+		_add_quad_smooth_normal(st, r1, r2, r2_b, r1_b, n1, n2, n2, n1)
+
+		var l1 = Vector3(cos(a1) * radius, sin(a1) * radius, gap * 0.5)
+		var l2 = Vector3(cos(a2) * radius, sin(a2) * radius, gap * 0.5)
+		var l1_b = Vector3(cos(a1) * radius, sin(a1) * radius, gap * 0.5 + rim_width)
+		var l2_b = Vector3(cos(a2) * radius, sin(a2) * radius, gap * 0.5 + rim_width)
+		_add_quad_smooth_normal(st, l1, l2, l2_b, l1_b, n1, n2, n2, n1)
 
 	st.generate_tangents()
 	mi.mesh = st.commit()
 	mi.material_override = track_material
 	return mi
 
-## Creates Drive Sprocket with radial teeth (Front, +X)
+## Creates Drive Sprocket with Radial Drive Teeth (Front or Rear)
 func _create_sprocket_mesh(radius: float, width: float, side: float) -> MeshInstance3D:
 	var mi = MeshInstance3D.new()
 	var st = SurfaceTool.new()
@@ -292,7 +263,7 @@ func _build_track_loop_mesh(
 	var rear_pos = idler_pos if sprocket_pos.x > idler_pos.x else sprocket_pos
 
 	# Bottom run (Road Wheels ground run along X, from Front +X to Rear -X)
-	var bot_y = -suspension_height * 0.5 - wheel_r
+	var bot_y = -suspension_height - wheel_r
 	var front_bottom_x = front_pos.x - wheel_r * 0.5
 	var rear_bottom_x = rear_pos.x + wheel_r * 0.5
 
@@ -337,9 +308,10 @@ func _build_track_loop_mesh(
 		var p_next = path_points[(i + 1) % pt_count]
 
 		var tangent = (p_next - p_curr).normalized()
-		var norm = Vector3.UP.cross(tangent).normalized()
+		# 2D Outward normal in X-Y plane
+		var norm = Vector3(-tangent.y, tangent.x, 0.0).normalized()
 		if norm.length_squared() < 0.0001:
-			norm = Vector3.BACK
+			norm = Vector3.DOWN
 
 		var p1_in = p_curr + Vector3(0, 0, -half_w)
 		var p1_out = p_curr + Vector3(0, 0, half_w)
