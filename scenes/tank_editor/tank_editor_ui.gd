@@ -658,7 +658,23 @@ func toggle_in_constructor_test_drive() -> void:
 	else:
 		_stop_in_constructor_test_drive()
 
+func _ensure_ground_collision() -> void:
+	var scene_root = get_tree().current_scene
+	if scene_root == null or scene_root.get_node_or_null("ConstructorGroundBody") != null:
+		return
+	var static_body = StaticBody3D.new()
+	static_body.name = "ConstructorGroundBody"
+	static_body.transform = Transform3D(Basis.IDENTITY, Vector3(0, -1.0, 0))
+	var col_shape = CollisionShape3D.new()
+	col_shape.name = "GroundCollision"
+	var box = BoxShape3D.new()
+	box.size = Vector3(500.0, 2.0, 500.0)
+	col_shape.shape = box
+	static_body.add_child(col_shape)
+	scene_root.add_child(static_body)
+
 func _start_in_constructor_test_drive() -> void:
+	_ensure_ground_collision()
 	if left_sidebar: left_sidebar.visible = false
 	if right_structure_inspector: right_structure_inspector.visible = false
 	if category_stack: category_stack.visible = false
@@ -674,7 +690,7 @@ func _start_in_constructor_test_drive() -> void:
 		_test_vehicle_body.script = load("res://scripts/physics/raycast_suspension.gd")
 		scene_root.add_child(_test_vehicle_body)
 
-	_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
+	_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
 	_test_vehicle_body.freeze = false
 	_test_vehicle_body.linear_velocity = Vector3.ZERO
 	_test_vehicle_body.angular_velocity = Vector3.ZERO
@@ -750,12 +766,15 @@ func _stop_in_constructor_test_drive() -> void:
 	if hull_builder and is_instance_valid(hull_builder):
 		hull_builder.reparent(scene_root)
 		hull_builder.transform = Transform3D.IDENTITY
+		hull_builder.generate_hull_mesh()
 	if turret_builder and is_instance_valid(turret_builder):
 		turret_builder.reparent(scene_root)
 		turret_builder.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
+		turret_builder.generate_turret_mesh()
 	if track_generator and is_instance_valid(track_generator):
 		track_generator.reparent(scene_root)
 		track_generator.transform = Transform3D.IDENTITY
+		track_generator.generate_tracks_and_wheels()
 
 	if editor_camera:
 		editor_camera.enabled = true
@@ -765,7 +784,10 @@ func _stop_in_constructor_test_drive() -> void:
 	if left_sidebar: left_sidebar.visible = not _left_sidebar_collapsed
 	if right_structure_inspector: right_structure_inspector.visible = not _right_inspector_collapsed
 	if category_stack: category_stack.visible = not _left_sidebar_collapsed
-	if bounding_box_overlay: bounding_box_overlay.visible = true
+	if bounding_box_overlay:
+		bounding_box_overlay.visible = bounding_box_overlay.show_overlay
+		if bounding_box_overlay.has_method("update_overlay"):
+			bounding_box_overlay.update_overlay()
 	var top_header = get_node_or_null("%TopHeader") if has_node("%TopHeader") else null
 	if top_header: top_header.visible = true
 

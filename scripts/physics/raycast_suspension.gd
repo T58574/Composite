@@ -191,6 +191,14 @@ func _generate_default_wheel_layout() -> void:
 			})
 
 func _physics_process(delta: float) -> void:
+	if global_position.y < -10.0:
+		global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.5, 0))
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
+
+	self.linear_damp = 1.0
+	self.angular_damp = 3.0
+
 	_read_player_input()
 	_apply_suspension_forces(delta)
 	_apply_propulsion_and_steering(delta)
