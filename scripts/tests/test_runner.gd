@@ -41,6 +41,11 @@ func _init() -> void:
 	if _test_mesh_editor_gizmo_drag():
 		passed_tests += 1
 
+	# Test Group 7: Quad Face Selection & Undo/Redo (Ctrl+Z)
+	total_tests += 1
+	if _test_quad_selection_and_undo_redo():
+		passed_tests += 1
+
 	print("----------------------------------------------------------")
 	print("RESULT: %d / %d TEST SUITES PASSED" % [passed_tests, total_tests])
 	print("==========================================================")
@@ -234,4 +239,55 @@ func _test_mesh_editor_gizmo_drag() -> bool:
 	root.free()
 
 	print("  PASS: MeshEditor vertex drag successfully transformed 3D geometry.")
+	return true
+
+func _test_quad_selection_and_undo_redo() -> bool:
+	print("\n[TEST 7] Testing Quad Face Selection & Undo/Redo (Ctrl+Z)...")
+
+	var root = Node3D.new()
+	get_root().add_child(root)
+
+	var hull = HullBuilder.new()
+	root.add_child(hull)
+	hull.set_dimensions(6.8, 3.4, 1.4, 60.0, HullBuilder.GlacisStyle.SLOPED_WEDGE)
+
+	var editor = MeshEditor.new()
+	root.add_child(editor)
+	editor.hull_builder = hull
+
+	# Test Quad Face Selection
+	var quad_positions = editor._get_coplanar_quad_face_vertices(hull, 0)
+	if quad_positions.size() < 4:
+		print("  FAIL: _get_coplanar_quad_face_vertices returned %d vertices, expected 4 for quad face" % quad_positions.size())
+		root.free()
+		return false
+
+	# Test Undo/Redo (Ctrl+Z)
+	var orig_faces = hull.mesh.get_faces()
+	var orig_p0 = orig_faces[0]
+
+	editor.selected_target = hull
+	editor.selected_face_index = 0
+	editor.selected_positions = quad_positions
+	editor._on_gizmo_transform_started()
+	editor._on_gizmo_transform_changed(Vector3(1.0, 0.5, 0.0), Vector3.ZERO, Vector3.ONE)
+	editor._on_gizmo_transform_ended()
+
+	var deformed_faces = hull.mesh.get_faces()
+	if deformed_faces[0].distance_to(orig_p0) < 0.05:
+		print("  FAIL: Mesh transform was not applied during drag")
+		root.free()
+		return false
+
+	# Trigger Undo
+	editor.undo_redo.undo()
+
+	var undone_faces = hull.mesh.get_faces()
+	if undone_faces[0].distance_to(orig_p0) > 0.01:
+		print("  FAIL: Undo (Ctrl+Z) failed to restore original mesh geometry")
+		root.free()
+		return false
+
+	root.free()
+	print("  PASS: Quad face selection (4 vertices) and Undo/Redo geometry rollback verified.")
 	return true

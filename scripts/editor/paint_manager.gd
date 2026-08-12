@@ -8,9 +8,9 @@ enum PaintScheme { SOLID_OLIVE, TRICOLOR_CAMO, DESERT_TAN, WINTER_WHITE, DARK_GR
 signal paint_changed(scheme: PaintScheme, primary_color: Color)
 
 @export var primary_color: Color = Color(0.25, 0.28, 0.22, 1.0) # Olive Drab
-@export_range(0.0, 1.0, 0.05) var metallic: float = 0.85
-@export_range(0.0, 1.0, 0.05) var roughness: float = 0.45
-@export_range(0.0, 1.0, 0.05) var edge_wear: float = 0.35
+@export_range(0.0, 1.0, 0.05) var metallic: float = 0.20
+@export_range(0.0, 1.0, 0.05) var roughness: float = 0.88
+@export_range(0.0, 1.0, 0.05) var edge_wear: float = 0.25
 @export_range(0, 4) var camo_type: int = 0
 @export_range(0.0, 1.0, 0.05) var dirt_amount: float = 0.4
 

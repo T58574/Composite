@@ -240,10 +240,14 @@ func _pick_element_at_screen_pos(screen_pos: Vector2) -> void:
 
 	match current_edit_mode:
 		EditMode.FACE:
-			var tri_offset = selected_face_index * 3
-			selected_vertex_indices = [tri_offset, tri_offset + 1, tri_offset + 2]
-			selected_positions = [target_gt * face_verts[0], target_gt * face_verts[1], target_gt * face_verts[2]]
-			gizmo_pos = (selected_positions[0] + selected_positions[1] + selected_positions[2]) / 3.0
+			selected_positions = _get_coplanar_quad_face_vertices(selected_target, selected_face_index)
+			if selected_positions.is_empty():
+				var tri_offset = selected_face_index * 3
+				selected_positions = [target_gt * face_verts[0], target_gt * face_verts[1], target_gt * face_verts[2]]
+			var avg_pos = Vector3.ZERO
+			for p in selected_positions:
+				avg_pos += p
+			gizmo_pos = avg_pos / max(selected_positions.size(), 1)
 
 		EditMode.VERTEX, EditMode.CORNER:
 			var best_idx = 0
@@ -294,6 +298,59 @@ func _clear_selection() -> void:
 	if gizmo_3d:
 		gizmo_3d.detach()
 	_update_selection_visuals()
+
+func _get_coplanar_quad_face_vertices(target: MeshInstance3D, hit_face_idx: int) -> Array[Vector3]:
+	var quad_verts: Array[Vector3] = []
+	if target == null or target.mesh == null:
+		return quad_verts
+
+	var mesh = target.mesh
+	var faces = mesh.get_faces()
+	var total_tris = faces.size() / 3
+	if hit_face_idx < 0 or hit_face_idx >= total_tris:
+		return quad_verts
+
+	var target_gt = target.global_transform if target.is_inside_tree() else target.transform
+	var hit_v0 = target_gt * faces[hit_face_idx * 3 + 0]
+	var hit_v1 = target_gt * faces[hit_face_idx * 3 + 1]
+	var hit_v2 = target_gt * faces[hit_face_idx * 3 + 2]
+
+	var e1 = hit_v1 - hit_v0
+	var e2 = hit_v2 - hit_v0
+	var hit_norm = e1.cross(e2).normalized()
+
+	quad_verts.append(hit_v0)
+	quad_verts.append(hit_v1)
+	quad_verts.append(hit_v2)
+
+	# Find adjacent co-planar triangles sharing an edge and coplanar normal
+	for i in range(total_tris):
+		if i == hit_face_idx:
+			continue
+		var v0 = target_gt * faces[i * 3 + 0]
+		var v1 = target_gt * faces[i * 3 + 1]
+		var v2 = target_gt * faces[i * 3 + 2]
+		var norm = (v1 - v0).cross(v2 - v0).normalized()
+
+		if abs(norm.dot(hit_norm)) > 0.95:
+			var shared_count = 0
+			for tri_v in [v0, v1, v2]:
+				for q_v in [hit_v0, hit_v1, hit_v2]:
+					if tri_v.distance_to(q_v) < 0.05:
+						shared_count += 1
+						break
+
+			if shared_count >= 2:
+				for tri_v in [v0, v1, v2]:
+					var is_dup = false
+					for existing in quad_verts:
+						if tri_v.distance_to(existing) < 0.05:
+							is_dup = true
+							break
+					if not is_dup:
+						quad_verts.append(tri_v)
+
+	return quad_verts
 	selection_changed.emit()
 
 func _update_cached_colocated_vertices() -> void:
@@ -414,8 +471,8 @@ func _on_gizmo_transform_ended() -> void:
 			bounding_box_overlay.update_overlay()
 
 	_drag_start_target = null
-	_drag_start_mesh_arrays.clear()
-	_drag_start_selected_positions.clear()
+	_drag_start_mesh_arrays = []
+	_drag_start_selected_positions = []
 
 func extrude_selected_face() -> void:
 	if selected_target == null or selected_target.mesh == null or selected_face_index < 0:
@@ -503,14 +560,22 @@ func _restore_mesh_state(target: MeshInstance3D, surface_arrays: Array, sel_posi
 	if array_mesh and not surface_arrays.is_empty():
 		array_mesh.clear_surfaces()
 		array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _duplicate_surface_arrays(surface_arrays))
+		target.mesh = array_mesh
+
 	if target == hull_builder and hull_builder.has_method("_update_collision_shape"):
 		hull_builder.call("_update_collision_shape")
+	elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance) and turret_builder.has_method("_update_collision_shape"):
+		turret_builder.call("_update_collision_shape")
+
 	if selected_target == target:
 		selected_positions = sel_positions.duplicate()
 		_update_cached_colocated_vertices()
-		_update_selection_visuals()
-		selection_changed.emit()
-		_update_cached_colocated_vertices()
+		if selected_positions.size() > 0 and gizmo_3d:
+			var avg = Vector3.ZERO
+			for p in selected_positions:
+				avg += p
+			avg /= float(selected_positions.size())
+			gizmo_3d.attach_to_position(avg)
 		_update_selection_visuals()
 		selection_changed.emit()
 
@@ -591,49 +656,59 @@ func _update_selection_visuals() -> void:
 
 	# 1. Translucent Face Fill Overlay (Sprocket-style Golden Fill)
 	if current_edit_mode == EditMode.FACE and selected_positions.size() >= 3:
-		var p0 = selected_positions[0]
-		var p1 = selected_positions[1]
-		var p2 = selected_positions[2]
-		var normal = (p1 - p0).cross(p2 - p0).normalized()
+		if selected_positions.size() == 4:
+			var p0 = selected_positions[0]
+			var p1 = selected_positions[1]
+			var p2 = selected_positions[2]
+			var p3 = selected_positions[3]
+			st.set_color(Color(1.0, 0.75, 0.1, 0.40))
+			_add_quad_simple(st, p0, p1, p2, p3)
 
-		st.set_color(Color(1.0, 0.75, 0.1, 0.35))
-		st.set_normal(normal)
-		st.set_uv(Vector2(0, 0))
-		st.add_vertex(p0)
-		st.set_normal(normal)
-		st.set_uv(Vector2(1, 0))
-		st.add_vertex(p1)
-		st.set_normal(normal)
-		st.set_uv(Vector2(0.5, 1))
-		st.add_vertex(p2)
+			if symmetry_x_enabled:
+				st.set_color(Color(0.2, 0.8, 1.0, 0.40))
+				_add_quad_simple(st, _symmetry_x(p0), _symmetry_x(p1), _symmetry_x(p2), _symmetry_x(p3))
+		elif selected_positions.size() == 3:
+			var p0 = selected_positions[0]
+			var p1 = selected_positions[1]
+			var p2 = selected_positions[2]
+			var normal = (p1 - p0).cross(p2 - p0).normalized()
 
-		if symmetry_x_enabled:
-			var s0 = _symmetry_x(p0)
-			var s1 = _symmetry_x(p1)
-			var s2 = _symmetry_x(p2)
-			var s_norm = (s1 - s0).cross(s2 - s0).normalized()
-
-			st.set_color(Color(0.2, 0.8, 1.0, 0.35))
-			st.set_normal(s_norm)
+			st.set_color(Color(1.0, 0.75, 0.1, 0.40))
+			st.set_normal(normal)
 			st.set_uv(Vector2(0, 0))
-			st.add_vertex(s0)
-			st.set_normal(s_norm)
+			st.add_vertex(p0)
+			st.set_normal(normal)
 			st.set_uv(Vector2(1, 0))
-			st.add_vertex(s1)
-			st.set_normal(s_norm)
+			st.add_vertex(p1)
+			st.set_normal(normal)
 			st.set_uv(Vector2(0.5, 1))
-			st.add_vertex(s2)
+			st.add_vertex(p2)
+
+			if symmetry_x_enabled:
+				var s0 = _symmetry_x(p0)
+				var s1 = _symmetry_x(p1)
+				var s2 = _symmetry_x(p2)
+				var s_norm = (s1 - s0).cross(s2 - s0).normalized()
+
+				st.set_color(Color(0.2, 0.8, 1.0, 0.40))
+				st.set_normal(s_norm)
+				st.set_uv(Vector2(0, 0))
+				st.add_vertex(s0)
+				st.set_normal(s_norm)
+				st.set_uv(Vector2(1, 0))
+				st.add_vertex(s1)
+				st.set_normal(s_norm)
+				st.set_uv(Vector2(0.5, 1))
+				st.add_vertex(s2)
 
 	# 2. Contour Line Outlines
 	if selected_positions.size() >= 3:
-		var p0 = selected_positions[0]
-		var p1 = selected_positions[1]
-		var p2 = selected_positions[2]
-		_add_thick_line(st, p0, p1, Color(1.0, 0.85, 0.1), 0.015)
-		_add_thick_line(st, p1, p2, Color(1.0, 0.85, 0.1), 0.015)
-		_add_thick_line(st, p2, p0, Color(1.0, 0.85, 0.1), 0.015)
-	elif selected_positions.size() >= 2:
-		_add_thick_line(st, selected_positions[0], selected_positions[1], Color(1.0, 0.85, 0.1), 0.015)
+		for k in range(selected_positions.size()):
+			var a = selected_positions[k]
+			var b = selected_positions[(k + 1) % selected_positions.size()]
+			_add_thick_line(st, a, b, Color(1.0, 0.85, 0.1), 0.018)
+	elif selected_positions.size() == 2:
+		_add_thick_line(st, selected_positions[0], selected_positions[1], Color(1.0, 0.85, 0.1), 0.018)
 
 	# 3. Unique Corner Vertex Handle Nodes (Red Cubes) - Deduplicated by 3D position using spatial grid hashing
 	if selected_target and selected_target.mesh:
