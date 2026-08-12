@@ -100,6 +100,7 @@ class ArmorSandwich extends RefCounted:
 	var rear_layer: ArmorLayer = null
 	var has_spall_liner: bool = false
 	var addon_protection: AddonProtectionType = AddonProtectionType.NONE
+	var era_detonated: bool = false
 
 	func _init() -> void:
 		outer_layer = ArmorLayer.new(MaterialType.RHA_STEEL, 60.0)
@@ -107,6 +108,20 @@ class ArmorSandwich extends RefCounted:
 		rear_layer = ArmorLayer.new(MaterialType.RHA_STEEL, 50.0)
 		has_spall_liner = false
 		addon_protection = AddonProtectionType.NONE
+		era_detonated = false
+
+	func duplicate_sandwich() -> ArmorSandwich:
+		var copy = ArmorSandwich.new()
+		if outer_layer:
+			copy.outer_layer = ArmorLayer.new(outer_layer.material, outer_layer.thickness_mm)
+		if filler_layer:
+			copy.filler_layer = ArmorLayer.new(filler_layer.material, filler_layer.thickness_mm)
+		if rear_layer:
+			copy.rear_layer = ArmorLayer.new(rear_layer.material, rear_layer.thickness_mm)
+		copy.has_spall_liner = has_spall_liner
+		copy.addon_protection = addon_protection
+		copy.era_detonated = era_detonated
+		return copy
 
 	func get_total_physical_thickness_mm() -> float:
 		var total: float = 0.0
@@ -135,7 +150,10 @@ class ArmorSandwich extends RefCounted:
 				total_rha += layer.thickness_mm * los_factor * mult
 		if has_spall_liner:
 			total_rha += 15.0 * los_factor * 0.3
-		total_rha += ArmorCalculator.get_addon_rha_bonus_mm(addon_protection, projectile_type)
+		var addon_bonus := ArmorCalculator.get_addon_rha_bonus_mm(addon_protection, projectile_type)
+		if era_detonated and ArmorCalculator.is_era_addon(addon_protection):
+			addon_bonus = 0.0
+		total_rha += addon_bonus
 		return total_rha
 
 	static func create_default_glacis() -> ArmorSandwich:
@@ -164,6 +182,17 @@ class ImpactResult extends RefCounted:
 	var impact_angle_deg: float = 0.0
 	var hit_position: Vector3 = Vector3.ZERO
 	var description: String = ""
+	var spall_cone_angle_deg: float = 0.0
+	var spall_fragment_count: int = 0
+	var damaged_modules: Array[String] = []
+	var crew_knocked_out: Array[String] = []
+
+
+static func is_era_addon(addon: AddonProtectionType) -> bool:
+	match addon:
+		AddonProtectionType.ERA_KONTAKT1, AddonProtectionType.ERA_KONTAKT5, AddonProtectionType.ERA_RELIKT:
+			return true
+	return false
 
 
 static func get_addon_area_mass_kg_m2(addon: AddonProtectionType) -> float:
@@ -254,7 +283,12 @@ static func evaluate_impact(
 	
 	var los_factor = 1.0 / max(cos_theta, 0.087) # 0.087 = cos(85 deg)
 	
+	var era_bonus_applied := false
+
 	if sandwich != null:
+		var era_bonus = get_addon_rha_bonus_mm(sandwich.addon_protection, projectile_type) if (is_era_addon(sandwich.addon_protection) and not sandwich.era_detonated) else 0.0
+		if era_bonus > 0.0:
+			era_bonus_applied = true
 		result.effective_thickness_mm = sandwich.get_effective_rha_mm(projectile_type, los_factor)
 	else:
 		var los_thickness = nominal_armor_mm * los_factor
@@ -273,6 +307,8 @@ static func evaluate_impact(
 			ArmorType.ERA_RELIKT:
 				era_reduction_mm = 800.0 if (projectile_type == AmmoType.HEAT) else (400.0 if projectile_type == AmmoType.ATGM else 350.0)
 		
+		if era_reduction_mm > 0.0:
+			era_bonus_applied = true
 		result.effective_thickness_mm = (los_thickness * rha_multiplier) + era_reduction_mm
 
 	# Check for ricochet on extreme angles (> 78 deg for APFSDS, > 82 deg for HEAT)
@@ -280,17 +316,106 @@ static func evaluate_impact(
 	if result.impact_angle_deg > ricochet_angle:
 		result.penetrated = false
 		result.residual_penetration_mm = 0.0
+		result.spall_cone_angle_deg = 0.0
+		result.spall_fragment_count = 0
+		result.damaged_modules.clear()
+		result.crew_knocked_out.clear()
 		result.description = "RICOCHET (Glancing hit at %.1f°)" % result.impact_angle_deg
 		return result
 		
 	if penetration_capacity_mm >= result.effective_thickness_mm:
 		result.penetrated = true
 		result.residual_penetration_mm = penetration_capacity_mm - result.effective_thickness_mm
-		result.description = "PENETRATION (Pen: %.0fmm vs Eff: %.0fmm)" % [penetration_capacity_mm, result.effective_thickness_mm]
+		
+		# Spall Cone Angle: 60° for APFSDS, 90° for HEAT
+		var base_cone_angle: float = 60.0 if projectile_type == AmmoType.APFSDS else 90.0
+		var base_frags: float = 35.0 if projectile_type == AmmoType.APFSDS else 65.0
+		base_frags += clampf(result.residual_penetration_mm * 0.1, 0.0, 45.0)
+		
+		var has_spall_liner: bool = (sandwich != null and sandwich.has_spall_liner)
+		if has_spall_liner:
+			result.spall_cone_angle_deg = base_cone_angle * 0.4 # Reduced by 60% (to ~24° or ~36°)
+			result.spall_fragment_count = int(round(base_frags * 0.4)) # Fragment count reduced by 60%
+		else:
+			result.spall_cone_angle_deg = base_cone_angle
+			result.spall_fragment_count = int(round(base_frags))
+
+		# Secondary damage evaluation to modules and crew
+		_evaluate_internal_damage(result, projectile_type, has_spall_liner)
+
+		# Detailed impact result description
+		var desc: String = "PENETRATION (Pen: %.0fmm vs Eff: %.0fmm)" % [penetration_capacity_mm, result.effective_thickness_mm]
+		desc += " [Cone: %.0f°, Frags: %d%s]" % [
+			result.spall_cone_angle_deg,
+			result.spall_fragment_count,
+			" (Spall Liner -60%)" if has_spall_liner else ""
+		]
+		if not result.damaged_modules.is_empty():
+			desc += " | Modules: " + ", ".join(result.damaged_modules)
+		if not result.crew_knocked_out.is_empty():
+			desc += " | Crew KO: " + ", ".join(result.crew_knocked_out)
+		result.description = desc
 	else:
 		result.penetrated = false
 		result.residual_penetration_mm = 0.0
+		result.spall_cone_angle_deg = 0.0
+		result.spall_fragment_count = 0
+		result.damaged_modules.clear()
+		result.crew_knocked_out.clear()
 		result.description = "NON-PENETRATION / SHOCKED (Pen: %.0fmm vs Eff: %.0fmm)" % [penetration_capacity_mm, result.effective_thickness_mm]
 		
+	if era_bonus_applied:
+		if sandwich != null:
+			sandwich.era_detonated = true
+		result.description += " [ERA DETONATED]"
+
 	return result
+
+
+## Evaluates secondary internal damage to vehicle modules (Engine, Ammo Storage) and crew (Driver, Gunner, Commander)
+static func _evaluate_internal_damage(result: ImpactResult, projectile_type: AmmoType, has_spall_liner: bool) -> void:
+	result.damaged_modules.clear()
+	result.crew_knocked_out.clear()
+
+	var residual_pen := result.residual_penetration_mm
+	var angle_factor := clampf(cos(deg_to_rad(result.impact_angle_deg)), 0.3, 1.0)
+	var spall_mitigation := 0.4 if has_spall_liner else 1.0
+
+	# Interior spall energy index
+	var spall_energy := residual_pen * angle_factor * spall_mitigation
+
+	# Engine damage chance
+	var engine_prob := clampf((spall_energy - 15.0) / 180.0, 0.0, 0.85)
+	if randf() < engine_prob:
+		result.damaged_modules.append("Engine")
+
+	# Ammunition Storage (Ammo Detonation!) damage chance
+	var ammo_prob := clampf((spall_energy - 25.0) / 200.0, 0.0, 0.80)
+	if randf() < ammo_prob:
+		var det_threshold := 80.0 if projectile_type == AmmoType.APFSDS else 50.0
+		if spall_energy > det_threshold or randf() < 0.6:
+			result.damaged_modules.append("Ammunition Storage (Ammo Detonation!)")
+		else:
+			result.damaged_modules.append("Ammunition Storage")
+
+	# Crew member status evaluation: Driver, Gunner, Commander
+	var driver_prob := clampf((spall_energy - 5.0) / 160.0, 0.0, 0.90)
+	if randf() < driver_prob:
+		result.crew_knocked_out.append("Driver")
+
+	var gunner_prob := clampf((spall_energy - 10.0) / 170.0, 0.0, 0.85)
+	if randf() < gunner_prob:
+		result.crew_knocked_out.append("Gunner")
+
+	var commander_prob := clampf((spall_energy - 20.0) / 190.0, 0.0, 0.80)
+	if randf() < commander_prob:
+		result.crew_knocked_out.append("Commander")
+
+	# Guarantee secondary damage on high energy penetrations if initial random checks missed
+	if residual_pen > 40.0 and result.damaged_modules.is_empty() and result.crew_knocked_out.is_empty():
+		if randf() < 0.5:
+			result.crew_knocked_out.append("Gunner" if randf() < 0.5 else "Driver")
+		else:
+			result.damaged_modules.append("Engine" if randf() < 0.5 else "Ammunition Storage (Ammo Detonation!)")
+
 

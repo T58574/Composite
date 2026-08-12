@@ -21,6 +21,7 @@ extends RigidBody3D
 var _raycasts: Array[RayCast3D] = []
 var _wheel_mesh_nodes: Array[Node3D] = []
 var _inputs: Vector2 = Vector2.ZERO # x = steering (-1..1), y = throttle (-1..1)
+var _track_generator_node: Node = null
 
 func _ready() -> void:
 	# Set rigid body physics defaults for Godot-Jolt
@@ -65,6 +66,35 @@ func _physics_process(delta: float) -> void:
 	_read_player_input()
 	_apply_suspension_forces(delta)
 	_apply_propulsion_and_steering(delta)
+	_animate_tracks_and_wheels(delta)
+
+func _animate_tracks_and_wheels(delta: float) -> void:
+	var forward_dir = -global_transform.basis.z
+	var current_speed_ms = linear_velocity.dot(forward_dir)
+	var track_gen = _find_track_generator()
+	if track_gen and track_gen.has_method("animate_tracks_and_wheels"):
+		track_gen.animate_tracks_and_wheels(current_speed_ms, delta)
+
+func _find_track_generator() -> Node:
+	if _track_generator_node and is_instance_valid(_track_generator_node):
+		return _track_generator_node
+
+	if has_node("TrackGenerator"):
+		_track_generator_node = get_node("TrackGenerator")
+		return _track_generator_node
+
+	for child in get_children():
+		if child is TrackGenerator or child.has_method("animate_tracks_and_wheels"):
+			_track_generator_node = child
+			return _track_generator_node
+
+	if get_parent() != null:
+		for sibling in get_parent().get_children():
+			if sibling != self and (sibling is TrackGenerator or sibling.has_method("animate_tracks_and_wheels")):
+				_track_generator_node = sibling
+				return _track_generator_node
+
+	return null
 
 func _read_player_input() -> void:
 	var forward = Input.get_action_strength("ui_up") - Input.get_action_strength("ui_down")

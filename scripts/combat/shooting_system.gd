@@ -16,21 +16,30 @@ var ammo_count: int = 40
 var reload_time_sec: float = 6.5
 var _reload_timer: float = 0.0
 var _is_reloading: bool = false
-var _fire_raycast: RayCast3D
+
+class Projectile extends RefCounted:
+	var position: Vector3 = Vector3.ZERO
+	var velocity: Vector3 = Vector3.ZERO
+	var distance_traveled: float = 0.0
+	var initial_velocity_ms: float = 1750.0
+	var penetration_mm: float = 600.0
+	var ammo_type: ArmorCalculator.AmmoType = ArmorCalculator.AmmoType.APFSDS
+	var visual_node: Node3D = null
+	var lifetime: float = 0.0
+	var max_lifetime: float = 10.0
+
+var _active_projectiles: Array[Projectile] = []
 
 func _ready() -> void:
-	_fire_raycast = RayCast3D.new()
-	_fire_raycast.name = "FireRayCast"
-	_fire_raycast.target_position = Vector3(0, 0, -3000)  # 3km range
-	_fire_raycast.enabled = true
-	add_child(_fire_raycast)
 	_update_raycast_exceptions()
 
-func _update_raycast_exceptions() -> void:
-	if _fire_raycast == null:
-		return
-	_fire_raycast.clear_exceptions()
+func _exit_tree() -> void:
+	for proj in _active_projectiles:
+		if proj.visual_node and is_instance_valid(proj.visual_node):
+			proj.visual_node.queue_free()
+	_active_projectiles.clear()
 
+func _update_raycast_exceptions() -> void:
 	if turret_builder == null and get_parent():
 		for child in get_parent().get_children():
 			if child is TurretBuilder:
@@ -43,34 +52,15 @@ func _update_raycast_exceptions() -> void:
 				hull_builder = child
 				break
 
-	var root_vehicle := get_parent()
-
-	_add_exception_target(turret_builder)
-	_add_exception_target(hull_builder)
-	_add_exception_target(root_vehicle)
-
-func _add_exception_target(target: Node) -> void:
-	if target == null:
-		return
-	if target is CollisionObject3D:
-		_fire_raycast.add_exception(target as CollisionObject3D)
-	if "static_collision_body" in target and target.static_collision_body is CollisionObject3D:
-		_fire_raycast.add_exception(target.static_collision_body as CollisionObject3D)
-	for child in target.find_children("", "CollisionObject3D", true, false):
-		if child is CollisionObject3D:
-			_fire_raycast.add_exception(child as CollisionObject3D)
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		fire()
 
-func _process(delta: float) -> void:
-	# Position raycast at gun barrel tip
-	if turret_builder and turret_builder.gun_barrel_mesh_instance:
-		var barrel := turret_builder.gun_barrel_mesh_instance
-		_fire_raycast.global_position = barrel.global_position + barrel.global_transform.basis.z * -(turret_builder.barrel_length * 0.5)
-		_fire_raycast.global_transform.basis = barrel.global_transform.basis
-	
+func _physics_process(delta: float) -> void:
+	_update_reload(delta)
+	_update_projectiles(delta)
+
+func _update_reload(delta: float) -> void:
 	if _is_reloading:
 		_reload_timer -= delta
 		var progress := 1.0 - (_reload_timer / reload_time_sec)
@@ -82,46 +72,227 @@ func _process(delta: float) -> void:
 func fire() -> void:
 	if _is_reloading or ammo_count <= 0:
 		return
-	
+
 	_update_raycast_exceptions()
 
 	ammo_count -= 1
 	_is_reloading = true
 	_reload_timer = reload_time_sec
 	shot_fired.emit(ammo_count)
-	
-	# Raycast check
-	_fire_raycast.force_raycast_update()
-	if _fire_raycast.is_colliding():
-		var hit_pos := _fire_raycast.get_collision_point()
-		var hit_normal := _fire_raycast.get_collision_normal()
-		var collider := _fire_raycast.get_collider()
-		
-		# Determine armor properties of hit target
-		var armor_sandwich: ArmorCalculator.ArmorSandwich = null
-		var armor_thickness := 100.0  # Default
-		var armor_type := ArmorCalculator.ArmorType.RHA_STEEL
-		
-		# Check if we hit something with an ArmorCalculator or known armor
-		if collider:
-			if collider.has_meta("armor_sandwich"):
-				var meta_sandwich = collider.get_meta("armor_sandwich")
-				if meta_sandwich is ArmorCalculator.ArmorSandwich:
-					armor_sandwich = meta_sandwich
-			if collider.has_meta("armor_thickness_mm"):
-				armor_thickness = float(collider.get_meta("armor_thickness_mm"))
-			if collider.has_meta("armor_type"):
-				armor_type = collider.get_meta("armor_type") as ArmorCalculator.ArmorType
-		
-		var ray_dir := (_fire_raycast.global_transform.basis * Vector3(0, 0, -1)).normalized()
-		var result := ArmorCalculator.evaluate_impact(
-			ammo_type,
-			penetration_mm,
-			armor_thickness,
-			armor_type,
-			hit_normal,
-			ray_dir,
-			armor_sandwich
-		)
-		result.hit_position = hit_pos
-		impact_result.emit(result)
+
+	# Determine barrel tip position and firing direction vector
+	var spawn_pos := global_position
+	var fire_dir := -global_transform.basis.z.normalized()
+
+	if turret_builder and turret_builder.gun_barrel_mesh_instance:
+		var barrel := turret_builder.gun_barrel_mesh_instance
+		spawn_pos = barrel.global_position + barrel.global_transform.basis.z * -(turret_builder.barrel_length * 0.5)
+		fire_dir = -barrel.global_transform.basis.z.normalized()
+
+	# Instantiate physical projectile entity
+	var proj := Projectile.new()
+	proj.position = spawn_pos
+	proj.velocity = fire_dir * muzzle_velocity_ms
+	proj.initial_velocity_ms = muzzle_velocity_ms
+	proj.penetration_mm = penetration_mm
+	proj.ammo_type = ammo_type
+	proj.distance_traveled = 0.0
+	proj.lifetime = 0.0
+
+	# Create glowing 3D visual tracer effect
+	var tracer := _create_tracer_visual(caliber_mm)
+	tracer.global_position = spawn_pos
+	if fire_dir.length_squared() > 0.01:
+		var up := Vector3.UP
+		if absf(fire_dir.dot(up)) > 0.99:
+			up = Vector3.RIGHT
+		tracer.look_at(spawn_pos + fire_dir, up)
+
+	var world_root := get_tree().current_scene if get_tree() and get_tree().current_scene else (get_tree().root if get_tree() else get_parent())
+	if world_root:
+		world_root.add_child(tracer)
+	proj.visual_node = tracer
+
+	_active_projectiles.append(proj)
+
+func _update_projectiles(delta: float) -> void:
+	if _active_projectiles.is_empty():
+		return
+
+	var vehicle_rids := _get_vehicle_collision_rids()
+	var space_state := get_world_3d().direct_space_state if get_world_3d() else null
+	var projectiles_to_remove: Array[Projectile] = []
+
+	for proj in _active_projectiles:
+		proj.lifetime += delta
+		if proj.lifetime > proj.max_lifetime:
+			projectiles_to_remove.append(proj)
+			continue
+
+		var old_pos := proj.position
+
+		# 1. Update cumulative distance traveled (meters)
+		var step_dist := proj.velocity.length() * delta
+		proj.distance_traveled += step_dist
+
+		# 2. Velocity drag degradation: v(d) = v0 * max(0.7, 1.0 - 0.00015 * d)
+		var drag_factor := maxf(0.7, 1.0 - 0.00015 * proj.distance_traveled)
+		var current_speed := proj.initial_velocity_ms * drag_factor
+		var vel_dir := proj.velocity.normalized() if proj.velocity.length_squared() > 0.001 else Vector3.FORWARD
+		proj.velocity = vel_dir * current_speed
+
+		# 3. Parabolic gravity arc drop: g = 9.81 m/s^2
+		proj.velocity.y -= 9.81 * delta
+
+		# 4. Advance position for current step
+		var new_pos := old_pos + proj.velocity * delta
+		proj.position = new_pos
+
+		# 5. Continuous segment raycast to detect collision without high-speed tunneling
+		if space_state:
+			var query := PhysicsRayQueryParameters3D.create(old_pos, new_pos)
+			query.exclude = vehicle_rids
+			query.collide_with_bodies = true
+			query.collide_with_areas = true
+
+			var hit := space_state.intersect_ray(query)
+			if not hit.is_empty():
+				var hit_pos: Vector3 = hit.position
+				var hit_normal: Vector3 = hit.normal
+				var collider: Object = hit.collider
+
+				# Compute exact distance to hit point
+				var exact_dist := proj.distance_traveled - old_pos.distance_to(new_pos) + old_pos.distance_to(hit_pos)
+				var hit_drag_factor := maxf(0.7, 1.0 - 0.00015 * exact_dist)
+				var hit_speed := proj.initial_velocity_ms * hit_drag_factor
+
+				# Scale penetration capacity dynamically with velocity for APFSDS: Pen(d) = Pen0 * v(d) / v0
+				var current_pen := proj.penetration_mm
+				if proj.ammo_type == ArmorCalculator.AmmoType.APFSDS:
+					var v0_safe := maxf(1.0, proj.initial_velocity_ms)
+					current_pen = proj.penetration_mm * (hit_speed / v0_safe)
+
+				# Retrieve armor metadata from target
+				var armor_sandwich: ArmorCalculator.ArmorSandwich = null
+				var armor_thickness := 100.0
+				var armor_type := ArmorCalculator.ArmorType.RHA_STEEL
+
+				if collider:
+					var target_node: Node = collider as Node
+					while target_node != null and not target_node.has_method("get_armor_sandwich_at"):
+						target_node = target_node.get_parent()
+					if target_node != null and target_node.has_method("get_armor_sandwich_at"):
+						armor_sandwich = target_node.get_armor_sandwich_at(hit_pos)
+					elif collider.has_meta("armor_sandwich"):
+						var meta_sandwich = collider.get_meta("armor_sandwich")
+						if meta_sandwich is ArmorCalculator.ArmorSandwich:
+							armor_sandwich = meta_sandwich
+					if collider.has_meta("armor_thickness_mm"):
+						armor_thickness = float(collider.get_meta("armor_thickness_mm"))
+					if collider.has_meta("armor_type"):
+						armor_type = collider.get_meta("armor_type") as ArmorCalculator.ArmorType
+
+				var ray_dir := (new_pos - old_pos).normalized()
+				var result := ArmorCalculator.evaluate_impact(
+					proj.ammo_type,
+					current_pen,
+					armor_thickness,
+					armor_type,
+					hit_normal,
+					ray_dir,
+					armor_sandwich
+				)
+				result.hit_position = hit_pos
+				impact_result.emit(result)
+
+				proj.position = hit_pos
+				projectiles_to_remove.append(proj)
+				continue
+
+		# Update visual tracer mesh transform
+		if proj.visual_node and is_instance_valid(proj.visual_node):
+			proj.visual_node.global_position = proj.position
+			if proj.velocity.length_squared() > 0.01:
+				var up := Vector3.UP
+				if absf(proj.velocity.normalized().dot(up)) > 0.99:
+					up = Vector3.RIGHT
+				proj.visual_node.look_at(proj.position + proj.velocity, up)
+
+	# Clean up despawned or impacted projectiles
+	for proj in projectiles_to_remove:
+		if proj.visual_node and is_instance_valid(proj.visual_node):
+			proj.visual_node.queue_free()
+		_active_projectiles.erase(proj)
+
+func _create_tracer_visual(p_caliber_mm: float) -> Node3D:
+	var tracer_root := Node3D.new()
+	tracer_root.name = "ProjectileTracer"
+
+	# Shell body mesh
+	var shell_mesh := MeshInstance3D.new()
+	shell_mesh.name = "ShellMesh"
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = clampf(p_caliber_mm / 2000.0, 0.04, 0.1)
+	cylinder.bottom_radius = clampf(p_caliber_mm / 2000.0, 0.04, 0.1)
+	cylinder.height = 0.5
+	shell_mesh.mesh = cylinder
+	shell_mesh.rotation_degrees.x = 90.0
+
+	var shell_mat := StandardMaterial3D.new()
+	shell_mat.albedo_color = Color(0.25, 0.25, 0.3)
+	shell_mat.metallic = 0.8
+	shell_mat.roughness = 0.3
+	shell_mesh.material_override = shell_mat
+	tracer_root.add_child(shell_mesh)
+
+	# Tracer streak mesh
+	var streak_mesh := MeshInstance3D.new()
+	streak_mesh.name = "TracerStreak"
+	var box := BoxMesh.new()
+	var streak_width: float = clampf(p_caliber_mm / 1200.0, 0.06, 0.15)
+	var streak_length: float = 4.0
+	box.size = Vector3(streak_width, streak_width, streak_length)
+	streak_mesh.mesh = box
+	streak_mesh.position = Vector3(0, 0, streak_length * 0.5 + 0.25)
+
+	var tracer_mat := StandardMaterial3D.new()
+	tracer_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	tracer_mat.albedo_color = Color(1.0, 0.85, 0.3)
+	tracer_mat.emission_enabled = true
+	tracer_mat.emission = Color(1.0, 0.7, 0.1)
+	tracer_mat.emission_energy_multiplier = 8.0
+	streak_mesh.material_override = tracer_mat
+	tracer_root.add_child(streak_mesh)
+
+	# OmniLight3D for bright illumination
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.75, 0.3)
+	light.light_energy = 2.5
+	light.omni_range = 6.0
+	tracer_root.add_child(light)
+
+	return tracer_root
+
+func _get_vehicle_collision_rids() -> Array[RID]:
+	var rids: Array[RID] = []
+	var root := get_parent()
+	if root:
+		_collect_rids(root, rids)
+	if turret_builder and turret_builder != root:
+		_collect_rids(turret_builder, rids)
+	if hull_builder and hull_builder != root:
+		_collect_rids(hull_builder, rids)
+	return rids
+
+func _collect_rids(node: Node, rids: Array[RID]) -> void:
+	if node is CollisionObject3D:
+		var rid := (node as CollisionObject3D).get_rid()
+		if not rids.has(rid):
+			rids.append(rid)
+	if "static_collision_body" in node and node.static_collision_body is CollisionObject3D:
+		var rid := (node.static_collision_body as CollisionObject3D).get_rid()
+		if not rids.has(rid):
+			rids.append(rid)
+	for child in node.get_children():
+		_collect_rids(child, rids)
+

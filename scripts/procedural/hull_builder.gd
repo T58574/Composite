@@ -25,6 +25,7 @@ extends MeshInstance3D
 var calculated_volume_m3: float = 0.0
 var calculated_mass_kg: float = 0.0
 var armor_sandwich: ArmorCalculator.ArmorSandwich = null
+var era_sectors: Dictionary = {}
 var static_collision_body: StaticBody3D = null
 var collision_shape_node: CollisionShape3D = null
 
@@ -249,3 +250,57 @@ func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_a
 	self.height = p_height
 	self.front_glacis_angle_deg = p_glacis_angle
 	generate_hull_mesh()
+
+## Determine local armor sector name from world hit position
+func get_sector_at(world_hit_pos: Vector3) -> String:
+	var local_pos = to_local(world_hit_pos)
+	var half_l = length * 0.5
+	var half_w = width * 0.5
+	var half_h = height * 0.5
+
+	if local_pos.y > half_h * 0.35:
+		return "roof"
+	elif local_pos.x > 0.0:
+		if local_pos.y < -half_h * 0.2:
+			return "lower_glacis"
+		elif local_pos.z < -half_w * 0.25:
+			return "upper_glacis_left"
+		elif local_pos.z > half_w * 0.25:
+			return "upper_glacis_right"
+		else:
+			return "upper_glacis_center"
+	elif local_pos.x < -half_l * 0.65:
+		return "rear"
+	else:
+		if local_pos.z < 0.0:
+			return "side_left"
+		else:
+			return "side_right"
+
+## Get or initialize sector-specific ArmorSandwich for target tracking
+func get_armor_sandwich_at(world_hit_pos: Vector3) -> ArmorCalculator.ArmorSandwich:
+	var sector = get_sector_at(world_hit_pos)
+	if era_sectors.has(sector):
+		return era_sectors[sector] as ArmorCalculator.ArmorSandwich
+
+	var base_sandwich = armor_sandwich if armor_sandwich != null else ArmorCalculator.ArmorSandwich.create_default_glacis()
+	var sector_sandwich = base_sandwich.duplicate_sandwich()
+	era_sectors[sector] = sector_sandwich
+	return sector_sandwich
+
+func is_era_sector_spent(sector_name: String) -> bool:
+	if era_sectors.has(sector_name):
+		var s: ArmorCalculator.ArmorSandwich = era_sectors[sector_name]
+		return s != null and s.era_detonated
+	return false
+
+func get_spent_era_sectors() -> Array[String]:
+	var spent: Array[String] = []
+	for sector_name in era_sectors:
+		var s: ArmorCalculator.ArmorSandwich = era_sectors[sector_name]
+		if s != null and s.era_detonated:
+			spent.append(sector_name)
+	return spent
+
+func reset_era_sectors() -> void:
+	era_sectors.clear()

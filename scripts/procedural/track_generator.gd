@@ -75,6 +75,7 @@ func _create_road_wheels_and_belts() -> void:
 		sprocket.position = sprocket_pos
 		sprocket.material_override = track_material
 		add_child(sprocket)
+		_wheel_nodes.append(sprocket)
 
 		# 2. Idler Wheel (Rear, -X) with dished spokes
 		var idler_pos = Vector3(rear_x - (wheel_radius * 1.3), 0.1, z_pos)
@@ -82,6 +83,7 @@ func _create_road_wheels_and_belts() -> void:
 		idler.position = idler_pos
 		idler.material_override = track_material
 		add_child(idler)
+		_wheel_nodes.append(idler)
 
 		# 3. Dual Rim Road Wheels & Axle Hub Caps along X axis
 		var wheel_y = -suspension_height * 0.5
@@ -110,6 +112,7 @@ func _create_road_wheels_and_belts() -> void:
 			roller.position = r_pos
 			roller.material_override = track_material
 			add_child(roller)
+			_wheel_nodes.append(roller)
 
 		# 5. Continuous Track Belt Loop with Sag Curve along X axis
 		_build_track_loop_mesh(z_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width)
@@ -406,3 +409,27 @@ func set_chassis_parameters(count: int, diameter: float, width: float, clearance
 	self.track_width = width
 	self.suspension_height = clearance
 	generate_tracks_and_wheels()
+
+func animate_tracks_and_wheels(speed_ms: float, delta: float) -> void:
+	var wheel_radius: float = wheel_diameter * 0.5
+	if wheel_radius <= 0.001:
+		wheel_radius = 0.325
+
+	var rot_angle: float = (speed_ms / wheel_radius) * delta
+	for wheel in _wheel_nodes:
+		if is_instance_valid(wheel):
+			wheel.rotate_z(-rot_angle)
+
+	if track_material is StandardMaterial3D:
+		var std_mat := track_material as StandardMaterial3D
+		std_mat.uv1_offset.x += speed_ms * 0.2 * delta
+	elif track_material is ShaderMaterial:
+		var shader_mat := track_material as ShaderMaterial
+		var current_uv = shader_mat.get_shader_parameter("uv_offset")
+		if current_uv is Vector2:
+			shader_mat.set_shader_parameter("uv_offset", current_uv + Vector2(speed_ms * 0.2 * delta, 0.0))
+		elif current_uv is Vector3:
+			shader_mat.set_shader_parameter("uv_offset", current_uv + Vector3(speed_ms * 0.2 * delta, 0.0, 0.0))
+		else:
+			shader_mat.set_shader_parameter("uv_offset", Vector2(speed_ms * 0.2 * delta, 0.0))
+
