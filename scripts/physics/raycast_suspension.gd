@@ -105,15 +105,21 @@ func setup_vehicle_from_builder(
 ) -> void:
 	_track_generator_node = track_generator
 	
-	# 1. Calculate Real TTX Mass & Physical Stats
+	# Disable child StaticBody3D nodes on hull and turret to eliminate self-collision Jolt depenetration explosions
+	if hull_builder != null:
+		_disable_static_bodies_recursively(hull_builder)
+	if turret_builder != null:
+		_disable_static_bodies_recursively(turret_builder)
+
+	# 1. Calculate Real TTX Mass & Physical Stats (Lightweight mockup ~12-16 tons)
 	var ttx = TankStatsCalculator.calculate_stats(hull_builder, turret_builder, track_generator, engine_hp)
-	self.mass = max(5000.0, ttx.total_mass_tons * 1000.0) # mass in kg
+	self.mass = clamp(ttx.total_mass_tons * 1000.0, 10000.0, 18000.0) # Light mass in kg
 	self.engine_horsepower = ttx.engine_horsepower
 	self.max_speed_kmh = ttx.max_speed_kmh
 	self.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	self.center_of_mass = Vector3(0.0, -0.4, 0.0)
-	self.linear_damp = 0.8
-	self.angular_damp = 3.5
+	self.linear_damp = 1.0
+	self.angular_damp = 4.0
 	
 	# 2. Setup Solid Chassis Collision Shape directly on RigidBody3D
 	_setup_chassis_collision(hull_builder)
@@ -129,6 +135,15 @@ func setup_vehicle_from_builder(
 	# 4. Auto-tune Spring Stiffness & Damping based on actual tank mass
 	_auto_tune_suspension()
 	_refresh_ray_exceptions()
+
+func _disable_static_bodies_recursively(node: Node) -> void:
+	if node is StaticBody3D:
+		node.process_mode = Node.PROCESS_MODE_DISABLED
+		for col in node.get_children():
+			if col is CollisionShape3D:
+				col.disabled = true
+	for child in node.get_children():
+		_disable_static_bodies_recursively(child)
 
 func _setup_chassis_collision(hull_builder: HullBuilder) -> void:
 	if _chassis_collision_shape == null:

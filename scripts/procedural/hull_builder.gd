@@ -331,12 +331,15 @@ func _update_collision_shape() -> void:
 	collision_shape_node.shape = mesh.create_trimesh_shape()
 	static_collision_body.add_child(collision_shape_node)
 
-	if armor_sandwich == null:
-		armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
-
 	static_collision_body.set_meta("armor_sandwich", armor_sandwich)
 	static_collision_body.set_meta("armor_thickness_mm", front_armor_mm)
 	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
+
+	# If attached to a RigidBody3D tank chassis, disable static_collision_body to prevent Jolt depenetration explosions
+	var p = get_parent()
+	if p is RigidBody3D or (p != null and p.get_parent() is RigidBody3D):
+		static_collision_body.process_mode = Node.PROCESS_MODE_DISABLED
+		collision_shape_node.disabled = true
 
 ## Creates an inset BoxShape3D suitable for a parent RigidBody3D tank chassis (leaves suspension clearance free)
 func create_rigidbody_shape() -> Shape3D:
