@@ -975,6 +975,22 @@ func _on_paint_scheme_selected(index: int) -> void:
 	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
 		mesh_editor.pbr_material.set_shader_parameter("camo_type", index)
 
+func set_edge_wear(val: float) -> void:
+	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
+		mesh_editor.pbr_material.set_shader_parameter("edge_wear", val)
+
+func set_dirt_amount(val: float) -> void:
+	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
+		mesh_editor.pbr_material.set_shader_parameter("dirt_amount", val)
+
+func set_paint_metallic(val: float) -> void:
+	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
+		mesh_editor.pbr_material.set_shader_parameter("metallic", val)
+
+func set_paint_roughness(val: float) -> void:
+	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
+		mesh_editor.pbr_material.set_shader_parameter("roughness", val)
+
 
 # ==============================================================================
 # 10. INSPECTION & HOVER CALLBACKS

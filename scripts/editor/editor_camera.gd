@@ -30,7 +30,9 @@ func _ready() -> void:
 	if mesh_editor == null and get_parent():
 		mesh_editor = get_parent().get_node_or_null("MeshEditorController") as MeshEditor
 	_setup_nodes()
+	global_position = Vector3(0.0, 1.2, 0.0)
 	_update_camera_transform()
+	call_deferred("_focus_on_vehicle")
 
 func _setup_nodes() -> void:
 	if spring_arm == null:
@@ -41,7 +43,8 @@ func _setup_nodes() -> void:
 			add_child(spring_arm)
 			
 	if spring_arm:
-		spring_arm.spring_length = 8.0
+		spring_arm.spring_length = 8.5
+		spring_arm.collision_mask = 0 # Disable spring arm collision against vehicle colliders to prevent clipping
 	
 	if camera_3d == null and spring_arm:
 		camera_3d = spring_arm.get_node_or_null("Camera3D") as Camera3D
@@ -72,6 +75,7 @@ func _handle_keyboard_movement(delta: float) -> void:
 		
 	if move_dir.length_squared() > 0.01:
 		global_position += move_dir.normalized() * (move_speed * delta)
+		global_position.y = maxf(global_position.y, 0.4)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -113,7 +117,7 @@ func _input(event: InputEvent) -> void:
 			rmb_drag_distance += event.relative.length()
 		yaw_deg -= rad_to_deg(event.relative.x * sensitivity)
 		pitch_deg -= rad_to_deg(event.relative.y * sensitivity)
-		pitch_deg = clamp(pitch_deg, -85.0, 85.0)
+		pitch_deg = clamp(pitch_deg, -75.0, 15.0)
 		_update_camera_transform()
 
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
@@ -121,6 +125,24 @@ func _input(event: InputEvent) -> void:
 
 func _update_camera_transform() -> void:
 	self.rotation_degrees = Vector3(pitch_deg, yaw_deg, 0.0)
+	global_position.y = maxf(global_position.y, 0.4)
+
+## Preset CAD perspective angle setter (0=ISO, 1=FRONT, 2=SIDE, 3=TOP)
+func set_preset_view(preset_idx: int) -> void:
+	match preset_idx:
+		0: # Isometric
+			yaw_deg = 45.0
+			pitch_deg = -22.0
+		1: # Front
+			yaw_deg = 0.0
+			pitch_deg = 0.0
+		2: # Side
+			yaw_deg = 90.0
+			pitch_deg = 0.0
+		3: # Top
+			yaw_deg = 0.0
+			pitch_deg = -75.0
+	_update_camera_transform()
 
 ## Smoothly refocuses camera onto specific target point
 func focus_target(new_target: Vector3) -> void:
