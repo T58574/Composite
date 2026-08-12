@@ -138,7 +138,7 @@ func _focus_on_vehicle() -> void:
 		return
 	for child in vehicle_root.get_children():
 		if child is MeshInstance3D and child.mesh:
-			var child_aabb := child.global_transform * child.mesh.get_aabb()
+			var child_aabb = child.global_transform * child.mesh.get_aabb()
 			if not found:
 				aabb = child_aabb
 				found = true
@@ -146,7 +146,7 @@ func _focus_on_vehicle() -> void:
 				aabb = aabb.merge(child_aabb)
 		for grandchild in child.get_children():
 			if grandchild is MeshInstance3D and grandchild.mesh:
-				var gc_aabb := grandchild.global_transform * grandchild.mesh.get_aabb()
+				var gc_aabb = grandchild.global_transform * grandchild.mesh.get_aabb()
 				if not found:
 					aabb = gc_aabb
 					found = true
