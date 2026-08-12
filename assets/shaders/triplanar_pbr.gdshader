@@ -164,9 +164,11 @@ void fragment() {
 		NORMAL = normalize((VIEW_MATRIX * vec4(blended_normal, 0.0)).xyz);
 	}
 
-	// Base color / Camouflage color calculation
+	// Base color / Camouflage color calculation (Authentic CARC Military Armor Paint)
 	vec3 pattern_color = (camo_type > 0) ? get_procedural_camo(world_pos, camo_type) : base_color.rgb;
-	vec3 painted_albedo = tex_color * pattern_color;
+	
+	// Blend subtle steel grain texture onto painted albedo without darkening to black
+	vec3 painted_albedo = is_texture_valid(albedo_texture) ? mix(pattern_color, tex_color * pattern_color * 1.8, 0.30) : pattern_color * tex_color;
 
 	// Subtle Edge Wear scraping along sharp contours
 	float edge_factor = 1.0 - abs(dot(NORMAL, VIEW));

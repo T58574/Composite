@@ -209,39 +209,15 @@ func _setup_options() -> void:
 		decal_option.add_item(tr("DECAL_CROSS"), 2)
 		decal_option.select(sel)
 
-	# Hull Preset Shape Options
+	# Hide preset cards and preset options completely (Pure from-scratch primitive builder mode)
 	if hull_preset_card_selector:
-		hull_preset_card_selector.is_turret_presets = false
-		hull_preset_card_selector.build_cards()
-		if not hull_preset_card_selector.preset_selected.is_connected(_on_hull_preset_selected):
-			hull_preset_card_selector.preset_selected.connect(_on_hull_preset_selected)
-
-	if hull_preset_option:
-		var sel = hull_preset_option.selected if hull_preset_option.item_count > 0 else 0
-		hull_preset_option.clear()
-		hull_preset_option.add_item("Preset: Standard Wedge", 0)
-		hull_preset_option.add_item("Preset: Heavy Box Hull", 1)
-		hull_preset_option.add_item("Preset: Pike Nose Hull", 2)
-		hull_preset_option.add_item("Preset: Modern MBT Hull", 3)
-		hull_preset_option.add_item("Preset: Compact Light Hull", 4)
-		hull_preset_option.select(sel)
-
-	# Turret Preset Shape Options
+		hull_preset_card_selector.visible = false
 	if turret_preset_card_selector:
-		turret_preset_card_selector.is_turret_presets = true
-		turret_preset_card_selector.build_cards()
-		if not turret_preset_card_selector.preset_selected.is_connected(_on_turret_preset_selected):
-			turret_preset_card_selector.preset_selected.connect(_on_turret_preset_selected)
-
-	if turret_preset_option:
-		var sel = turret_preset_option.selected if turret_preset_option.item_count > 0 else 0
-		turret_preset_option.clear()
-		turret_preset_option.add_item("Preset: Standard Wedge", 0)
-		turret_preset_option.add_item("Preset: Hemispherical Dome", 1)
-		turret_preset_option.add_item("Preset: Box Bustle Turret", 2)
-		turret_preset_option.add_item("Preset: Angular MBT Turret", 3)
-		turret_preset_option.add_item("Preset: Compact Light Turret", 4)
-		turret_preset_option.select(sel)
+		turret_preset_card_selector.visible = false
+	if hull_preset_option and hull_preset_option.get_parent():
+		hull_preset_option.get_parent().visible = false
+	if turret_preset_option and turret_preset_option.get_parent():
+		turret_preset_option.get_parent().visible = false
 
 	# Drive Sprocket Location Options
 	if sprocket_location_option:
@@ -739,20 +715,20 @@ func _on_hull_preset_selected(index: int) -> void:
 	if hull_preset_card_selector and hull_preset_card_selector.selected_index != index:
 		hull_preset_card_selector.select_card(index, false)
 	match index:
-		0: # Standard Wedge
+		0: # Standard Wedge MBT
 			hull_builder.set_dimensions(6.8, 3.4, 1.4, 60.0)
-			hull_builder.front_armor_mm = 450.0
-		1: # Heavy Box
-			hull_builder.set_dimensions(6.3, 3.7, 1.6, 25.0)
-			hull_builder.front_armor_mm = 300.0
-		2: # Pike Nose
-			hull_builder.set_dimensions(6.9, 3.2, 1.3, 72.0)
-			hull_builder.front_armor_mm = 500.0
-		3: # Modern MBT
-			hull_builder.set_dimensions(7.2, 3.6, 1.2, 68.0)
+			hull_builder.front_armor_mm = 550.0
+		1: # Heavy Box (Challenger 2 style)
+			hull_builder.set_dimensions(7.7, 3.6, 1.5, 35.0)
 			hull_builder.front_armor_mm = 650.0
+		2: # Pike Nose (T-90M Relikt style)
+			hull_builder.set_dimensions(6.8, 3.4, 1.25, 72.0)
+			hull_builder.front_armor_mm = 700.0
+		3: # Modern Angular MBT (M1A2 Abrams / Leopard 2A7 style)
+			hull_builder.set_dimensions(7.8, 3.7, 1.3, 68.0)
+			hull_builder.front_armor_mm = 750.0
 		4: # Compact Light
-			hull_builder.set_dimensions(5.2, 2.8, 1.3, 50.0)
+			hull_builder.set_dimensions(5.4, 2.8, 1.2, 50.0)
 			hull_builder.front_armor_mm = 180.0
 	_updating_ui = false
 	_sync_sliders_with_builders()
@@ -768,15 +744,15 @@ func _on_turret_preset_selected(index: int) -> void:
 		turret_preset_card_selector.select_card(index, false)
 	match index:
 		0: # Standard Wedge
-			turret_builder.set_turret_dimensions(3.2, 2.8, 1.1, 45.0, 6.2, 750.0)
-		1: # Hemispherical Dome
-			turret_builder.set_turret_dimensions(2.6, 2.6, 0.95, 65.0, 5.8, 400.0)
-		2: # Box Bustle
-			turret_builder.set_turret_dimensions(3.8, 2.4, 1.2, 30.0, 6.0, 350.0)
-		3: # Angular MBT
-			turret_builder.set_turret_dimensions(3.5, 3.1, 1.0, 55.0, 6.6, 850.0)
+			turret_builder.set_turret_dimensions(3.4, 2.8, 1.1, 45.0, 6.2, 750.0)
+		1: # Cast Dome (T-54 / T-62)
+			turret_builder.set_turret_dimensions(2.8, 2.6, 0.95, 65.0, 5.8, 450.0)
+		2: # Box Bustle (Abrams style)
+			turret_builder.set_turret_dimensions(4.0, 3.0, 1.15, 35.0, 6.6, 850.0)
+		3: # Angular MBT (Leopard 2A7 style)
+			turret_builder.set_turret_dimensions(4.2, 3.3, 1.1, 48.0, 6.6, 950.0)
 		4: # Compact Light
-			turret_builder.set_turret_dimensions(2.4, 2.0, 0.85, 40.0, 4.5, 200.0)
+			turret_builder.set_turret_dimensions(2.5, 2.1, 0.85, 40.0, 4.8, 220.0)
 	_updating_ui = false
 	_sync_sliders_with_builders()
 	_update_ttx()

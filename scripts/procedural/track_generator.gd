@@ -43,17 +43,11 @@ func generate_tracks_and_wheels() -> void:
 	_create_road_wheels_and_belts()
 
 func _ensure_default_material() -> void:
-	if track_material == null or track_material is ShaderMaterial:
-		var mat = StandardMaterial3D.new()
-		if ResourceLoader.exists("res://assets/materials/tank_track_link.jpg"):
-			var tex = load("res://assets/materials/tank_track_link.jpg") as Texture2D
-			mat.albedo_texture = tex
-			mat.uv1_scale = Vector3(3.0, 3.0, 3.0)
-		else:
-			mat.albedo_color = Color(0.22, 0.24, 0.26)
-		mat.metallic = 0.55
-		mat.roughness = 0.45
-		track_material = mat
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.38, 0.40, 0.42, 1.0)
+	mat.metallic = 0.45
+	mat.roughness = 0.50
+	track_material = mat
 
 func _clear_existing() -> void:
 	for child in get_children():
