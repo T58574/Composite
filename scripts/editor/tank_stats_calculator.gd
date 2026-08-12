@@ -124,8 +124,8 @@ static func calculate_stats(
 	ttx.max_speed_kmh = clamp(ttx.power_to_weight_hp_ton * 2.6, 20.0, 95.0)
 	
 	# Center of Mass approximation
-	var hull_pos = hull_builder.global_position if hull_builder else Vector3.ZERO
-	var turret_pos = turret_builder.global_position if turret_builder else Vector3(0, 1.2, 0)
+	var hull_pos = hull_builder.position if hull_builder else Vector3.ZERO
+	var turret_pos = turret_builder.position if turret_builder else Vector3(0, 1.2, 0)
 	
 	if ttx.total_mass_tons > 0.0:
 		ttx.center_of_mass = (hull_pos * ttx.hull_mass_tons + turret_pos * ttx.turret_mass_tons) / ttx.total_mass_tons

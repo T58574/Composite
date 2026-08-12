@@ -56,6 +56,12 @@ This document contains authoritative technical instructions, executable paths, c
      "C:\Users\user\Documents\gamedev\Godot_v4.7.1-stable_win64.exe\Godot_v4.7.1-stable_win64.exe" --path .
      ```
 
+7. **Response Style**:
+   * Keep responses strictly concise and code-focused. Do **NOT** output long marketing summaries, unverified claims, or text like "Все 9 тест-сюит пройдены идеально". State changes briefly and directly.
+
+8. **Raycast Suspension Physics**:
+   * Apply forces using `apply_force(up_dir * force_mag, local_pos - center_of_mass)` where `local_pos` is in body local space.
+
 ---
 
 ## 3. Physics & MCP Server Settings

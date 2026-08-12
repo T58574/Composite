@@ -90,7 +90,7 @@ func _create_road_wheels_and_belts() -> void:
 		_wheel_nodes.append(idler)
 
 		# 3. Dual Rim Road Wheels & Axle Hub Caps along X axis
-		var wheel_y = -suspension_height * 0.5
+		var wheel_y = -suspension_height
 		for i in range(road_wheels_count):
 			var x_pos = rear_x + (float(i) * wheel_diameter * 1.15)
 			var wheel_pos = Vector3(x_pos, wheel_y, z_pos)
@@ -473,9 +473,7 @@ func update_road_wheel_suspension(side: float, index: int, compression_m: float)
 		if abs(float(data["side"]) - side) < 0.1 and int(data["index"]) == index:
 			var node: MeshInstance3D = data["node"]
 			if is_instance_valid(node):
-				var init_pos: Vector3 = data["initial_pos"]
-				# Displace wheel upward in local space by compression amount (smoothly clamped)
-				var clamped_disp = clamp(compression_m, 0.0, 0.6)
-				node.position = Vector3(init_pos.x, init_pos.y + clamped_disp, init_pos.z)
+				var clamped_disp = clamp(compression_m, 0.0, suspension_height)
+				node.position = Vector3(data["x_pos"], -suspension_height + clamped_disp, data["z_pos"])
 			break
 
