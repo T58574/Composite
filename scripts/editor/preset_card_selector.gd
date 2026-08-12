@@ -46,40 +46,40 @@ class ThumbnailDrawControl extends Control:
 			# Hull Schematics
 			match preset_id:
 				0: # Sloped Wedge
-					points.append(Vector3(-w*0.5, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(w*0.1, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(w*0.5, -h*0.3, 0).to_2d() + center)
-					points.append(Vector3(-w*0.3, -h*0.3, 0).to_2d() + center)
+					points.append(Vector2(-w*0.5, h*0.3) + center)
+					points.append(Vector2(w*0.1, h*0.3) + center)
+					points.append(Vector2(w*0.5, -h*0.3) + center)
+					points.append(Vector2(-w*0.3, -h*0.3) + center)
 				1: # Heavy Box
-					points.append(Vector3(-w*0.45, h*0.35, 0).to_2d() + center)
-					points.append(Vector3(w*0.45, h*0.35, 0).to_2d() + center)
-					points.append(Vector3(w*0.45, -h*0.35, 0).to_2d() + center)
-					points.append(Vector3(-w*0.45, -h*0.35, 0).to_2d() + center)
+					points.append(Vector2(-w*0.45, h*0.35) + center)
+					points.append(Vector2(w*0.45, h*0.35) + center)
+					points.append(Vector2(w*0.45, -h*0.35) + center)
+					points.append(Vector2(-w*0.45, -h*0.35) + center)
 				2: # Pike Nose
-					points.append(Vector3(-w*0.5, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(0, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.55, 0, 0).to_2d() + center)
-					points.append(Vector3(-w*0.4, -h*0.3, 0).to_2d() + center)
+					points.append(Vector2(-w*0.5, h*0.25) + center)
+					points.append(Vector2(0, h*0.25) + center)
+					points.append(Vector2(w*0.55, 0) + center)
+					points.append(Vector2(-w*0.4, -h*0.3) + center)
 				3: # Modern MBT
-					points.append(Vector3(-w*0.5, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.15, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.5, -h*0.15, 0).to_2d() + center)
-					points.append(Vector3(w*0.3, -h*0.35, 0).to_2d() + center)
-					points.append(Vector3(-w*0.45, -h*0.35, 0).to_2d() + center)
+					points.append(Vector2(-w*0.5, h*0.25) + center)
+					points.append(Vector2(w*0.15, h*0.25) + center)
+					points.append(Vector2(w*0.5, -h*0.15) + center)
+					points.append(Vector2(w*0.3, -h*0.35) + center)
+					points.append(Vector2(-w*0.45, -h*0.35) + center)
 				_: # Default Compact
-					points.append(Vector3(-w*0.4, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.4, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.2, -h*0.25, 0).to_2d() + center)
-					points.append(Vector3(-w*0.4, -h*0.25, 0).to_2d() + center)
+					points.append(Vector2(-w*0.4, h*0.25) + center)
+					points.append(Vector2(w*0.4, h*0.25) + center)
+					points.append(Vector2(w*0.2, -h*0.25) + center)
+					points.append(Vector2(-w*0.4, -h*0.25) + center)
 		else:
 			# Turret Schematics
 			match preset_id:
 				0: # Wedge Cheeks
-					points.append(Vector3(-w*0.45, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(0, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(w*0.45, -h*0.1, 0).to_2d() + center)
-					points.append(Vector3(w*0.1, -h*0.3, 0).to_2d() + center)
-					points.append(Vector3(-w*0.45, -h*0.3, 0).to_2d() + center)
+					points.append(Vector2(-w*0.45, h*0.3) + center)
+					points.append(Vector2(0, h*0.3) + center)
+					points.append(Vector2(w*0.45, -h*0.1) + center)
+					points.append(Vector2(w*0.1, -h*0.3) + center)
+					points.append(Vector2(-w*0.45, -h*0.3) + center)
 				1: # Cast Dome
 					# Curve points for dome
 					for k in range(9):
@@ -89,20 +89,20 @@ class ThumbnailDrawControl extends Control:
 						points.append(Vector2(cx, cy) + center)
 					points.append(Vector2(-w*0.45, h*0.2) + center)
 				2: # Box Bustle
-					points.append(Vector3(-w*0.55, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(w*0.35, h*0.3, 0).to_2d() + center)
-					points.append(Vector3(w*0.35, -h*0.3, 0).to_2d() + center)
-					points.append(Vector3(-w*0.55, -h*0.1, 0).to_2d() + center)
+					points.append(Vector2(-w*0.55, h*0.3) + center)
+					points.append(Vector2(w*0.35, h*0.3) + center)
+					points.append(Vector2(w*0.35, -h*0.3) + center)
+					points.append(Vector2(-w*0.55, -h*0.1) + center)
 				3: # Angular MBT
-					points.append(Vector3(-w*0.5, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.2, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.5, -h*0.2, 0).to_2d() + center)
-					points.append(Vector3(-w*0.3, -h*0.35, 0).to_2d() + center)
+					points.append(Vector2(-w*0.5, h*0.25) + center)
+					points.append(Vector2(w*0.2, h*0.25) + center)
+					points.append(Vector2(w*0.5, -h*0.2) + center)
+					points.append(Vector2(-w*0.3, -h*0.35) + center)
 				_: # Compact
-					points.append(Vector3(-w*0.35, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.35, h*0.25, 0).to_2d() + center)
-					points.append(Vector3(w*0.25, -h*0.25, 0).to_2d() + center)
-					points.append(Vector3(-w*0.35, -h*0.25, 0).to_2d() + center)
+					points.append(Vector2(-w*0.35, h*0.25) + center)
+					points.append(Vector2(w*0.35, h*0.25) + center)
+					points.append(Vector2(w*0.25, -h*0.25) + center)
+					points.append(Vector2(-w*0.35, -h*0.25) + center)
 
 		if points.size() >= 3:
 			draw_colored_polygon(points, fill_color)

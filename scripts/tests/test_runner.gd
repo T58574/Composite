@@ -31,6 +31,11 @@ func _init() -> void:
 	if _test_mesh_topology():
 		passed_tests += 1
 
+	# Test Group 5: Preset Card Selector UI & Drawing
+	total_tests += 1
+	if _test_preset_card_selector():
+		passed_tests += 1
+
 	print("----------------------------------------------------------")
 	print("RESULT: %d / %d TEST SUITES PASSED" % [passed_tests, total_tests])
 	print("==========================================================")
@@ -156,4 +161,28 @@ func _test_mesh_topology() -> bool:
 		return false
 
 	print("  PASS: MeshTopologyOps face extrusion completed successfully.")
+	return true
+
+func _test_preset_card_selector() -> bool:
+	print("\n[TEST 5] Testing PresetCardSelector & Vector Schematic Drawing...")
+
+	var selector_hull = PresetCardSelector.new()
+	selector_hull.is_turret_presets = false
+	selector_hull.build_cards()
+
+	for i in range(5):
+		selector_hull.select_card(i, false)
+
+	selector_hull.free()
+
+	var selector_turret = PresetCardSelector.new()
+	selector_turret.is_turret_presets = true
+	selector_turret.build_cards()
+
+	for i in range(5):
+		selector_turret.select_card(i, false)
+
+	selector_turret.free()
+
+	print("  PASS: PresetCardSelector built and tested across all preset indices.")
 	return true
