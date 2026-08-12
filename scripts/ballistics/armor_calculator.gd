@@ -365,17 +365,30 @@ static func evaluate_impact(
 	var angle_rad = acos(clampf(cos_theta, 0.0, 1.0))
 	result.impact_angle_deg = rad_to_deg(angle_rad)
 
-	# Determine sector ID if not provided explicitly
+	# 1. Critical Ricochet Check at extreme obliquity angles (>78 deg for APFSDS, >80 deg for HEAT)
+	var ricochet_angle_threshold = 78.0 if projectile_type == AmmoType.APFSDS else 80.0
+	if result.impact_angle_deg >= ricochet_angle_threshold:
+		result.penetrated = false
+		result.effective_thickness_mm = nominal_armor_mm * 12.0
+		result.residual_penetration_mm = 0.0
+		result.description = "RICOCHET! Deflected at %.1f° angle" % result.impact_angle_deg
+		return result
+
+	# 2. Determine sector ID if not provided explicitly
 	var active_sector_id = sector_id
 	if active_sector_id.is_empty():
 		active_sector_id = get_sector_from_impact(impact_normal, hit_position)
 	
-	# Calculate LOS factor (accounting for APFSDS de-normalization at >60 deg)
+	# 3. Calculate LOS factor (accounting for APFSDS normalization & de-normalization at >60 deg)
+	var effective_angle = result.impact_angle_deg
+	if projectile_type == AmmoType.APFSDS and effective_angle > 30.0 and effective_angle < 75.0:
+		effective_angle -= 3.0 # 3 degree normalization towards armor normal
+	
 	var los_factor := 1.0
 	if projectile_type == AmmoType.APFSDS:
-		los_factor = calculate_apfsds_slope_factor(result.impact_angle_deg)
+		los_factor = calculate_apfsds_slope_factor(effective_angle)
 	else:
-		los_factor = 1.0 / maxf(cos_theta, 0.087) # 0.087 = cos(85 deg)
+		los_factor = 1.0 / maxf(cos(deg_to_rad(effective_angle)), 0.087)
 	
 	var era_bonus_applied := false
 

@@ -6,7 +6,7 @@ extends RigidBody3D
 ## friction, track skid steering, torque, dynamic wheel displacement over obstacles, and TTX mass integration.
 ## Uses central force & torque decomposition to guarantee 100% mathematical stability and prevent GPU driver crashes.
 
-@export_group("Engine & Propulsion")
+@export_group("Transmission & Power")
 @export_range(100.0, 3000.0, 50.0) var engine_horsepower: float = 1200.0 ## HP
 @export_range(10.0, 120.0, 5.0) var max_speed_kmh: float = 65.0 ## Top speed km/h
 @export_range(1.0, 15.0, 0.5) var steer_sensitivity: float = 5.0 ## Turning torque
@@ -14,13 +14,21 @@ extends RigidBody3D
 @export_group("Suspension Parameters")
 @export_range(0.1, 1.5, 0.05) var rest_length: float = 0.65 ## Suspension travel meters
 @export_range(5000.0, 200000.0, 1000.0) var spring_stiffness: float = 45000.0 ## Spring constant k (auto-tuned if 0)
-@export_range(500.0, 20000.0, 500.0) var spring_damping: float = 4500.0 ## Damping coefficient c
+@export_range(500.0, 2000.0, 500.0) var spring_damping: float = 4500.0 ## Damping coefficient c
 @export_range(0.1, 0.8, 0.02) var wheel_radius: float = 0.35 ## Road wheel radius (m)
 
 var _ray_entries: Array[Dictionary] = []
 var _inputs: Vector2 = Vector2.ZERO # x = steering (-1..1), y = throttle (-1..1)
 var _track_generator_node: TrackGenerator = null
 var _chassis_collision_shape: CollisionShape3D = null
+
+# Transmission state
+var current_gear: int = 1 # 1..6 Forward, -1..-2 Reverse, 0 Neutral
+var current_rpm: float = 800.0
+const IDLE_RPM: float = 800.0
+const MAX_RPM: float = 2400.0
+const GEAR_RATIOS_FWD: Array[float] = [0.0, 14.0, 8.5, 5.2, 3.4, 2.2, 1.5]
+const GEAR_RATIOS_REV: Array[float] = [0.0, -10.0, -5.0]
 
 # Telemetry output structure for diagnostic logging
 class TelemetryFrame extends RefCounted:
@@ -32,9 +40,11 @@ class TelemetryFrame extends RefCounted:
 	var is_valid_finite: bool = true
 
 func _ready() -> void:
+	self.collision_layer = 2 # Vehicle Layer 2
+	self.collision_mask = 1  # Collides only with Environment Layer 1
 	self.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	self.center_of_mass = Vector3(0.0, -0.5, 0.0)
-	self.linear_damp = 1.0
+	self.center_of_mass = Vector3(0.0, -0.4, 0.0)
+	self.linear_damp = 0.8
 	self.angular_damp = 3.5
 	call_deferred("_auto_setup_test_range")
 
@@ -118,6 +128,7 @@ func setup_vehicle_from_builder(
 
 	# 4. Auto-tune Spring Stiffness & Damping based on actual tank mass
 	_auto_tune_suspension()
+	_refresh_ray_exceptions()
 
 func _setup_chassis_collision(hull_builder: HullBuilder) -> void:
 	if _chassis_collision_shape == null:
@@ -179,10 +190,10 @@ func _bind_raycasts_to_track_generator(track_gen: TrackGenerator) -> void:
 		
 		var ray = RayCast3D.new()
 		ray.name = "Ray_%s_%d" % ["L" if side < 0 else "R", index]
-		ray.position = Vector3(x_pos, 0.0, z_pos)
+		ray.position = Vector3(x_pos, -rest_length * 0.3, z_pos)
 		ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.3), 0.0)
+		ray.collision_mask = 1
 		ray.enabled = true
-		ray.add_exception(self)
 		ray_container.add_child(ray)
 		
 		_ray_entries.append({
@@ -192,6 +203,7 @@ func _bind_raycasts_to_track_generator(track_gen: TrackGenerator) -> void:
 			"x_pos": x_pos,
 			"z_pos": z_pos
 		})
+	_refresh_ray_exceptions()
 
 func _generate_default_wheel_layout() -> void:
 	_clear_rays()
@@ -209,10 +221,10 @@ func _generate_default_wheel_layout() -> void:
 			var z_pos = side * track_width
 			var ray = RayCast3D.new()
 			ray.name = "Ray_%s_%d" % ["L" if side < 0 else "R", i]
-			ray.position = Vector3(x_pos, 0.0, z_pos)
+			ray.position = Vector3(x_pos, -rest_length * 0.3, z_pos)
 			ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.3), 0.0)
+			ray.collision_mask = 1
 			ray.enabled = true
-			ray.add_exception(self)
 			ray_container.add_child(ray)
 			
 			_ray_entries.append({
@@ -222,6 +234,27 @@ func _generate_default_wheel_layout() -> void:
 				"x_pos": x_pos,
 				"z_pos": z_pos
 			})
+	_refresh_ray_exceptions()
+
+func _refresh_ray_exceptions() -> void:
+	for entry in _ray_entries:
+		var ray: RayCast3D = entry.get("ray")
+		if is_instance_valid(ray):
+			_add_vehicle_exceptions(ray)
+
+func _add_vehicle_exceptions(ray: RayCast3D) -> void:
+	ray.add_exception(self)
+	_exclude_node_children(self, ray)
+
+func _exclude_node_children(node: Node, ray: RayCast3D) -> void:
+	if node is CollisionObject3D:
+		ray.add_exception(node)
+	if "static_collision_body" in node:
+		var scb = node.get("static_collision_body")
+		if scb is CollisionObject3D:
+			ray.add_exception(scb)
+	for child in node.get_children():
+		_exclude_node_children(child, ray)
 
 func _physics_process(delta: float) -> void:
 	if not is_inside_tree():
@@ -274,6 +307,13 @@ func _apply_suspension_forces(delta: float) -> void:
 			if track_gen and track_gen.has_method("update_road_wheel_suspension"):
 				track_gen.update_road_wheel_suspension(side, index, 0.0)
 			continue
+
+		var collider = ray.get_collider()
+		if collider != null:
+			if collider == self or is_ancestor_of(collider) or collider.get_parent() == self or (collider.get_parent() != null and is_ancestor_of(collider.get_parent())):
+				if track_gen and track_gen.has_method("update_road_wheel_suspension"):
+					track_gen.update_road_wheel_suspension(side, index, 0.0)
+				continue
 			
 		var hit_point = ray.get_collision_point()
 		var local_hit = ray.to_local(hit_point)
