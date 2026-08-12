@@ -123,7 +123,7 @@ mesh = SubResource("ground_mesh")
 
 [node name="TestVehicle" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
-mass = 42000.0
+mass = 12000.0
 script = ExtResource("1_suspension")
 engine_horsepower = 1200.0
 max_speed_kmh = 65.0

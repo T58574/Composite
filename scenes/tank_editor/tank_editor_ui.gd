@@ -716,11 +716,13 @@ func _start_in_constructor_test_drive() -> void:
 		var cam3d = Camera3D.new()
 		cam3d.name = "Camera3D"
 		_test_chase_cam.add_child(cam3d)
+		_test_chase_cam.camera_3d = cam3d
 		scene_root.add_child(_test_chase_cam)
 
 	_test_chase_cam.target = _test_vehicle_body
 	var cam_node = _test_chase_cam.get_node_or_null("Camera3D")
 	if cam_node is Camera3D:
+		_test_chase_cam.camera_3d = cam_node
 		cam_node.make_current()
 
 	if editor_camera:

@@ -1,21 +1,23 @@
 class_name ChaseCamera
 extends Node3D
 
-## Third-person chase camera for Test Range. Follows the tank with smooth interpolation.
-## Toggle between 3rd person (chase) and 1st person (gunner scope) with 'V' key.
+## War Thunder style third-person camera. Always positioned behind and above the tank.
+## Mouse orbits around the tank. Camera follows tank heading.
+## RMB = freelook (no turret rotation). V = toggle gunner scope.
 
 enum CameraMode { THIRD_PERSON, GUNNER_SCOPE }
 
 @export var target: Node3D
 @export var camera_3d: Camera3D
-@export_range(2.0, 20.0, 0.5) var chase_distance: float = 12.0
-@export_range(2.0, 15.0, 0.5) var chase_height: float = 5.0
-@export_range(0.5, 10.0, 0.1) var follow_speed: float = 3.0
-@export_range(0.001, 0.02, 0.001) var look_sensitivity: float = 0.004
+@export_range(4.0, 22.0, 0.5) var chase_distance: float = 10.0
+@export_range(2.0, 10.0, 0.5) var chase_height: float = 4.0
+@export_range(0.001, 0.02, 0.001) var look_sensitivity: float = 0.003
 
 var current_mode: CameraMode = CameraMode.THIRD_PERSON
-var _yaw: float = 0.0
-var _pitch: float = -0.25
+## Mouse-relative yaw offset from tank heading (radians)
+var _yaw_offset: float = 0.0
+## Pitch angle (radians, negative = look down)
+var _pitch: float = -0.2
 var _rmb_held: bool = false
 
 func _ready() -> void:
@@ -24,6 +26,7 @@ func _ready() -> void:
 		camera_3d.name = "Camera3D"
 		add_child(camera_3d)
 	camera_3d.current = true
+	camera_3d.fov = 70.0
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -35,11 +38,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			else:
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				
+
 	if event is InputEventMouseButton:
+		# Click to recapture mouse
 		if event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			
+
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			_rmb_held = event.pressed
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -48,8 +52,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			chase_distance = clampf(chase_distance + 1.0, 4.0, 22.0)
 
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_yaw -= event.relative.x * look_sensitivity
-		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.0, 0.5)
+		_yaw_offset -= event.relative.x * look_sensitivity
+		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.2, 0.3)
 
 func _physics_process(delta: float) -> void:
 	if target == null:
@@ -62,41 +66,54 @@ func _physics_process(delta: float) -> void:
 
 	_update_turret_aiming()
 
-func _update_chase(delta: float) -> void:
-	if target == null:
+func _update_chase(_delta: float) -> void:
+	if target == null or camera_3d == null:
 		return
-	var pivot_pos := target.global_position + Vector3(0.0, 1.4, 0.0)
-	
-	# Tank heading yaw angle (tank nose is +X)
-	var tank_forward = target.global_transform.basis.x
-	var tank_yaw = atan2(tank_forward.z, tank_forward.x)
-	var total_yaw = tank_yaw + _yaw
-	
-	# Compute camera position behind tank relative to vehicle heading
-	var dir_x = -cos(total_yaw) * cos(_pitch)
-	var dir_y = sin(-_pitch)
-	var dir_z = -sin(total_yaw) * cos(_pitch)
-	var desired_pos := pivot_pos + Vector3(dir_x, dir_y, dir_z) * chase_distance
-	
-	# Position camera directly behind tank, looking forward along tank direction
-	global_position = desired_pos
-	if camera_3d:
-		camera_3d.look_at(pivot_pos)
 
-func _update_gunner(delta: float) -> void:
-	## Position camera at turret/gun position looking forward along +X
+	# Tank center pivot (slightly above hull top)
+	var pivot: Vector3 = target.global_position + Vector3.UP * 1.5
+
+	# Tank's forward direction is +X in Composite coordinate space
+	var tank_fwd: Vector3 = target.global_transform.basis.x.normalized()
+	# Tank heading yaw angle in world XZ plane
+	var tank_yaw: float = atan2(-tank_fwd.z, tank_fwd.x)
+
+	# Combined yaw = tank heading + mouse offset
+	# At _yaw_offset = 0, camera is directly behind the tank
+	var cam_yaw: float = tank_yaw + PI + _yaw_offset
+
+	# Spherical offset from pivot: behind and above tank
+	var horiz_dist: float = chase_distance * cos(_pitch)
+	var vert_dist: float = chase_distance * sin(-_pitch) + chase_height
+
+	var cam_offset := Vector3(
+		cos(cam_yaw) * horiz_dist,
+		vert_dist,
+		-sin(cam_yaw) * horiz_dist
+	)
+
+	# Set camera position rigidly
+	global_position = pivot + cam_offset
+
+	# Look at pivot
+	camera_3d.global_position = global_position
+	camera_3d.look_at(pivot, Vector3.UP)
+
+func _update_gunner(_delta: float) -> void:
+	if target == null or camera_3d == null:
+		return
 	var turret := target.get_node_or_null("ProceduralTurret") as Node3D
 	if turret:
 		var gun_tip := turret.global_position + turret.global_transform.basis.x * 3.0 + Vector3.UP * 0.4
-		global_position = global_position.lerp(gun_tip, clampf(30.0 * delta, 0.0, 1.0))
-		if camera_3d:
-			camera_3d.look_at(global_position + turret.global_transform.basis.x * 100.0)
+		global_position = global_position.lerp(gun_tip, clampf(30.0 * _delta, 0.0, 1.0))
+		camera_3d.global_position = global_position
+		camera_3d.look_at(global_position + turret.global_transform.basis.x * 100.0)
 	else:
 		var forward := target.global_transform.basis.x
 		var scope_pos := target.global_position + Vector3.UP * 2.2 + forward * 2.0
-		global_position = global_position.lerp(scope_pos, clampf(30.0 * delta, 0.0, 1.0))
-		if camera_3d:
-			camera_3d.look_at(global_position + forward * 100.0)
+		global_position = global_position.lerp(scope_pos, clampf(30.0 * _delta, 0.0, 1.0))
+		camera_3d.global_position = global_position
+		camera_3d.look_at(global_position + forward * 100.0)
 
 func _update_turret_aiming() -> void:
 	if target == null or camera_3d == null or _rmb_held:
@@ -107,17 +124,17 @@ func _update_turret_aiming() -> void:
 	var viewport = get_viewport()
 	if viewport == null:
 		return
-	
+
 	# Raycast from camera center into world to find exact aim point
 	var screen_center = viewport.get_visible_rect().size * 0.5
 	var ray_origin = camera_3d.project_ray_origin(screen_center)
 	var ray_dir = camera_3d.project_ray_normal(screen_center)
 	var aim_target = ray_origin + ray_dir * 1000.0
-	
+
 	var space_state = get_world_3d().direct_space_state
 	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 2000.0)
 	query.exclude = [target.get_rid()]
-	query.collision_mask = 1 # Environment Layer
+	query.collision_mask = 1
 	var hit = space_state.intersect_ray(query)
 	if not hit.is_empty():
 		aim_target = hit.position
