@@ -36,6 +36,11 @@ func _init() -> void:
 	if _test_preset_card_selector():
 		passed_tests += 1
 
+	# Test Group 6: MeshEditor Vertex Drag & Geometry Deformation
+	total_tests += 1
+	if _test_mesh_editor_gizmo_drag():
+		passed_tests += 1
+
 	print("----------------------------------------------------------")
 	print("RESULT: %d / %d TEST SUITES PASSED" % [passed_tests, total_tests])
 	print("==========================================================")
@@ -185,4 +190,48 @@ func _test_preset_card_selector() -> bool:
 	selector_turret.free()
 
 	print("  PASS: PresetCardSelector built and tested across all preset indices.")
+	return true
+
+func _test_mesh_editor_gizmo_drag() -> bool:
+	print("\n[TEST 6] Testing MeshEditor Vertex & Face Gizmo Transformation...")
+
+	var root = Node3D.new()
+	get_root().add_child(root)
+
+	var hull = HullBuilder.new()
+	root.add_child(hull)
+	hull.set_dimensions(6.8, 3.4, 1.4, 60.0, HullBuilder.GlacisStyle.SLOPED_WEDGE)
+
+	var editor = MeshEditor.new()
+	root.add_child(editor)
+	editor.hull_builder = hull
+
+	# Select top front vertex of hull
+	var faces = hull.mesh.get_faces()
+	var test_vertex_world = hull.transform * faces[0]
+	editor.selected_target = hull
+	editor.selected_face_index = 0
+
+	var sel_pos_typed: Array[Vector3] = [test_vertex_world]
+	editor.selected_positions = sel_pos_typed
+
+	editor._update_cached_colocated_vertices()
+	if editor.cached_colocated_vertex_indices.is_empty():
+		print("  FAIL: _update_cached_colocated_vertices failed to match vertices (indices array empty)")
+		root.free()
+		return false
+
+	var initial_vertex_pos = faces[0]
+	var delta = Vector3(0.5, 0.2, -0.3)
+	editor._on_gizmo_transform_changed(delta, Vector3.ZERO, Vector3.ONE)
+
+	var new_faces = hull.mesh.get_faces()
+	if new_faces[0].distance_to(initial_vertex_pos) < 0.01:
+		print("  FAIL: _on_gizmo_transform_changed did NOT deform the mesh (faces[0] unchanged)")
+		root.free()
+		return false
+
+	root.free()
+
+	print("  PASS: MeshEditor vertex drag successfully transformed 3D geometry.")
 	return true

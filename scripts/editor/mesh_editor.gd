@@ -312,15 +312,15 @@ func _update_cached_colocated_vertices() -> void:
 	if err != OK:
 		return
 
-	var target_gt = selected_target.global_transform
-	var inv_gt = target_gt.basis.inverse()
-
 	var target_local_positions: Array[Vector3] = []
 	for pos in selected_positions:
-		target_local_positions.append(inv_gt * pos)
+		if selected_target.is_inside_tree():
+			target_local_positions.append(selected_target.to_local(pos))
+		else:
+			target_local_positions.append(selected_target.transform.affine_inverse() * pos)
 
 	var vertex_count = mdt.get_vertex_count()
-	var dist_threshold = 0.03 # 3 cm tolerance for co-located hard-surface corner & edge vertices
+	var dist_threshold = 0.05 # 5 cm tolerance for co-located corner & edge vertices
 
 	for i in range(vertex_count):
 		var v_pos = mdt.get_vertex(i)
@@ -364,7 +364,7 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 	if err != OK:
 		return
 
-	var target_gt = selected_target.global_transform
+	var target_gt = selected_target.global_transform if selected_target.is_inside_tree() else selected_target.transform
 	var inv_gt = target_gt.basis.inverse()
 	var local_trans_delta = inv_gt * trans_delta
 	var sym_trans_delta = Vector3(-local_trans_delta.x, local_trans_delta.y, local_trans_delta.z)
@@ -383,6 +383,7 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 
 	array_mesh.clear_surfaces()
 	mdt.commit_to_surface(array_mesh)
+	selected_target.mesh = array_mesh
 
 	# Crucial: update selected_positions by trans_delta so subsequent drag frames continue smoothly!
 	for k in range(selected_positions.size()):
