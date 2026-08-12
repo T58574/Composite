@@ -287,7 +287,7 @@ func _apply_suspension_forces(delta: float) -> void:
 	var up_dir = global_transform.basis.y
 	var right_dir = global_transform.basis.z
 	var track_gen = _find_track_generator()
-	var d_rest = rest_length + wheel_radius
+	var max_suspension_dist = rest_length + wheel_radius
 	var total_rays = max(1, _ray_entries.size())
 
 	# Track wheel compressions for anti-sway stabilizer bar
@@ -302,6 +302,9 @@ func _apply_suspension_forces(delta: float) -> void:
 		
 		if not is_instance_valid(ray):
 			continue
+
+		# Force immediate RayCast3D update for exact current-frame physics position
+		ray.force_raycast_update()
 			
 		if not ray.is_colliding():
 			if track_gen and track_gen.has_method("update_road_wheel_suspension"):
@@ -316,9 +319,9 @@ func _apply_suspension_forces(delta: float) -> void:
 				continue
 			
 		var hit_point = ray.get_collision_point()
-		var local_hit = ray.to_local(hit_point)
-		var dist_to_ground = -local_hit.y
-		var compression = clamp(d_rest - dist_to_ground, 0.0, rest_length)
+		var ray_origin = ray.global_position
+		var dist_to_ground = (hit_point - ray_origin).length()
+		var compression = clamp(max_suspension_dist - dist_to_ground, 0.0, rest_length)
 		wheel_compressions["%s_%d" % ["L" if side < 0 else "R", index]] = compression
 		
 		if track_gen and track_gen.has_method("update_road_wheel_suspension"):
@@ -326,10 +329,11 @@ func _apply_suspension_forces(delta: float) -> void:
 		
 		if compression > 0.0:
 			var spring_force = compression * spring_stiffness
-			var wheel_velocity = _get_point_velocity(ray.global_position)
-			var damp_force = wheel_velocity.dot(up_dir) * spring_damping
+			var wheel_velocity = _get_point_velocity(ray_origin)
+			var v_rel = wheel_velocity.dot(up_dir)
 			
-			var f_mag = max(0.0, spring_force - damp_force)
+			# Correct signed spring damping: opposes chassis vertical velocity
+			var f_mag = max(0.0, spring_force - (v_rel * spring_damping))
 			
 			# Apply upward spring force at center of mass height to prevent pitch/roll torque feedback loops
 			var local_offset_com = Vector3(x_pos, center_of_mass.y, z_pos) - center_of_mass
@@ -339,7 +343,7 @@ func _apply_suspension_forces(delta: float) -> void:
 			var max_lateral_f = f_mag * 0.85
 			var lateral_vel = wheel_velocity.dot(right_dir)
 			if abs(lateral_vel) > 0.01:
-				var f_frict = clamp(lateral_vel * (mass / float(total_rays)) * 6.0, -max_lateral_f, max_lateral_f)
+				var f_frict = clamp(lateral_vel * (mass / float(total_rays)) * 5.0, -max_lateral_f, max_lateral_f)
 				apply_force(-right_dir * f_frict, local_offset_com)
 
 	# Apply Anti-Sway Stabilizer Bar Forces between paired Left & Right wheels
