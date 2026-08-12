@@ -690,7 +690,7 @@ func _start_in_constructor_test_drive() -> void:
 		_test_vehicle_body.script = load("res://scripts/physics/raycast_suspension.gd")
 		scene_root.add_child(_test_vehicle_body)
 
-	_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
+	_test_vehicle_body.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 0.95, 0))
 	_test_vehicle_body.freeze = false
 	_test_vehicle_body.linear_velocity = Vector3.ZERO
 	_test_vehicle_body.angular_velocity = Vector3.ZERO

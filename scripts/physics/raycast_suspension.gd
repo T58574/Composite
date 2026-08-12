@@ -190,8 +190,8 @@ func _bind_raycasts_to_track_generator(track_gen: TrackGenerator) -> void:
 		
 		var ray = RayCast3D.new()
 		ray.name = "Ray_%s_%d" % ["L" if side < 0 else "R", index]
-		ray.position = Vector3(x_pos, -rest_length * 0.3, z_pos)
-		ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.3), 0.0)
+		ray.position = Vector3(x_pos, 0.0, z_pos)
+		ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.5), 0.0)
 		ray.collision_mask = 1
 		ray.enabled = true
 		ray_container.add_child(ray)
@@ -221,8 +221,8 @@ func _generate_default_wheel_layout() -> void:
 			var z_pos = side * track_width
 			var ray = RayCast3D.new()
 			ray.name = "Ray_%s_%d" % ["L" if side < 0 else "R", i]
-			ray.position = Vector3(x_pos, -rest_length * 0.3, z_pos)
-			ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.3), 0.0)
+			ray.position = Vector3(x_pos, 0.0, z_pos)
+			ray.target_position = Vector3(0.0, -(rest_length + wheel_radius + 0.5), 0.0)
 			ray.collision_mask = 1
 			ray.enabled = true
 			ray_container.add_child(ray)
@@ -287,8 +287,9 @@ func _apply_suspension_forces(delta: float) -> void:
 	var up_dir = global_transform.basis.y
 	var right_dir = global_transform.basis.z
 	var track_gen = _find_track_generator()
-	var max_suspension_dist = rest_length + wheel_radius
+	var d_rest = rest_length + wheel_radius
 	var total_rays = max(1, _ray_entries.size())
+	var max_force_per_wheel = (mass * 9.81 * 2.5) / float(total_rays)
 
 	# Track wheel compressions for anti-sway stabilizer bar
 	var wheel_compressions: Dictionary = {}
@@ -321,7 +322,7 @@ func _apply_suspension_forces(delta: float) -> void:
 		var hit_point = ray.get_collision_point()
 		var ray_origin = ray.global_position
 		var dist_to_ground = (hit_point - ray_origin).length()
-		var compression = clamp(max_suspension_dist - dist_to_ground, 0.0, rest_length)
+		var compression = clamp(d_rest - dist_to_ground, 0.0, rest_length)
 		wheel_compressions["%s_%d" % ["L" if side < 0 else "R", index]] = compression
 		
 		if track_gen and track_gen.has_method("update_road_wheel_suspension"):
@@ -333,7 +334,8 @@ func _apply_suspension_forces(delta: float) -> void:
 			var v_rel = wheel_velocity.dot(up_dir)
 			
 			# Correct signed spring damping: opposes chassis vertical velocity
-			var f_mag = max(0.0, spring_force - (v_rel * spring_damping))
+			var f_mag = spring_force - (v_rel * spring_damping)
+			f_mag = clamp(f_mag, 0.0, max_force_per_wheel)
 			
 			# Apply upward spring force at center of mass height to prevent pitch/roll torque feedback loops
 			var local_offset_com = Vector3(x_pos, center_of_mass.y, z_pos) - center_of_mass

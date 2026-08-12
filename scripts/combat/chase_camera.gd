@@ -55,30 +55,33 @@ func _physics_process(delta: float) -> void:
 	_update_turret_aiming()
 
 func _update_chase(delta: float) -> void:
-	var target_pos := target.global_position
-	# Camera offset behind vehicle (-X is behind when +X is front)
+	if target == null:
+		return
+	var pivot_pos := target.global_position + Vector3(0.0, 1.2, 0.0)
+	# Camera offset relative to target pivot
 	var offset := Vector3(
 		-cos(_yaw) * cos(_pitch) * chase_distance,
-		sin(-_pitch) * chase_distance + chase_height,
+		sin(-_pitch) * chase_distance + 1.2,
 		sin(_yaw) * cos(_pitch) * chase_distance
 	)
-	var desired_pos := target_pos + offset
-	global_position = global_position.lerp(desired_pos, follow_speed * delta)
+	var desired_pos := pivot_pos + offset
+	# Tight War Thunder style follow tracking
+	global_position = global_position.lerp(desired_pos, clampf(25.0 * delta, 0.0, 1.0))
 	if camera_3d:
-		camera_3d.look_at(target_pos + Vector3.UP * 1.2)
+		camera_3d.look_at(pivot_pos)
 
 func _update_gunner(delta: float) -> void:
 	## Position camera at turret/gun position looking forward along +X
 	var turret := target.get_node_or_null("ProceduralTurret") as Node3D
 	if turret:
 		var gun_tip := turret.global_position + turret.global_transform.basis.x * 3.0 + Vector3.UP * 0.4
-		global_position = global_position.lerp(gun_tip, follow_speed * 2.0 * delta)
+		global_position = global_position.lerp(gun_tip, clampf(30.0 * delta, 0.0, 1.0))
 		if camera_3d:
 			camera_3d.look_at(global_position + turret.global_transform.basis.x * 100.0)
 	else:
 		var forward := target.global_transform.basis.x
 		var scope_pos := target.global_position + Vector3.UP * 2.2 + forward * 2.0
-		global_position = global_position.lerp(scope_pos, follow_speed * 2.0 * delta)
+		global_position = global_position.lerp(scope_pos, clampf(30.0 * delta, 0.0, 1.0))
 		if camera_3d:
 			camera_3d.look_at(global_position + forward * 100.0)
 
@@ -88,11 +91,28 @@ func _update_turret_aiming() -> void:
 	var turret = target.get_node_or_null("ProceduralTurret") as TurretBuilder
 	if turret == null:
 		return
-	var cam_forward = -camera_3d.global_transform.basis.z
-	var local_dir = target.global_transform.basis.inverse() * cam_forward
-	var aim_yaw_deg = rad_to_deg(atan2(-local_dir.z, local_dir.x))
-	var horiz_dist = Vector2(local_dir.x, local_dir.z).length()
-	var aim_pitch_deg = rad_to_deg(atan2(local_dir.y, horiz_dist))
+	var viewport = get_viewport()
+	if viewport == null:
+		return
+	
+	# Raycast from camera center into world to find exact aim point
+	var screen_center = viewport.get_visible_rect().size * 0.5
+	var ray_origin = camera_3d.project_ray_origin(screen_center)
+	var ray_dir = camera_3d.project_ray_normal(screen_center)
+	var aim_target = ray_origin + ray_dir * 1000.0
+	
+	var space_state = get_world_3d().direct_space_state
+	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 2000.0)
+	query.exclude = [target.get_rid()]
+	query.collision_mask = 1 # Environment Layer
+	var hit = space_state.intersect_ray(query)
+	if not hit.is_empty():
+		aim_target = hit.position
+
+	var local_aim = turret.global_transform.affine_inverse() * aim_target
+	var aim_yaw_deg = rad_to_deg(atan2(-local_aim.z, local_aim.x))
+	var horiz_dist = Vector2(local_aim.x, local_aim.z).length()
+	var aim_pitch_deg = rad_to_deg(atan2(local_aim.y, horiz_dist))
 	turret.set_aim_target(aim_yaw_deg, aim_pitch_deg)
 
 func toggle_camera_mode() -> void:

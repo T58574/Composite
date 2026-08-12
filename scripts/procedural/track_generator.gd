@@ -54,6 +54,7 @@ func _ensure_default_material() -> void:
 
 func _clear_existing() -> void:
 	for child in get_children():
+		remove_child(child)
 		child.queue_free()
 	_wheel_nodes.clear()
 	_road_wheels_data.clear()
