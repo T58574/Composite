@@ -16,6 +16,7 @@
 [ext_resource type="Texture2D" uid="uid://cw32xstdnptsh" path="res://assets/materials/hangar_floor_grid.jpg" id="14_hangar_tex"]
 [ext_resource type="Texture2D" path="res://assets/materials/tank_track_link.jpg" id="15_track_tex"]
 [ext_resource type="Script" path="res://scripts/editor/bounding_box_overlay.gd" id="16_overlay"]
+[ext_resource type="Script" path="res://scripts/editor/preset_card_selector.gd" id="17_card_selector"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tactical"]
 sky_top_color = Color(0.2, 0.35, 0.55, 1)
@@ -188,7 +189,7 @@ pbr_material = SubResource("ShaderMaterial_pbr")
 heatmap_material = SubResource("ShaderMaterial_heatmap")
 xray_material = SubResource("ShaderMaterial_xray")
 
-[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor", "bounding_box_overlay")]
+[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor", "bounding_box_overlay", "hull_preset_card_selector", "turret_preset_card_selector")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -204,6 +205,8 @@ firepower_builder = NodePath("../Node3D/ProceduralVehicle/FirepowerBuilder")
 editor_camera = NodePath("../Node3D/EditorCameraPivot")
 mesh_editor = NodePath("../Node3D/MeshEditorController")
 bounding_box_overlay = NodePath("../Node3D/BoundingBoxOverlay")
+hull_preset_card_selector = NodePath("CategoryStack/Margin/CompartmentsPanel/HullPresetCardGrid")
+turret_preset_card_selector = NodePath("CategoryStack/Margin/FirepowerPanel/TurretPresetCardGrid")
 
 [node name="TopHeaderBar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1
@@ -411,8 +414,15 @@ layout_mode = 2
 layout_mode = 2
 text = "Hull Preset Shape:"
 
+[node name="HullPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("17_card_selector")
+is_turret_presets = false
+
 [node name="HullPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 
 [node name="LengthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
@@ -710,8 +720,15 @@ layout_mode = 2
 layout_mode = 2
 text = "Turret Preset Shape:"
 
+[node name="TurretPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("17_card_selector")
+is_turret_presets = true
+
 [node name="TurretPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 
 [node name="CaliberHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]

@@ -44,6 +44,8 @@ extends Control
 @onready var decal_option: OptionButton = %DecalOption
 
 # Preset Shape Options
+@export var hull_preset_card_selector: PresetCardSelector
+@export var turret_preset_card_selector: PresetCardSelector
 @onready var hull_preset_option: OptionButton = %HullPresetOption
 @onready var turret_preset_option: OptionButton = %TurretPresetOption
 @onready var sprocket_location_option: OptionButton = %SprocketLocationOption
@@ -206,6 +208,12 @@ func _setup_options() -> void:
 		decal_option.select(sel)
 
 	# Hull Preset Shape Options
+	if hull_preset_card_selector:
+		hull_preset_card_selector.is_turret_presets = false
+		hull_preset_card_selector.build_cards()
+		if not hull_preset_card_selector.preset_selected.is_connected(_on_hull_preset_selected):
+			hull_preset_card_selector.preset_selected.connect(_on_hull_preset_selected)
+
 	if hull_preset_option:
 		var sel = hull_preset_option.selected if hull_preset_option.item_count > 0 else 0
 		hull_preset_option.clear()
@@ -217,6 +225,12 @@ func _setup_options() -> void:
 		hull_preset_option.select(sel)
 
 	# Turret Preset Shape Options
+	if turret_preset_card_selector:
+		turret_preset_card_selector.is_turret_presets = true
+		turret_preset_card_selector.build_cards()
+		if not turret_preset_card_selector.preset_selected.is_connected(_on_turret_preset_selected):
+			turret_preset_card_selector.preset_selected.connect(_on_turret_preset_selected)
+
 	if turret_preset_option:
 		var sel = turret_preset_option.selected if turret_preset_option.item_count > 0 else 0
 		turret_preset_option.clear()
@@ -718,6 +732,10 @@ func _on_hull_preset_selected(index: int) -> void:
 	if hull_builder == null or _updating_ui:
 		return
 	_updating_ui = true
+	if hull_preset_option and hull_preset_option.selected != index:
+		hull_preset_option.select(index)
+	if hull_preset_card_selector and hull_preset_card_selector.selected_index != index:
+		hull_preset_card_selector.select_card(index, false)
 	match index:
 		0: # Standard Wedge
 			hull_builder.set_dimensions(6.8, 3.4, 1.4, 60.0)
@@ -742,6 +760,10 @@ func _on_turret_preset_selected(index: int) -> void:
 	if turret_builder == null or _updating_ui:
 		return
 	_updating_ui = true
+	if turret_preset_option and turret_preset_option.selected != index:
+		turret_preset_option.select(index)
+	if turret_preset_card_selector and turret_preset_card_selector.selected_index != index:
+		turret_preset_card_selector.select_card(index, false)
 	match index:
 		0: # Standard Wedge
 			turret_builder.set_turret_dimensions(3.2, 2.8, 1.1, 45.0, 6.2, 750.0)

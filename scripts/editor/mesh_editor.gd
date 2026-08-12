@@ -19,6 +19,7 @@ signal selection_changed()
 @export var track_generator: TrackGenerator
 @export var camera_3d: Camera3D
 @export var gizmo_3d: Gizmo3D
+@export var bounding_box_overlay: BoundingBoxOverlay
 
 @export var symmetry_x_enabled: bool = true
 @export var grid_snap_step: float = 0.1 ## Meters (0.05, 0.1, 0.5)
@@ -83,6 +84,9 @@ func _setup_selection_overlay() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if gizmo_3d and gizmo_3d.process_input_event(camera_3d, event):
 		return
+
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_pick_element_at_screen_pos(event.position)
 
 	if event is InputEventMouseMotion:
 		inspect_hover_point(event.position)
@@ -312,54 +316,28 @@ func _update_cached_colocated_vertices() -> void:
 	var inv_gt = target_gt.basis.inverse()
 
 	var target_local_positions: Array[Vector3] = []
-	var target_local_normals: Array[Vector3] = []
+	for pos in selected_positions:
+		target_local_positions.append(inv_gt * pos)
 
 	var vertex_count = mdt.get_vertex_count()
-
-	for pos in selected_positions:
-		var loc_pos = inv_gt * pos
-		target_local_positions.append(loc_pos)
-
-		var best_idx = -1
-		var best_dist = 1e9
-		for i in range(vertex_count):
-			var d = mdt.get_vertex(i).distance_to(loc_pos)
-			if d < best_dist:
-				best_dist = d
-				best_idx = i
-		if best_idx >= 0:
-			target_local_normals.append(mdt.get_vertex_normal(best_idx))
-		else:
-			target_local_normals.append(Vector3.UP)
-
-	var dist_threshold = 0.015
+	var dist_threshold = 0.03 # 3 cm tolerance for co-located hard-surface corner & edge vertices
 
 	for i in range(vertex_count):
 		var v_pos = mdt.get_vertex(i)
-		var v_norm = mdt.get_vertex_normal(i)
 		var matched = false
 
-		for k in range(target_local_positions.size()):
-			var t_pos = target_local_positions[k]
-			var t_norm = target_local_normals[k]
-
+		for t_pos in target_local_positions:
 			if v_pos.distance_to(t_pos) < dist_threshold:
-				if t_norm.length_squared() < 0.01 or v_norm.length_squared() < 0.01 or v_norm.dot(t_norm) > 0.5:
-					cached_colocated_vertex_indices.append(i)
-					matched = true
-					break
+				cached_colocated_vertex_indices.append(i)
+				matched = true
+				break
 
 		if not matched and symmetry_x_enabled:
-			for k in range(target_local_positions.size()):
-				var t_pos = target_local_positions[k]
-				var t_norm = target_local_normals[k]
+			for t_pos in target_local_positions:
 				var sym_pos = Vector3(-t_pos.x, t_pos.y, t_pos.z)
-				var sym_norm = Vector3(-t_norm.x, t_norm.y, t_norm.z)
-
 				if v_pos.distance_to(sym_pos) < dist_threshold:
-					if sym_norm.length_squared() < 0.01 or v_norm.length_squared() < 0.01 or v_norm.dot(sym_norm) > 0.5:
-						cached_symmetric_vertex_indices.append(i)
-						break
+					cached_symmetric_vertex_indices.append(i)
+					break
 
 func _on_gizmo_transform_started() -> void:
 	_update_cached_colocated_vertices()
@@ -422,9 +400,17 @@ func _on_gizmo_transform_ended() -> void:
 		var start_positions = _drag_start_selected_positions.duplicate()
 
 		undo_redo.create_action("Transform Mesh")
-		undo_redo.add_do_method(self, "_restore_mesh_state", target, drag_end_mesh_arrays, drag_end_selected_positions)
-		undo_redo.add_undo_method(self, "_restore_mesh_state", target, start_arrays, start_positions)
+		undo_redo.add_do_method(_restore_mesh_state.bind(target, drag_end_mesh_arrays, drag_end_selected_positions))
+		undo_redo.add_undo_method(_restore_mesh_state.bind(target, start_arrays, start_positions))
 		undo_redo.commit_action(false)
+
+		if target == hull_builder and hull_builder.has_method("_update_collision_shape"):
+			hull_builder.call("_update_collision_shape")
+		elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance) and turret_builder.has_method("_update_collision_shape"):
+			turret_builder.call("_update_collision_shape")
+
+		if bounding_box_overlay and bounding_box_overlay.has_method("update_overlay"):
+			bounding_box_overlay.update_overlay()
 
 	_drag_start_target = null
 	_drag_start_mesh_arrays.clear()
@@ -475,8 +461,8 @@ func extrude_selected_face() -> void:
 	var new_positions = selected_positions.duplicate()
 
 	undo_redo.create_action("Extrude Face")
-	undo_redo.add_do_method(self, "_restore_mesh_state", target, new_arrays, new_positions)
-	undo_redo.add_undo_method(self, "_restore_mesh_state", target, old_arrays, old_positions)
+	undo_redo.add_do_method(_restore_mesh_state.bind(target, new_arrays, new_positions))
+	undo_redo.add_undo_method(_restore_mesh_state.bind(target, old_arrays, old_positions))
 	undo_redo.commit_action(false)
 
 func _apply_extrude_state(target: MeshInstance3D, hull_len: float, turret_len: float, surface_arrays: Array, sel_positions: Array[Vector3]) -> void:

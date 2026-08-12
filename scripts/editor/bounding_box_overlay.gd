@@ -12,7 +12,7 @@ signal dimensions_changed(length: float, width: float, height: float)
 @export var target_vehicle: Node3D
 
 @export var auto_update: bool = true
-@export var show_overlay: bool = true:
+@export var show_overlay: bool = false:
 	set(value):
 		show_overlay = value
 		visible = show_overlay
@@ -45,6 +45,7 @@ var _current_aabb: AABB = AABB()
 func _ready() -> void:
 	_setup_nodes()
 	_setup_materials()
+	visible = show_overlay
 	if hull_builder == null or turret_builder == null or track_generator == null:
 		_auto_find_targets()
 	update_overlay()

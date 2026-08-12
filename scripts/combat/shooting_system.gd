@@ -138,6 +138,10 @@ func fire() -> void:
 
 	# Create glowing 3D visual tracer effect
 	var tracer := _create_tracer_visual(caliber_mm)
+	var world_root := get_tree().current_scene if get_tree() and get_tree().current_scene else (get_tree().root if get_tree() else get_parent())
+	if world_root:
+		world_root.add_child(tracer)
+
 	tracer.global_position = spawn_pos
 	if fire_dir.length_squared() > 0.01:
 		var up := Vector3.UP
@@ -145,9 +149,6 @@ func fire() -> void:
 			up = Vector3.RIGHT
 		tracer.look_at(spawn_pos + fire_dir, up)
 
-	var world_root := get_tree().current_scene if get_tree() and get_tree().current_scene else (get_tree().root if get_tree() else get_parent())
-	if world_root:
-		world_root.add_child(tracer)
 	proj.visual_node = tracer
 
 	_active_projectiles.append(proj)

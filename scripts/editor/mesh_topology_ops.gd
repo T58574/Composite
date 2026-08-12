@@ -11,9 +11,9 @@ static func extrude_face(array_mesh: ArrayMesh, face_index: int, distance: float
 
 	var arrays = array_mesh.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
-	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL] if arrays[Mesh.ARRAY_NORMAL] != null else PackedVector3Array()
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV] if arrays[Mesh.ARRAY_TEX_UV] != null else PackedVector2Array()
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
 
 	if indices.size() == 0:
 		indices = PackedInt32Array()
@@ -100,15 +100,22 @@ static func extrude_face(array_mesh: ArrayMesh, face_index: int, distance: float
 	# Recalculate smooth normals across mesh
 	normals = calculate_smooth_normals(vertices, indices, 60.0)
 
-	# Update mesh surface
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	arrays[Mesh.ARRAY_INDEX] = indices
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(indices.size()):
+		var idx = indices[i]
+		var v_p = vertices[idx]
+		var v_n = normals[idx] if idx < normals.size() else face_normal
+		var v_uv = uvs[idx] if idx < uvs.size() else Vector2.ZERO
+		st.set_normal(v_n)
+		st.set_uv(v_uv)
+		st.add_vertex(v_p)
 
+	st.generate_tangents()
 	array_mesh.clear_surfaces()
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-
+	var committed = st.commit()
+	if committed and committed.get_surface_count() > 0:
+		return committed
 	return array_mesh
 
 
