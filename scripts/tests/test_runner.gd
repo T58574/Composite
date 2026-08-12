@@ -46,6 +46,11 @@ func _init() -> void:
 	if _test_quad_selection_and_undo_redo():
 		passed_tests += 1
 
+	# Test Group 8: Tank Editor Scene Loading & Resource Integrity
+	total_tests += 1
+	if _test_tank_editor_scene_loading():
+		passed_tests += 1
+
 	print("----------------------------------------------------------")
 	print("RESULT: %d / %d TEST SUITES PASSED" % [passed_tests, total_tests])
 	print("==========================================================")
@@ -291,3 +296,79 @@ func _test_quad_selection_and_undo_redo() -> bool:
 	root.free()
 	print("  PASS: Quad face selection (4 vertices) and Undo/Redo geometry rollback verified.")
 	return true
+
+func _test_tank_editor_scene_loading() -> bool:
+	print("\n[TEST 8] Testing Tank Editor Scene Loading & Resource Integrity...")
+
+	# Verify the scene file exists
+	var scene_path := "res://scenes/tank_editor/tank_editor.tscn"
+	if not ResourceLoader.exists(scene_path):
+		print("  FAIL: Scene file does not exist: %s" % scene_path)
+		return false
+
+	# Verify all PBR texture resources exist and load as Texture2D
+	var texture_paths := [
+		"res://assets/textures/metal/Metal038_2K-PNG_Color.png",
+		"res://assets/textures/metal/Metal038_2K-PNG_NormalGL.png",
+		"res://assets/textures/metal/Metal038_2K-PNG_Roughness.png",
+		"res://assets/textures/metal/Metal038_2K-PNG_Metalness.png",
+		"res://assets/textures/sky/NightSkyHDRI008_4K_HDR.exr",
+		"res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Color.png",
+		"res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_NormalGL.png",
+		"res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Roughness.png",
+		"res://assets/textures/wood/Wood035_1K-JPG_Color.jpg",
+		"res://assets/textures/wood/Wood035_1K-JPG_NormalGL.jpg",
+		"res://assets/textures/wood/Wood035_1K-JPG_Roughness.jpg",
+	]
+	for tex_path in texture_paths:
+		if not ResourceLoader.exists(tex_path):
+			print("  FAIL: Texture resource not found: %s" % tex_path)
+			return false
+		var tex = load(tex_path)
+		if tex == null or not tex is Texture2D:
+			print("  FAIL: Texture failed to load as Texture2D: %s" % tex_path)
+			return false
+		print("  OK: Loaded texture %s (%dx%d)" % [tex_path.get_file(), tex.get_width(), tex.get_height()])
+
+	# Verify shader resources
+	var shader_paths := [
+		"res://assets/shaders/triplanar_pbr.gdshader",
+		"res://assets/shaders/armor_heatmap.gdshader",
+		"res://assets/shaders/xray_mesh.gdshader",
+	]
+	for shader_path in shader_paths:
+		if not ResourceLoader.exists(shader_path):
+			print("  FAIL: Shader not found: %s" % shader_path)
+			return false
+		var shader = load(shader_path)
+		if shader == null or not shader is Shader:
+			print("  FAIL: Shader failed to load: %s" % shader_path)
+			return false
+		print("  OK: Loaded shader %s" % shader_path.get_file())
+
+	# Load the PackedScene resource (catches ext_resource resolution failures)
+	var packed_scene = load(scene_path) as PackedScene
+	if packed_scene == null:
+		print("  FAIL: PackedScene failed to load: %s" % scene_path)
+		return false
+	print("  OK: PackedScene loaded successfully")
+
+	# Verify the PBR triplanar shader has the expected uniforms
+	var pbr_shader = load("res://assets/shaders/triplanar_pbr.gdshader") as Shader
+	if pbr_shader != null:
+		var code: String = pbr_shader.code
+		var required_uniforms := ["albedo_texture", "normal_texture", "roughness_texture", "metalness_texture"]
+		for u in required_uniforms:
+			if code.find(u) == -1:
+				print("  FAIL: Shader missing uniform: %s" % u)
+				return false
+		print("  OK: Triplanar PBR shader has all 4 PBR texture uniforms")
+
+	# Note: Full scene instantiation requires SettingsManager autoload which is
+	# not available in headless test mode (-s). The resource-level checks above
+	# are sufficient to verify the "No loader found" errors are fixed.
+	print("  SKIP: Scene instantiation skipped (requires SettingsManager autoload)")
+
+	print("  PASS: Tank editor scene loaded, all resources verified (4 PBR textures, 3 shaders).")
+	return true
+

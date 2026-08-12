@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
+[gd_scene load_steps=36 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
 
 [ext_resource type="Script" path="res://scenes/tank_editor/tank_editor_ui.gd" id="1_editor_ui"]
 [ext_resource type="Script" path="res://scripts/editor/editor_camera.gd" id="2_camera"]
@@ -11,32 +11,37 @@
 [ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="9_pbr"]
 [ext_resource type="Shader" path="res://assets/shaders/armor_heatmap.gdshader" id="10_heatmap"]
 [ext_resource type="Shader" path="res://assets/shaders/xray_mesh.gdshader" id="11_xray"]
-[ext_resource type="Texture2D" path="res://assets/materials/tank_steel_armor.jpeg" id="12_armor_tex"]
-[ext_resource type="Texture2D" path="res://assets/materials/concrete_floor.jpeg" id="13_grid_tex"]
-[ext_resource type="Texture2D" uid="uid://cw32xstdnptsh" path="res://assets/materials/hangar_floor_grid.jpg" id="14_hangar_tex"]
+[ext_resource type="Texture2D" uid="uid://dcywc1x61xtvj" path="res://assets/textures/metal/Metal038_2K-PNG_Color.png" id="12_armor_tex"]
+[ext_resource type="Texture2D" uid="uid://cpbmtlqyymd4a" path="res://assets/textures/metal/Metal038_2K-PNG_NormalGL.png" id="12_normal_tex"]
+[ext_resource type="Texture2D" uid="uid://dbki3ni5k7cib" path="res://assets/textures/metal/Metal038_2K-PNG_Roughness.png" id="12_roughness_tex"]
+[ext_resource type="Texture2D" uid="uid://cbed4l2bd78gf" path="res://assets/textures/metal/Metal038_2K-PNG_Metalness.png" id="12_metalness_tex"]
 [ext_resource type="Texture2D" path="res://assets/materials/tank_track_link.jpg" id="15_track_tex"]
+[ext_resource type="Texture2D" uid="uid://eq4pcq5nsw7p" path="res://assets/textures/sky/NightSkyHDRI008_4K_HDR.exr" id="18_hdri_sky"]
+[ext_resource type="Texture2D" uid="uid://b1jyp7gh2wq5t" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Color.png" id="19_ground_color"]
+[ext_resource type="Texture2D" uid="uid://qpfnxsy826du" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_NormalGL.png" id="19_ground_normal"]
+[ext_resource type="Texture2D" uid="uid://c31s3wm4rn3lr" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Roughness.png" id="19_ground_roughness"]
+[ext_resource type="Texture2D" uid="uid://cxaehxku61whs" path="res://assets/textures/wood/Wood035_1K-JPG_Color.jpg" id="20_wood_color"]
+[ext_resource type="Texture2D" uid="uid://cdlwbq6e8d0mq" path="res://assets/textures/wood/Wood035_1K-JPG_NormalGL.jpg" id="20_wood_normal"]
+[ext_resource type="Texture2D" uid="uid://badoij1g4cp2t" path="res://assets/textures/wood/Wood035_1K-JPG_Roughness.jpg" id="20_wood_roughness"]
 [ext_resource type="Script" path="res://scripts/editor/bounding_box_overlay.gd" id="16_overlay"]
 [ext_resource type="Script" path="res://scripts/editor/preset_card_selector.gd" id="17_card_selector"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tactical"]
-sky_top_color = Color(0.2, 0.35, 0.55, 1)
-sky_horizon_color = Color(0.65, 0.7, 0.76, 1)
-ground_bottom_color = Color(0.1, 0.12, 0.14, 1)
-ground_horizon_color = Color(0.4, 0.43, 0.47, 1)
-sun_angle_max = 30.0
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_night"]
+panorama = ExtResource("18_hdri_sky")
 
 [sub_resource type="Sky" id="Sky_tactical"]
-sky_material = SubResource("ProceduralSkyMaterial_tactical")
+sky_material = SubResource("PanoramaSkyMaterial_night")
+radiance_size = 3
 
 [sub_resource type="Environment" id="Environment_tactical"]
 background_mode = 2
 sky = SubResource("Sky_tactical")
-ambient_light_source = 3
-ambient_light_color = Color(0.24, 0.26, 0.3, 1)
-ambient_light_sky_contribution = 0.75
-ambient_light_energy = 1.2
+ambient_light_source = 2
+ambient_light_color = Color(0.06, 0.08, 0.14, 1)
+ambient_light_sky_contribution = 0.3
+ambient_light_energy = 0.4
 tonemap_mode = 2
-tonemap_exposure = 1.15
+tonemap_exposure = 1.3
 ssao_enabled = true
 ssao_radius = 1.8
 ssao_intensity = 3.0
@@ -44,23 +49,31 @@ ssao_power = 1.5
 ssao_detail = 0.5
 ssao_horizon = 0.06
 glow_enabled = true
-glow_intensity = 0.35
-glow_bloom = 0.12
+glow_intensity = 0.6
+glow_bloom = 0.25
 glow_blend_mode = 0
 ssr_enabled = true
 ssr_max_steps = 64
 ssr_fade_in = 0.15
 ssr_fade_out = 2.0
 ssr_depth_tolerance = 0.2
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.01
+volumetric_fog_albedo = Color(0.9, 0.9, 1.0, 1)
+volumetric_fog_emission = Color(0.0, 0.0, 0.0, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_pbr"]
 render_priority = 0
 shader = ExtResource("9_pbr")
 shader_parameter/albedo_texture = ExtResource("12_armor_tex")
+shader_parameter/normal_texture = ExtResource("12_normal_tex")
+shader_parameter/roughness_texture = ExtResource("12_roughness_tex")
+shader_parameter/metalness_texture = ExtResource("12_metalness_tex")
 shader_parameter/base_color = Color(1, 1, 1, 1)
 shader_parameter/metallic = 0.20
 shader_parameter/roughness = 0.88
 shader_parameter/uv_scale = 0.6
+shader_parameter/normal_strength = 1.0
 shader_parameter/edge_wear = 0.35
 shader_parameter/camo_type = 0
 shader_parameter/camo_scale = 0.8
@@ -77,22 +90,45 @@ render_priority = 0
 shader = ExtResource("11_xray")
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(100, 100)
+size = Vector2(500, 500)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_concrete_floor"]
-albedo_texture = ExtResource("13_grid_tex")
-uv1_scale = Vector3(16, 16, 1)
-metallic = 0.08
-roughness = 0.45
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground_floor"]
+albedo_texture = ExtResource("19_ground_color")
+normal_enabled = true
+normal_texture = ExtResource("19_ground_normal")
+roughness_texture = ExtResource("19_ground_roughness")
+roughness_texture_channel = 0
+uv1_scale = Vector3(50, 50, 1)
+metallic = 0.0
+roughness = 0.85
 
-[sub_resource type="BoxMesh" id="BoxMesh_platform"]
-size = Vector3(12, 0.04, 18)
+[sub_resource type="CylinderMesh" id="CylinderMesh_lamp_pole"]
+top_radius = 0.06
+bottom_radius = 0.08
+height = 6.0
+radial_segments = 8
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hangar_platform"]
-albedo_texture = ExtResource("14_hangar_tex")
-uv1_scale = Vector3(4, 6, 1)
-metallic = 0.15
-roughness = 0.38
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood_pole"]
+albedo_texture = ExtResource("20_wood_color")
+normal_enabled = true
+normal_texture = ExtResource("20_wood_normal")
+roughness_texture = ExtResource("20_wood_roughness")
+roughness_texture_channel = 0
+uv1_scale = Vector3(1, 4, 1)
+metallic = 0.0
+roughness = 0.85
+
+[sub_resource type="SphereMesh" id="SphereMesh_lamp_bulb"]
+radius = 0.15
+height = 0.3
+radial_segments = 12
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lamp_bulb"]
+albedo_color = Color(1.0, 0.92, 0.7, 1)
+emission_enabled = true
+emission = Color(1.0, 0.9, 0.65, 1)
+emission_energy_multiplier = 3.0
 
 [node name="TankEditor" type="Control"]
 layout_mode = 3
@@ -108,36 +144,137 @@ grow_vertical = 2
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D"]
 environment = SubResource("Environment_tactical")
 
-[node name="SunLight3D" type="DirectionalLight3D" parent="Node3D"]
-transform = Transform3D(0.819152, -0.40558, 0.40558, 0, 0.707107, 0.707107, -0.573576, -0.579228, 0.579228, 0, 15, 0)
-light_color = Color(1, 0.94, 0.84, 1)
-light_energy = 1.6
+[node name="GroundFloor" type="MeshInstance3D" parent="Node3D"]
+mesh = SubResource("PlaneMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground_floor")
+
+[node name="LampPostFront" type="Node3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
+
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+mesh = SubResource("CylinderMesh_lamp_pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
+
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+mesh = SubResource("SphereMesh_lamp_bulb")
+surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
+
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostFront"]
+transform = Transform3D(-1, 0, 0, 0, 0.926, 0.378, 0, 0.378, -0.926, 0, 5.9, 0)
+light_color = Color(1.0, 0.92, 0.75, 1)
+light_energy = 3.5
+spot_range = 18.0
+spot_angle = 40.0
+spot_attenuation = 1.0
 shadow_enabled = true
-directional_shadow_mode = 2
-directional_shadow_max_distance = 60.0
-shadow_blur = 1.8
+shadow_blur = 1.5
 shadow_bias = 0.04
 
-[node name="StudioFillLight" type="DirectionalLight3D" parent="Node3D"]
-transform = Transform3D(-0.819152, 0.40558, -0.40558, 0, 0.707107, 0.707107, 0.573576, 0.579228, -0.579228, 0, 12, 0)
-light_color = Color(0.55, 0.7, 0.88, 1)
-light_energy = 0.45
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+light_color = Color(1.0, 0.9, 0.7, 1)
+light_energy = 0.6
+omni_range = 3.0
+omni_attenuation = 1.5
 shadow_enabled = false
 
-[node name="StudioRimLight" type="DirectionalLight3D" parent="Node3D"]
-transform = Transform3D(0.5, 0, -0.866025, -0.433013, 0.866025, -0.25, 0.75, 0.5, 0.433013, 0, 10, 0)
-light_color = Color(1, 0.95, 0.88, 1)
-light_energy = 0.55
+[node name="LampPostBack" type="Node3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
+
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+mesh = SubResource("CylinderMesh_lamp_pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
+
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+mesh = SubResource("SphereMesh_lamp_bulb")
+surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
+
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostBack"]
+transform = Transform3D(1, 0, 0, 0, 0.926, 0.378, 0, -0.378, 0.926, 0, 5.9, 0)
+light_color = Color(1.0, 0.92, 0.75, 1)
+light_energy = 3.5
+spot_range = 18.0
+spot_angle = 40.0
+spot_attenuation = 1.0
+shadow_enabled = true
+shadow_blur = 1.5
+shadow_bias = 0.04
+
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+light_color = Color(1.0, 0.9, 0.7, 1)
+light_energy = 0.6
+omni_range = 3.0
+omni_attenuation = 1.5
 shadow_enabled = false
 
-[node name="ConcreteFloor" type="MeshInstance3D" parent="Node3D"]
-mesh = SubResource("PlaneMesh_floor")
-surface_material_override/0 = SubResource("StandardMaterial3D_concrete_floor")
+[node name="LampPostLeft" type="Node3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
 
-[node name="PosturePlatform" type="MeshInstance3D" parent="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
-mesh = SubResource("BoxMesh_platform")
-surface_material_override/0 = SubResource("StandardMaterial3D_hangar_platform")
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+mesh = SubResource("CylinderMesh_lamp_pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
+
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+mesh = SubResource("SphereMesh_lamp_bulb")
+surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
+
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostLeft"]
+transform = Transform3D(0, 0.440, -0.898, 0, 0.898, 0.440, 1, 0, 0, 0, 5.9, 0)
+light_color = Color(1.0, 0.92, 0.75, 1)
+light_energy = 3.0
+spot_range = 16.0
+spot_angle = 40.0
+spot_attenuation = 1.0
+shadow_enabled = true
+shadow_blur = 1.5
+shadow_bias = 0.04
+
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostLeft"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+light_color = Color(1.0, 0.9, 0.7, 1)
+light_energy = 0.6
+omni_range = 3.0
+omni_attenuation = 1.5
+shadow_enabled = false
+
+[node name="LampPostRight" type="Node3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
+
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+mesh = SubResource("CylinderMesh_lamp_pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
+
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+mesh = SubResource("SphereMesh_lamp_bulb")
+surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
+
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostRight"]
+transform = Transform3D(0, -0.440, 0.898, 0, 0.898, 0.440, -1, 0, 0, 0, 5.9, 0)
+light_color = Color(1.0, 0.92, 0.75, 1)
+light_energy = 3.0
+spot_range = 16.0
+spot_angle = 40.0
+spot_attenuation = 1.0
+shadow_enabled = true
+shadow_blur = 1.5
+shadow_bias = 0.04
+
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostRight"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
+light_color = Color(1.0, 0.9, 0.7, 1)
+light_energy = 0.6
+omni_range = 3.0
+omni_attenuation = 1.5
+shadow_enabled = false
 
 [node name="EditorCameraPivot" type="Node3D" parent="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 1.2, 0)
