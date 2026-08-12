@@ -114,8 +114,15 @@ func _apply_suspension_forces(delta: float) -> void:
 		var compression = rest_length - current_distance
 		
 		if compression > 0.0:
+			# Non-linear spring stiffness ramping near max compression (progressive bump stop)
+			var effective_stiffness = spring_stiffness
+			var bump_stop_threshold = rest_length * 0.75
+			if compression > bump_stop_threshold:
+				var excess_ratio = (compression - bump_stop_threshold) / max(0.001, rest_length * 0.25)
+				effective_stiffness *= (1.0 + 4.0 * excess_ratio * excess_ratio)
+			
 			# Spring force: F_spring = k * x
-			var spring_force = compression * spring_stiffness
+			var spring_force = compression * effective_stiffness
 			
 			# Damping force: F_damp = c * v_rel
 			var wheel_velocity = _get_point_velocity(ray_origin)
@@ -127,16 +134,30 @@ func _apply_suspension_forces(delta: float) -> void:
 			# Apply force at wheel contact point
 			apply_force(force_vector, ray_origin - global_position)
 			
-			# Track lateral friction (anti-slide)
-			_apply_lateral_friction(ray_origin, wheel_velocity, delta)
+			# Track lateral friction (anti-slide load-coupled grip)
+			_apply_lateral_friction(ray_origin, wheel_velocity, delta, total_force_magnitude)
 
-func _apply_lateral_friction(point: Vector3, velocity: Vector3, delta: float) -> void:
+func _apply_lateral_friction(point: Vector3, velocity: Vector3, delta: float, normal_force: float = 0.0) -> void:
 	var right_dir = global_transform.basis.x
 	var lateral_vel = velocity.dot(right_dir)
+	if abs(lateral_vel) < 0.001:
+		return
+		
+	var active_wheels = max(1, _raycasts.size())
+	var wheel_mass = mass / float(active_wheels)
 	
-	# Counteract sideways sliding with track tread grip
-	var counter_force = -right_dir * (lateral_vel * mass * 0.15 / max(1, _raycasts.size()))
-	apply_force(counter_force, point - global_position)
+	# Compute mass-spring damping force needed to cancel lateral velocity smoothly
+	# Grip factor accounts for track tread digging into terrain
+	var track_grip_coeff: float = 0.9
+	var desired_force = -right_dir * (lateral_vel * wheel_mass * track_grip_coeff / max(0.001, delta))
+	
+	# Limit lateral friction force by normal force (load-dependent Coulomb friction) if normal force is present
+	if normal_force > 0.0:
+		var max_friction = normal_force * 1.2
+		if desired_force.length() > max_friction:
+			desired_force = desired_force.normalized() * max_friction
+			
+	apply_force(desired_force, point - global_position)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _raycasts.size()

@@ -46,8 +46,26 @@ var calculated_turret_mass_kg: float = 0.0
 var armor_sandwich: ArmorCalculator.ArmorSandwich = null
 var era_sectors: Dictionary = {}
 
+var _mesh_update_pending: bool = false
+
 func _ready() -> void:
 	_setup_nodes()
+	generate_turret_and_gun()
+
+## Queue a deferred turret and gun mesh update (debounced for UI slider drags)
+func queue_generate_turret_and_gun() -> void:
+	if not is_inside_tree():
+		generate_turret_and_gun()
+		return
+	if _mesh_update_pending:
+		return
+	_mesh_update_pending = true
+	call_deferred("_do_generate_turret_and_gun")
+
+func _do_generate_turret_and_gun() -> void:
+	if not _mesh_update_pending:
+		return
+	_mesh_update_pending = false
 	generate_turret_and_gun()
 
 func _setup_nodes() -> void:
@@ -71,6 +89,7 @@ func _process(delta: float) -> void:
 
 ## Generates 3D mesh for turret armor shell, ring base, bustle, cupola, mantlet, and gun barrel
 func generate_turret_and_gun() -> void:
+	_mesh_update_pending = false
 	_setup_nodes()
 	_generate_turret_mesh()
 	_generate_gun_mesh()
@@ -504,7 +523,7 @@ func set_aim_target(yaw_deg: float, pitch_deg: float) -> void:
 	target_yaw_deg = yaw_deg
 	target_pitch_deg = clamp(pitch_deg, min_pitch_deg, max_pitch_deg)
 
-func set_turret_dimensions(l: float, w: float, h: float, cheek_deg: float, b_length: float, front_armor: float, p_turret_style: TurretStyle = turret_style) -> void:
+func set_turret_dimensions(l: float, w: float, h: float, cheek_deg: float, b_length: float, front_armor: float, p_turret_style: TurretStyle = turret_style, immediate: bool = false) -> void:
 	self.turret_length = l
 	self.turret_width = w
 	self.turret_height = h
@@ -512,7 +531,10 @@ func set_turret_dimensions(l: float, w: float, h: float, cheek_deg: float, b_len
 	self.barrel_length = b_length
 	self.front_turret_armor_mm = front_armor
 	self.turret_style = p_turret_style
-	generate_turret_and_gun()
+	if immediate:
+		generate_turret_and_gun()
+	else:
+		queue_generate_turret_and_gun()
 
 func set_turret_offset(x_off: float, z_off: float) -> void:
 	self.turret_offset_x = x_off

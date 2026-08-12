@@ -32,11 +32,30 @@ var era_sectors: Dictionary = {}
 var static_collision_body: StaticBody3D = null
 var collision_shape_node: CollisionShape3D = null
 
+var _mesh_update_pending: bool = false
+
 func _ready() -> void:
+	generate_hull_mesh()
+
+## Queue a deferred hull mesh update (debounced for UI slider drags)
+func queue_generate_hull_mesh() -> void:
+	if not is_inside_tree():
+		generate_hull_mesh()
+		return
+	if _mesh_update_pending:
+		return
+	_mesh_update_pending = true
+	call_deferred("_do_generate_hull_mesh")
+
+func _do_generate_hull_mesh() -> void:
+	if not _mesh_update_pending:
+		return
+	_mesh_update_pending = false
 	generate_hull_mesh()
 
 ## Generate clean hard-surface 3D Base Hull Mesh via SurfaceTool with explicit flat normals
 func generate_hull_mesh() -> void:
+	_mesh_update_pending = false
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -319,13 +338,16 @@ func _update_collision_shape() -> void:
 	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
 
 ## Public API to update hull dimensions dynamically from UI
-func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float, p_glacis_style: GlacisStyle = glacis_style) -> void:
+func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float, p_glacis_style: GlacisStyle = glacis_style, immediate: bool = false) -> void:
 	self.length = p_length
 	self.width = p_width
 	self.height = p_height
 	self.front_glacis_angle_deg = p_glacis_angle
 	self.glacis_style = p_glacis_style
-	generate_hull_mesh()
+	if immediate:
+		generate_hull_mesh()
+	else:
+		queue_generate_hull_mesh()
 
 ## Determine local armor sector name from world hit position
 func get_sector_at(world_hit_pos: Vector3) -> String:

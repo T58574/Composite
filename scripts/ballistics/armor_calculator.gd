@@ -101,6 +101,7 @@ class ArmorSandwich extends RefCounted:
 	var has_spall_liner: bool = false
 	var addon_protection: AddonProtectionType = AddonProtectionType.NONE
 	var era_detonated: bool = false
+	var sector_era_states: Dictionary = {}
 
 	func _init() -> void:
 		outer_layer = ArmorLayer.new(MaterialType.RHA_STEEL, 60.0)
@@ -109,6 +110,7 @@ class ArmorSandwich extends RefCounted:
 		has_spall_liner = false
 		addon_protection = AddonProtectionType.NONE
 		era_detonated = false
+		sector_era_states = {}
 
 	func duplicate_sandwich() -> ArmorSandwich:
 		var copy = ArmorSandwich.new()
@@ -121,7 +123,20 @@ class ArmorSandwich extends RefCounted:
 		copy.has_spall_liner = has_spall_liner
 		copy.addon_protection = addon_protection
 		copy.era_detonated = era_detonated
+		copy.sector_era_states = sector_era_states.duplicate()
 		return copy
+
+	func is_era_detonated_at_sector(sector_id: String = "") -> bool:
+		if era_detonated:
+			return true
+		if not sector_id.is_empty():
+			return sector_era_states.get(sector_id, false)
+		return false
+
+	func detonate_era_at_sector(sector_id: String = "") -> void:
+		if not sector_id.is_empty():
+			sector_era_states[sector_id] = true
+		era_detonated = true
 
 	func get_total_physical_thickness_mm() -> float:
 		var total: float = 0.0
@@ -141,7 +156,7 @@ class ArmorSandwich extends RefCounted:
 		mass += ArmorCalculator.get_addon_area_mass_kg_m2(addon_protection)
 		return mass
 
-	func get_effective_rha_mm(projectile_type: AmmoType, los_factor: float = 1.0) -> float:
+	func get_effective_rha_mm(projectile_type: AmmoType, los_factor: float = 1.0, impact_angle_deg: float = 0.0, sector_id: String = "") -> float:
 		var total_rha: float = 0.0
 		var layers = [outer_layer, filler_layer, rear_layer]
 		for layer in layers:
@@ -150,9 +165,10 @@ class ArmorSandwich extends RefCounted:
 				total_rha += layer.thickness_mm * los_factor * mult
 		if has_spall_liner:
 			total_rha += 15.0 * los_factor * 0.3
-		var addon_bonus := ArmorCalculator.get_addon_rha_bonus_mm(addon_protection, projectile_type)
-		if era_detonated and ArmorCalculator.is_era_addon(addon_protection):
-			addon_bonus = 0.0
+		var is_spent = is_era_detonated_at_sector(sector_id)
+		var addon_bonus := 0.0
+		if not is_spent:
+			addon_bonus = ArmorCalculator.get_addon_rha_bonus_mm(addon_protection, projectile_type, impact_angle_deg)
 		total_rha += addon_bonus
 		return total_rha
 
@@ -208,25 +224,48 @@ static func get_addon_area_mass_kg_m2(addon: AddonProtectionType) -> float:
 	return 0.0
 
 
-static func get_addon_rha_bonus_mm(addon: AddonProtectionType, projectile_type: AmmoType) -> float:
+static func get_addon_rha_bonus_mm(addon: AddonProtectionType, projectile_type: AmmoType, impact_angle_deg: float = 0.0) -> float:
+	var base_bonus := 0.0
 	match addon:
 		AddonProtectionType.NONE:
 			return 0.0
 		AddonProtectionType.ERA_KONTAKT1:
-			return 350.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 0.0
+			if projectile_type == AmmoType.HEAT:
+				base_bonus = 350.0
+			elif projectile_type == AmmoType.ATGM:
+				base_bonus = 0.0 # Tandem precursor charge neutralizes Kontakt-1 flyer plates
+			else:
+				base_bonus = 0.0
 		AddonProtectionType.ERA_KONTAKT5:
-			return 600.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 250.0
+			if projectile_type == AmmoType.HEAT:
+				base_bonus = 600.0
+			elif projectile_type == AmmoType.ATGM:
+				base_bonus = 250.0 # Tandem precursor charge reduces protection
+			else:
+				base_bonus = 250.0
 		AddonProtectionType.ERA_RELIKT:
-			return 800.0 if projectile_type == AmmoType.HEAT else (400.0 if projectile_type == AmmoType.ATGM else 400.0)
+			if projectile_type == AmmoType.HEAT:
+				base_bonus = 800.0
+			elif projectile_type == AmmoType.ATGM:
+				base_bonus = 600.0 # 3rd gen ERA tandem mitigation
+			else:
+				base_bonus = 400.0
 		AddonProtectionType.SLAT_CAGE_GRID:
-			return 150.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 10.0
+			return 150.0 if projectile_type == AmmoType.HEAT else (80.0 if projectile_type == AmmoType.ATGM else 10.0)
 		AddonProtectionType.SIDE_SKIRTS_SOFT:
 			return 80.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 5.0
 		AddonProtectionType.COPE_CAGE_MANGAL:
 			return 200.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 15.0
 		AddonProtectionType.STEALTH_NAKIDKA:
 			return 20.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 0.0
-	return 0.0
+
+	# Obliquity angle scaling for ERA: flyer plate interaction path increases with impact angle theta
+	if is_era_addon(addon) and base_bonus > 0.0:
+		var cos_theta = maxf(cos(deg_to_rad(impact_angle_deg)), 0.1736) # min cos for 80 deg limit
+		var era_angle_factor = clampf(1.0 / pow(cos_theta, 0.7), 1.0, 2.2)
+		return base_bonus * era_angle_factor
+
+	return base_bonus
 
 
 static func get_material_name(mat: MaterialType) -> String:
@@ -256,13 +295,44 @@ static func get_addon_name(addon: AddonProtectionType) -> String:
 	return "Unknown Addon"
 
 
-## Calculate Effective Armor Thickness considering Line-Of-Sight (LOS) angle:
-## T_eff = T / cos(theta)
-static func calculate_effective_thickness(nominal_thickness_mm: float, normal: Vector3, ray_dir: Vector3) -> float:
+## Calculate APFSDS obliquity slope factor accounting for rod bending/shatter/denormalization at >60 deg
+static func calculate_apfsds_slope_factor(impact_angle_deg: float) -> float:
+	var angle = clampf(impact_angle_deg, 0.0, 85.0)
+	var cos_theta = maxf(cos(deg_to_rad(angle)), 0.087) # 0.087 = cos(85 deg)
+	var base_los = 1.0 / cos_theta
+	if angle > 60.0:
+		# Hydrodynamic denormalization & rod shatter penalty for long rods at extreme obliquity
+		var over_angle = (angle - 60.0) / 25.0
+		var denorm_penalty = 1.0 + 1.8 * pow(over_angle, 1.4)
+		return base_los * denorm_penalty
+	return base_los
+
+
+## Calculate Effective Armor Thickness considering Line-Of-Sight (LOS) angle and ammo type:
+static func calculate_effective_thickness(nominal_thickness_mm: float, normal: Vector3, ray_dir: Vector3, ammo_type: AmmoType = AmmoType.APFSDS) -> float:
 	var cos_theta = abs(normal.dot(-ray_dir))
-	# Clamp angle to prevent infinite thickness on extreme glancing hits (>85 deg)
-	cos_theta = max(cos_theta, cos(deg_to_rad(85.0)))
-	return nominal_thickness_mm / cos_theta
+	var angle_deg = rad_to_deg(acos(clampf(cos_theta, 0.0, 1.0)))
+	if ammo_type == AmmoType.APFSDS:
+		return nominal_thickness_mm * calculate_apfsds_slope_factor(angle_deg)
+	var los_factor = 1.0 / maxf(cos_theta, cos(deg_to_rad(85.0)))
+	return nominal_thickness_mm * los_factor
+
+
+static func get_sector_from_impact(impact_normal: Vector3, hit_position: Vector3 = Vector3.ZERO) -> String:
+	var norm = impact_normal.normalized()
+	if norm.y > 0.7:
+		return "roof"
+	elif norm.y < -0.7:
+		return "belly"
+	elif norm.z > 0.4:
+		return "glacis_front" if norm.y > 0.2 else "hull_front"
+	elif norm.z < -0.4:
+		return "hull_rear"
+	elif norm.x < -0.4:
+		return "side_left"
+	elif norm.x > 0.4:
+		return "side_right"
+	return "glacis_front"
 
 
 ## Perform full impact penetration test supporting ArmorSandwich or nominal values
@@ -273,23 +343,37 @@ static func evaluate_impact(
 	armor_material: ArmorType,
 	impact_normal: Vector3,
 	projectile_direction: Vector3,
-	sandwich: ArmorSandwich = null
+	sandwich: ArmorSandwich = null,
+	hit_position: Vector3 = Vector3.ZERO,
+	sector_id: String = ""
 ) -> ImpactResult:
 	var result = ImpactResult.new()
+	result.hit_position = hit_position
 	
 	var cos_theta = abs(impact_normal.dot(-projectile_direction))
-	var angle_rad = acos(clamp(cos_theta, 0.0, 1.0))
+	var angle_rad = acos(clampf(cos_theta, 0.0, 1.0))
 	result.impact_angle_deg = rad_to_deg(angle_rad)
+
+	# Determine sector ID if not provided explicitly
+	var active_sector_id = sector_id
+	if active_sector_id.is_empty():
+		active_sector_id = get_sector_from_impact(impact_normal, hit_position)
 	
-	var los_factor = 1.0 / max(cos_theta, 0.087) # 0.087 = cos(85 deg)
+	# Calculate LOS factor (accounting for APFSDS de-normalization at >60 deg)
+	var los_factor := 1.0
+	if projectile_type == AmmoType.APFSDS:
+		los_factor = calculate_apfsds_slope_factor(result.impact_angle_deg)
+	else:
+		los_factor = 1.0 / maxf(cos_theta, 0.087) # 0.087 = cos(85 deg)
 	
 	var era_bonus_applied := false
 
 	if sandwich != null:
-		var era_bonus = get_addon_rha_bonus_mm(sandwich.addon_protection, projectile_type) if (is_era_addon(sandwich.addon_protection) and not sandwich.era_detonated) else 0.0
+		var is_spent = sandwich.is_era_detonated_at_sector(active_sector_id)
+		var era_bonus = get_addon_rha_bonus_mm(sandwich.addon_protection, projectile_type, result.impact_angle_deg) if (is_era_addon(sandwich.addon_protection) and not is_spent) else 0.0
 		if era_bonus > 0.0:
 			era_bonus_applied = true
-		result.effective_thickness_mm = sandwich.get_effective_rha_mm(projectile_type, los_factor)
+		result.effective_thickness_mm = sandwich.get_effective_rha_mm(projectile_type, los_factor, result.impact_angle_deg, active_sector_id)
 	else:
 		var los_thickness = nominal_armor_mm * los_factor
 		var rha_multiplier = 1.0
@@ -301,11 +385,11 @@ static func evaluate_impact(
 			ArmorType.COMPOSITE:
 				rha_multiplier = 1.45 if projectile_type == AmmoType.APFSDS else 2.2
 			ArmorType.ERA_KONTAKT1:
-				era_reduction_mm = 350.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 0.0
+				era_reduction_mm = get_addon_rha_bonus_mm(AddonProtectionType.ERA_KONTAKT1, projectile_type, result.impact_angle_deg)
 			ArmorType.ERA_KONTAKT5:
-				era_reduction_mm = 600.0 if (projectile_type == AmmoType.HEAT or projectile_type == AmmoType.ATGM) else 250.0
+				era_reduction_mm = get_addon_rha_bonus_mm(AddonProtectionType.ERA_KONTAKT5, projectile_type, result.impact_angle_deg)
 			ArmorType.ERA_RELIKT:
-				era_reduction_mm = 800.0 if (projectile_type == AmmoType.HEAT) else (400.0 if projectile_type == AmmoType.ATGM else 350.0)
+				era_reduction_mm = get_addon_rha_bonus_mm(AddonProtectionType.ERA_RELIKT, projectile_type, result.impact_angle_deg)
 		
 		if era_reduction_mm > 0.0:
 			era_bonus_applied = true
@@ -340,8 +424,8 @@ static func evaluate_impact(
 			result.spall_cone_angle_deg = base_cone_angle
 			result.spall_fragment_count = int(round(base_frags))
 
-		# Secondary damage evaluation to modules and crew
-		_evaluate_internal_damage(result, projectile_type, has_spall_liner)
+		# Secondary damage evaluation to modules and crew using 3D spatial spall cone
+		_evaluate_internal_damage(result, projectile_type, has_spall_liner, projectile_direction)
 
 		# Detailed impact result description
 		var desc: String = "PENETRATION (Pen: %.0fmm vs Eff: %.0fmm)" % [penetration_capacity_mm, result.effective_thickness_mm]
@@ -366,56 +450,98 @@ static func evaluate_impact(
 		
 	if era_bonus_applied:
 		if sandwich != null:
-			sandwich.era_detonated = true
-		result.description += " [ERA DETONATED]"
+			sandwich.detonate_era_at_sector(active_sector_id)
+		result.description += " [ERA DETONATED sector: %s]" % active_sector_id
 
 	return result
 
 
 ## Evaluates secondary internal damage to vehicle modules (Engine, Ammo Storage) and crew (Driver, Gunner, Commander)
-static func _evaluate_internal_damage(result: ImpactResult, projectile_type: AmmoType, has_spall_liner: bool) -> void:
+## using spatial proximity and 3D vector cone direction.
+static func _evaluate_internal_damage(
+	result: ImpactResult,
+	projectile_type: AmmoType,
+	has_spall_liner: bool,
+	impact_direction: Vector3 = Vector3.ZERO
+) -> void:
 	result.damaged_modules.clear()
 	result.crew_knocked_out.clear()
 
 	var residual_pen := result.residual_penetration_mm
-	var angle_factor := clampf(cos(deg_to_rad(result.impact_angle_deg)), 0.3, 1.0)
+	if residual_pen <= 0.0:
+		return
+
 	var spall_mitigation := 0.4 if has_spall_liner else 1.0
+	var spall_cone_angle := result.spall_cone_angle_deg
+	var cone_half_angle_rad := deg_to_rad(spall_cone_angle * 0.5)
 
-	# Interior spall energy index
-	var spall_energy := residual_pen * angle_factor * spall_mitigation
+	# Max spall travel distance in meters based on residual penetration
+	var max_spall_dist := clampf(residual_pen * 0.015, 0.8, 4.5)
 
-	# Engine damage chance
-	var engine_prob := clampf((spall_energy - 15.0) / 180.0, 0.0, 0.85)
-	if randf() < engine_prob:
-		result.damaged_modules.append("Engine")
+	# Normalized penetration direction vector (pointing into interior)
+	var pen_dir := impact_direction.normalized()
+	if pen_dir.length_squared() < 0.01:
+		pen_dir = Vector3(0.0, 0.0, -1.0) # Default forward-to-back fallback
 
-	# Ammunition Storage (Ammo Detonation!) damage chance
-	var ammo_prob := clampf((spall_energy - 25.0) / 200.0, 0.0, 0.80)
-	if randf() < ammo_prob:
-		var det_threshold := 80.0 if projectile_type == AmmoType.APFSDS else 50.0
-		if spall_energy > det_threshold or randf() < 0.6:
-			result.damaged_modules.append("Ammunition Storage (Ammo Detonation!)")
+	# Estimated internal vehicle module coordinates in local space
+	# X: right(+)/left(-), Y: up(+)/down(-), Z: rear(+)/front(-)
+	var modules := {
+		"Driver": Vector3(0.0, 0.6, -1.8),
+		"Gunner": Vector3(-0.6, 1.4, -0.2),
+		"Commander": Vector3(0.6, 1.5, -0.2),
+		"Engine": Vector3(0.0, 0.7, 1.8),
+		"Ammunition Storage": Vector3(0.0, 0.3, 0.0)
+	}
+
+	var hit_pos := result.hit_position
+
+	# If hit_pos is non-zero and within reasonable local coordinate range (< 50m)
+	var is_local_pos := hit_pos != Vector3.ZERO and hit_pos.length() < 50.0
+
+	for mod_name in modules:
+		var mod_pos: Vector3 = modules[mod_name]
+		var spatial_factor := 0.0
+
+		if is_local_pos:
+			# Direct 3D spatial spall cone check in local coordinates
+			var to_mod := mod_pos - hit_pos
+			var dist_along := to_mod.dot(pen_dir)
+			if dist_along > 0.0 and dist_along <= max_spall_dist:
+				var perp_vec := to_mod - (dist_along * pen_dir)
+				var perp_dist := perp_vec.length()
+				var angle_rad := atan2(perp_dist, dist_along)
+				if angle_rad <= cone_half_angle_rad:
+					var angle_weight := 1.0 - (angle_rad / cone_half_angle_rad)
+					var dist_weight := 1.0 - (dist_along / max_spall_dist)
+					spatial_factor = angle_weight * dist_weight
 		else:
-			result.damaged_modules.append("Ammunition Storage")
+			# Spatial direction alignment check based on impact vector pen_dir
+			var target_dir := mod_pos.normalized()
+			var alignment := pen_dir.dot(target_dir)
+			if alignment > 0.1:
+				spatial_factor = alignment * 0.7
 
-	# Crew member status evaluation: Driver, Gunner, Commander
-	var driver_prob := clampf((spall_energy - 5.0) / 160.0, 0.0, 0.90)
-	if randf() < driver_prob:
-		result.crew_knocked_out.append("Driver")
+		if spatial_factor > 0.05:
+			# Probability scaled by spatial factor, residual pen energy, and spall liner mitigation
+			var pen_energy_factor := clampf(residual_pen / 150.0, 0.2, 1.5)
+			var damage_prob := clampf(spatial_factor * pen_energy_factor * spall_mitigation, 0.05, 0.90)
 
-	var gunner_prob := clampf((spall_energy - 10.0) / 170.0, 0.0, 0.85)
-	if randf() < gunner_prob:
-		result.crew_knocked_out.append("Gunner")
+			if randf() < damage_prob:
+				if mod_name in ["Driver", "Gunner", "Commander"]:
+					result.crew_knocked_out.append(mod_name)
+				else:
+					if mod_name == "Ammunition Storage":
+						var det_threshold := 70.0 if projectile_type == AmmoType.APFSDS else 45.0
+						if residual_pen > det_threshold and randf() < 0.65:
+							result.damaged_modules.append("Ammunition Storage (Ammo Detonation!)")
+						else:
+							result.damaged_modules.append("Ammunition Storage")
+					else:
+						result.damaged_modules.append(mod_name)
 
-	var commander_prob := clampf((spall_energy - 20.0) / 190.0, 0.0, 0.80)
-	if randf() < commander_prob:
-		result.crew_knocked_out.append("Commander")
-
-	# Guarantee secondary damage on high energy penetrations if initial random checks missed
-	if residual_pen > 40.0 and result.damaged_modules.is_empty() and result.crew_knocked_out.is_empty():
+	# Fallback if penetration occurred with high residual energy but no module was hit due to geometry edge cases
+	if residual_pen > 60.0 and result.damaged_modules.is_empty() and result.crew_knocked_out.is_empty():
 		if randf() < 0.5:
 			result.crew_knocked_out.append("Gunner" if randf() < 0.5 else "Driver")
 		else:
-			result.damaged_modules.append("Engine" if randf() < 0.5 else "Ammunition Storage (Ammo Detonation!)")
-
-
+			result.damaged_modules.append("Engine" if randf() < 0.5 else "Ammunition Storage")

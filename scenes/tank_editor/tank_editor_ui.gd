@@ -140,6 +140,11 @@ var _updating_ui: bool = false
 var _left_sidebar_collapsed: bool = false
 var _right_inspector_collapsed: bool = false
 
+
+# ==============================================================================
+# 1. LIFECYCLE & INITIALIZATION
+# ==============================================================================
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_setup_options()
@@ -151,13 +156,18 @@ func _ready() -> void:
 	if not SettingsManager.settings_changed.is_connected(_on_settings_changed):
 		SettingsManager.settings_changed.connect(_on_settings_changed)
 
+func _process(_delta: float) -> void:
+	if fps_label:
+		fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
+
 func _on_settings_changed() -> void:
 	_setup_options()
 	_on_selection_changed()
 
-func _process(_delta: float) -> void:
-	if fps_label:
-		fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
+
+# ==============================================================================
+# 2. UI SETUP & SIGNAL CONNECTIONS
+# ==============================================================================
 
 func _setup_options() -> void:
 	if era_option:
@@ -293,6 +303,14 @@ func _connect_signals() -> void:
 	if toggle_left_btn: _safe_connect(toggle_left_btn.pressed, _on_toggle_left_pressed)
 	if toggle_right_btn: _safe_connect(toggle_right_btn.pressed, _on_toggle_right_pressed)
 
+	# Top Header & Visualization Mode Buttons
+	if test_drive_btn: _safe_connect(test_drive_btn.pressed, _on_test_drive_pressed)
+	if solid_btn: _safe_connect(solid_btn.pressed, _on_solid_btn_pressed)
+	if heatmap_btn: _safe_connect(heatmap_btn.pressed, _on_heatmap_btn_pressed)
+	if xray_btn: _safe_connect(xray_btn.pressed, _on_xray_btn_pressed)
+	if symmetry_check: _safe_connect(symmetry_check.toggled, _on_symmetry_toggled)
+
+	# Left Sidebar Category Buttons
 	if cat_compartments_btn: _safe_connect(cat_compartments_btn.pressed, func(): _on_category_selected(0))
 	if cat_tracks_btn: _safe_connect(cat_tracks_btn.pressed, func(): _on_category_selected(1))
 	if cat_powertrain_btn: _safe_connect(cat_powertrain_btn.pressed, func(): _on_category_selected(2))
@@ -322,13 +340,21 @@ func _connect_signals() -> void:
 
 	# Powertrain & Firepower Sliders & Preset Selection
 	if engine_power_slider: _safe_connect(engine_power_slider.value_changed, func(_v):
-		_update_slider_labels()
-		_update_ttx()
+		if not _updating_ui:
+			_update_slider_labels()
+			_update_ttx()
 	)
 	if turret_preset_option: _safe_connect(turret_preset_option.item_selected, _on_turret_preset_selected)
 	if gun_caliber_slider: _safe_connect(gun_caliber_slider.value_changed, _on_firepower_changed)
 	if barrel_length_slider: _safe_connect(barrel_length_slider.value_changed, _on_firepower_changed)
 	if crew_count_slider: _safe_connect(crew_count_slider.value_changed, _on_crew_changed)
+
+	# Structure Inspector Sub-mode Buttons
+	if mode_points_btn: _safe_connect(mode_points_btn.pressed, _on_mode_points_pressed)
+	if mode_edges_btn: _safe_connect(mode_edges_btn.pressed, _on_mode_edges_pressed)
+	if mode_faces_btn: _safe_connect(mode_faces_btn.pressed, _on_mode_faces_pressed)
+	if mode_corners_btn: _safe_connect(mode_corners_btn.pressed, _on_mode_corners_pressed)
+	if mirror_check: _safe_connect(mirror_check.toggled, _on_symmetry_toggled)
 
 	# Structure Inspector Sliders
 	if smooth_angle_slider: _safe_connect(smooth_angle_slider.value_changed, _on_smooth_angle_changed)
@@ -371,171 +397,89 @@ func _connect_signals() -> void:
 	if structural_tab: _safe_connect(structural_tab.pressed, _on_structural_tab_pressed)
 	if addon_tab: _safe_connect(addon_tab.pressed, _on_addon_tab_pressed)
 
-# Panel Collapse/Expand Handlers
-func _on_toggle_left_pressed() -> void:
-	_left_sidebar_collapsed = not _left_sidebar_collapsed
-	if left_sidebar: left_sidebar.visible = not _left_sidebar_collapsed
-	if category_stack: category_stack.visible = not _left_sidebar_collapsed
-	if toggle_left_btn:
-		toggle_left_btn.text = "▶ Sidebar" if _left_sidebar_collapsed else "◀ Sidebar"
 
-func _on_toggle_right_pressed() -> void:
-	_right_inspector_collapsed = not _right_inspector_collapsed
-	if right_structure_inspector: right_structure_inspector.visible = not _right_inspector_collapsed
-	if toggle_right_btn:
-		toggle_right_btn.text = "Inspector ◀" if _right_inspector_collapsed else "Inspector ▶"
+# ==============================================================================
+# 3. UI SYNC & READOUT UPDATES
+# ==============================================================================
 
-# Turret Position Offset Handler (X / Z Offset)
-func _on_turret_offset_changed(_val: float = 0.0) -> void:
-	var x_off = turret_x_slider.value if turret_x_slider else 0.0
-	var z_off = turret_z_slider.value if turret_z_slider else 0.0
+func _sync_sliders_with_builders() -> void:
+	_updating_ui = true
+	if hull_builder:
+		if hull_length_slider: hull_length_slider.value = hull_builder.length
+		if hull_width_slider: hull_width_slider.value = hull_builder.width
+		if hull_height_slider: hull_height_slider.value = hull_builder.height
+		if glacis_angle_slider: glacis_angle_slider.value = hull_builder.front_glacis_angle_deg
+		if thickness_slider: thickness_slider.value = hull_builder.front_armor_mm
 
 	if turret_builder:
-		if turret_builder.has_method("set_turret_offset"):
-			turret_builder.set_turret_offset(x_off, z_off)
-		else:
-			turret_builder.position.x = x_off
-			turret_builder.position.z = z_off
-	if firepower_builder:
-		firepower_builder.position.x = x_off
-		firepower_builder.position.z = z_off
+		if turret_x_slider: turret_x_slider.value = turret_builder.position.x
+		if turret_z_slider: turret_z_slider.value = turret_builder.position.z
 
-	_update_slider_labels()
-	_update_ttx()
-
-# Drive Sprocket Location Handler
-func _on_sprocket_location_selected(index: int) -> void:
 	if track_generator:
-		if track_generator.has_method("set_sprocket_location"):
-			track_generator.set_sprocket_location(index)
-		elif "sprocket_at_front" in track_generator:
-			track_generator.sprocket_at_front = (index == 0)
-			track_generator.generate_tracks_and_wheels()
-	_update_ttx()
+		if wheels_count_slider: wheels_count_slider.value = track_generator.road_wheels_count
+		if wheel_diam_slider: wheel_diam_slider.value = track_generator.wheel_diameter
+		if track_w_slider: track_w_slider.value = track_generator.track_width
+		if sprocket_location_option and "sprocket_at_front" in track_generator:
+			sprocket_location_option.select(0 if track_generator.sprocket_at_front else 1)
 
-# Preset Shape Selection Handlers
-func _on_hull_preset_selected(index: int) -> void:
-	if hull_builder == null or _updating_ui:
-		return
-	_updating_ui = true
-	match index:
-		0: # Standard Wedge
-			hull_builder.set_dimensions(6.8, 3.4, 1.4, 60.0)
-			hull_builder.front_armor_mm = 450.0
-		1: # Heavy Box
-			hull_builder.set_dimensions(6.3, 3.7, 1.6, 25.0)
-			hull_builder.front_armor_mm = 300.0
-		2: # Pike Nose
-			hull_builder.set_dimensions(6.9, 3.2, 1.3, 72.0)
-			hull_builder.front_armor_mm = 500.0
-		3: # Modern MBT
-			hull_builder.set_dimensions(7.2, 3.6, 1.2, 68.0)
-			hull_builder.front_armor_mm = 650.0
-		4: # Compact Light
-			hull_builder.set_dimensions(5.2, 2.8, 1.3, 50.0)
-			hull_builder.front_armor_mm = 180.0
+	if firepower_builder:
+		if gun_caliber_slider: gun_caliber_slider.value = firepower_builder.caliber_mm
+		if barrel_length_slider: barrel_length_slider.value = firepower_builder.barrel_length_m
+
 	_updating_ui = false
-	_sync_sliders_with_builders()
-	_update_ttx()
+	_update_slider_labels()
 
-func _on_turret_preset_selected(index: int) -> void:
-	if turret_builder == null or _updating_ui:
-		return
+func _sync_sandwich_ui_from_target() -> void:
 	_updating_ui = true
-	match index:
-		0: # Standard Wedge
-			turret_builder.set_turret_dimensions(3.2, 2.8, 1.1, 45.0, 6.2, 750.0)
-		1: # Hemispherical Dome
-			turret_builder.set_turret_dimensions(2.6, 2.6, 0.95, 65.0, 5.8, 400.0)
-		2: # Box Bustle
-			turret_builder.set_turret_dimensions(3.8, 2.4, 1.2, 30.0, 6.0, 350.0)
-		3: # Angular MBT
-			turret_builder.set_turret_dimensions(3.5, 3.1, 1.0, 55.0, 6.6, 850.0)
-		4: # Compact Light
-			turret_builder.set_turret_dimensions(2.4, 2.0, 0.85, 40.0, 4.5, 200.0)
+
+	var target = _get_current_target_builder()
+	if target != null:
+		if not ("armor_sandwich" in target) or target.armor_sandwich == null:
+			if target == hull_builder:
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
+			elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance):
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
+			else:
+				target.armor_sandwich = ArmorCalculator.ArmorSandwich.new()
+
+		var sandwich: ArmorCalculator.ArmorSandwich = target.armor_sandwich
+
+		if layer1_material_option and sandwich.outer_layer != null:
+			_select_option_by_id(layer1_material_option, sandwich.outer_layer.material)
+			if layer1_thickness_slider:
+				layer1_thickness_slider.value = sandwich.outer_layer.thickness_mm
+			if layer1_thickness_label:
+				layer1_thickness_label.text = "%.0f mm" % sandwich.outer_layer.thickness_mm
+
+		if layer2_material_option:
+			if sandwich.filler_layer != null:
+				_select_option_by_id(layer2_material_option, sandwich.filler_layer.material)
+				if layer2_thickness_slider:
+					layer2_thickness_slider.value = sandwich.filler_layer.thickness_mm
+				if layer2_thickness_label:
+					layer2_thickness_label.text = "%.0f mm" % sandwich.filler_layer.thickness_mm
+			else:
+				_select_option_by_id(layer2_material_option, -1)
+				if layer2_thickness_slider:
+					layer2_thickness_slider.value = 0.0
+				if layer2_thickness_label:
+					layer2_thickness_label.text = "0 mm"
+
+		if layer3_material_option and sandwich.rear_layer != null:
+			_select_option_by_id(layer3_material_option, sandwich.rear_layer.material)
+			if layer3_thickness_slider:
+				layer3_thickness_slider.value = sandwich.rear_layer.thickness_mm
+			if layer3_thickness_label:
+				layer3_thickness_label.text = "%.0f mm" % sandwich.rear_layer.thickness_mm
+
+		if spall_liner_check:
+			spall_liner_check.button_pressed = sandwich.has_spall_liner
+
+		if addon_protection_option:
+			_select_option_by_id(addon_protection_option, sandwich.addon_protection)
+
 	_updating_ui = false
-	_sync_sliders_with_builders()
-	_update_ttx()
-
-func _on_turrets_tab_pressed() -> void:
-	_on_category_selected(3) # Switch to Firepower/Turret tab
-	if turret_preset_option:
-		var next_idx = (turret_preset_option.selected + 1) % turret_preset_option.item_count
-		turret_preset_option.select(next_idx)
-		_on_turret_preset_selected(next_idx)
-
-func _on_structural_tab_pressed() -> void:
-	_on_category_selected(0) # Switch to Compartments/Hull tab
-	if hull_preset_option:
-		var next_idx = (hull_preset_option.selected + 1) % hull_preset_option.item_count
-		hull_preset_option.select(next_idx)
-		_on_hull_preset_selected(next_idx)
-
-func _on_addon_tab_pressed() -> void:
-	_on_category_selected(5) # Switch to Paint/Addon tab
-
-func _on_crew_changed(_val: float) -> void:
-	_update_slider_labels()
-	_update_ttx()
-
-func _on_smooth_angle_changed(val: float) -> void:
-	if mesh_editor and "smooth_angle" in mesh_editor:
-		mesh_editor.smooth_angle = val
-	_update_slider_labels()
-
-func _on_grid_size_changed(val: float) -> void:
-	if mesh_editor and "grid_snap_size" in mesh_editor:
-		mesh_editor.grid_snap_size = val
-	_update_slider_labels()
-
-func _update_slider_labels() -> void:
-	if hull_length_slider and hull_length_value_label:
-		hull_length_value_label.text = "%.1f m" % hull_length_slider.value
-	if hull_width_slider and hull_width_value_label:
-		hull_width_value_label.text = "%.1f m" % hull_width_slider.value
-	if hull_height_slider and hull_height_value_label:
-		hull_height_value_label.text = "%.1f m" % hull_height_slider.value
-	if glacis_angle_slider and glacis_angle_value_label:
-		glacis_angle_value_label.text = "%.0f°" % glacis_angle_slider.value
-
-	if turret_x_slider and turret_x_value_label:
-		turret_x_value_label.text = "%.2f m" % turret_x_slider.value
-	if turret_z_slider and turret_z_value_label:
-		turret_z_value_label.text = "%.2f m" % turret_z_slider.value
-
-	if wheels_count_slider and wheels_count_value_label:
-		wheels_count_value_label.text = "%d pairs" % int(wheels_count_slider.value)
-	if wheel_diam_slider and wheel_diam_value_label:
-		wheel_diam_value_label.text = "%.2f m" % wheel_diam_slider.value
-	if track_w_slider and track_w_value_label:
-		track_w_value_label.text = "%.2f m" % track_w_slider.value
-
-	if engine_power_slider and engine_power_value_label:
-		engine_power_value_label.text = "%.0f hp" % engine_power_slider.value
-
-	if gun_caliber_slider and gun_caliber_value_label:
-		gun_caliber_value_label.text = "%.0f mm" % gun_caliber_slider.value
-	if barrel_length_slider and barrel_length_value_label:
-		barrel_length_value_label.text = "%.1f m" % barrel_length_slider.value
-
-	if crew_count_slider and crew_count_value_label:
-		crew_count_value_label.text = "%d crew" % int(crew_count_slider.value)
-
-	if smooth_angle_slider and smooth_angle_value_label:
-		smooth_angle_value_label.text = "%.0f°" % smooth_angle_slider.value
-	if grid_size_slider and grid_size_value_label:
-		grid_size_value_label.text = "%.0f mm" % grid_size_slider.value
-
-	if thickness_slider and thickness_value_label:
-		thickness_value_label.text = "%.0f mm" % thickness_slider.value
-
-func _get_current_target_builder() -> Object:
-	if mesh_editor != null and mesh_editor.selected_target != null:
-		if mesh_editor.selected_target == hull_builder:
-			return hull_builder
-		elif turret_builder and (mesh_editor.selected_target == turret_builder or mesh_editor.selected_target == turret_builder.turret_mesh_instance):
-			return turret_builder
-	return hull_builder
+	_update_sandwich_ui_readout()
 
 func _update_sandwich_from_ui() -> void:
 	if _updating_ui:
@@ -628,80 +572,69 @@ func _update_sandwich_ui_readout() -> void:
 	if sandwich_effective_heat_label:
 		sandwich_effective_heat_label.text = "Effective HEAT: %.0f mm RHA" % heat_rha_mm
 
-func _sync_sandwich_ui_from_target() -> void:
-	_updating_ui = true
+func _update_slider_labels() -> void:
+	if hull_length_slider and hull_length_value_label:
+		hull_length_value_label.text = "%.1f m" % hull_length_slider.value
+	if hull_width_slider and hull_width_value_label:
+		hull_width_value_label.text = "%.1f m" % hull_width_slider.value
+	if hull_height_slider and hull_height_value_label:
+		hull_height_value_label.text = "%.1f m" % hull_height_slider.value
+	if glacis_angle_slider and glacis_angle_value_label:
+		glacis_angle_value_label.text = "%.0f°" % glacis_angle_slider.value
 
-	var target = _get_current_target_builder()
-	if target != null:
-		if not ("armor_sandwich" in target) or target.armor_sandwich == null:
-			if target == hull_builder:
-				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()
-			elif turret_builder and (target == turret_builder or target == turret_builder.turret_mesh_instance):
-				target.armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_turret()
-			else:
-				target.armor_sandwich = ArmorCalculator.ArmorSandwich.new()
+	if turret_x_slider and turret_x_value_label:
+		turret_x_value_label.text = "%.2f m" % turret_x_slider.value
+	if turret_z_slider and turret_z_value_label:
+		turret_z_value_label.text = "%.2f m" % turret_z_slider.value
 
-		var sandwich: ArmorCalculator.ArmorSandwich = target.armor_sandwich
+	if wheels_count_slider and wheels_count_value_label:
+		wheels_count_value_label.text = "%d pairs" % int(wheels_count_slider.value)
+	if wheel_diam_slider and wheel_diam_value_label:
+		wheel_diam_value_label.text = "%.2f m" % wheel_diam_slider.value
+	if track_w_slider and track_w_value_label:
+		track_w_value_label.text = "%.2f m" % track_w_slider.value
 
-		if layer1_material_option and sandwich.outer_layer != null:
-			_select_option_by_id(layer1_material_option, sandwich.outer_layer.material)
-			if layer1_thickness_slider:
-				layer1_thickness_slider.value = sandwich.outer_layer.thickness_mm
-			if layer1_thickness_label:
-				layer1_thickness_label.text = "%.0f mm" % sandwich.outer_layer.thickness_mm
+	if engine_power_slider and engine_power_value_label:
+		engine_power_value_label.text = "%.0f hp" % engine_power_slider.value
 
-		if layer2_material_option:
-			if sandwich.filler_layer != null:
-				_select_option_by_id(layer2_material_option, sandwich.filler_layer.material)
-				if layer2_thickness_slider:
-					layer2_thickness_slider.value = sandwich.filler_layer.thickness_mm
-				if layer2_thickness_label:
-					layer2_thickness_label.text = "%.0f mm" % sandwich.filler_layer.thickness_mm
-			else:
-				_select_option_by_id(layer2_material_option, -1)
-				if layer2_thickness_slider:
-					layer2_thickness_slider.value = 0.0
-				if layer2_thickness_label:
-					layer2_thickness_label.text = "0 mm"
+	if gun_caliber_slider and gun_caliber_value_label:
+		gun_caliber_value_label.text = "%.0f mm" % gun_caliber_slider.value
+	if barrel_length_slider and barrel_length_value_label:
+		barrel_length_value_label.text = "%.1f m" % barrel_length_slider.value
 
-		if layer3_material_option and sandwich.rear_layer != null:
-			_select_option_by_id(layer3_material_option, sandwich.rear_layer.material)
-			if layer3_thickness_slider:
-				layer3_thickness_slider.value = sandwich.rear_layer.thickness_mm
-			if layer3_thickness_label:
-				layer3_thickness_label.text = "%.0f mm" % sandwich.rear_layer.thickness_mm
+	if crew_count_slider and crew_count_value_label:
+		crew_count_value_label.text = "%d crew" % int(crew_count_slider.value)
 
-		if spall_liner_check:
-			spall_liner_check.button_pressed = sandwich.has_spall_liner
+	if smooth_angle_slider and smooth_angle_value_label:
+		smooth_angle_value_label.text = "%.0f°" % smooth_angle_slider.value
+	if grid_size_slider and grid_size_value_label:
+		grid_size_value_label.text = "%.0f mm" % grid_size_slider.value
 
-		if addon_protection_option:
-			_select_option_by_id(addon_protection_option, sandwich.addon_protection)
+	if thickness_slider and thickness_value_label:
+		thickness_value_label.text = "%.0f mm" % thickness_slider.value
 
-	_updating_ui = false
-	_update_sandwich_ui_readout()
+func _update_ttx() -> void:
+	if _updating_ui:
+		return
+	var power_hp = engine_power_slider.value if engine_power_slider else 1200.0
+	var ttx = TankStatsCalculator.calculate_stats(hull_builder, turret_builder, track_generator, power_hp)
 
-# Transform Mode Switcher Handlers (Move [G], Rotate [R], Resize [S])
-func _on_tool_translate_pressed() -> void:
-	if mesh_editor:
-		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
+	if mass_badge_label and ttx: mass_badge_label.text = "%.2ft" % ttx.total_mass_tons
+	if space_badge_label and ttx: space_badge_label.text = "%.2fk" % (ttx.total_mass_tons * 0.8)
 
-func _on_tool_rotate_pressed() -> void:
-	if mesh_editor:
-		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
+func _get_current_target_builder() -> Object:
+	if mesh_editor != null and mesh_editor.selected_target != null:
+		if mesh_editor.selected_target == hull_builder:
+			return hull_builder
+		elif turret_builder and (mesh_editor.selected_target == turret_builder or mesh_editor.selected_target == turret_builder.turret_mesh_instance):
+			return turret_builder
+	return hull_builder
 
-func _on_tool_scale_pressed() -> void:
-	if mesh_editor:
-		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
 
-func _on_gizmo_mode_changed(mode: int) -> void:
-	if tool_translate_btn:
-		tool_translate_btn.flat = (mode != 0)
-	if tool_rotate_btn:
-		tool_rotate_btn.flat = (mode != 1)
-	if tool_scale_btn:
-		tool_scale_btn.flat = (mode != 2)
+# ==============================================================================
+# 4. HEADER & MAIN ACTIONS
+# ==============================================================================
 
-# Header Action Handlers
 func _on_main_menu_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
 
@@ -710,7 +643,7 @@ func _on_test_drive_pressed() -> void:
 
 func _on_save_preset_pressed() -> void:
 	var name_str = tank_name_edit.text if tank_name_edit and tank_name_edit.text != "" else "Custom_Tank"
-	var era_str = era_option.get_item_text(era_option.selected) if era_option else "Midwar"
+	var era_str = era_option.get_item_text(era_option.selected) if (era_option and era_option.selected >= 0 and era_option.item_count > era_option.selected) else "Midwar"
 	var path = "user://%s.json" % name_str
 	TankSerializer.save_preset(path, name_str, era_str, hull_builder, turret_builder, track_generator, firepower_builder)
 
@@ -735,7 +668,29 @@ func _apply_preset_data(data: Dictionary) -> void:
 	_sync_sliders_with_builders()
 	_update_ttx()
 
-# View Visualization Handlers
+
+# ==============================================================================
+# 5. SIDEBAR & VIEW CONTROLS
+# ==============================================================================
+
+func _on_toggle_left_pressed() -> void:
+	_left_sidebar_collapsed = not _left_sidebar_collapsed
+	if left_sidebar: left_sidebar.visible = not _left_sidebar_collapsed
+	if category_stack: category_stack.visible = not _left_sidebar_collapsed
+	if toggle_left_btn:
+		toggle_left_btn.text = "▶ Sidebar" if _left_sidebar_collapsed else "◀ Sidebar"
+
+func _on_toggle_right_pressed() -> void:
+	_right_inspector_collapsed = not _right_inspector_collapsed
+	if right_structure_inspector: right_structure_inspector.visible = not _right_inspector_collapsed
+	if toggle_right_btn:
+		toggle_right_btn.text = "Inspector ◀" if _right_inspector_collapsed else "Inspector ▶"
+
+func _on_category_selected(cat_index: int) -> void:
+	if category_stack:
+		for i in range(category_stack.get_child_count()):
+			category_stack.get_child(i).visible = (i == cat_index)
+
 func _on_solid_btn_pressed() -> void:
 	if mesh_editor: mesh_editor.set_visualization_mode(MeshEditor.VisualizationMode.SOLID)
 
@@ -746,9 +701,178 @@ func _on_xray_btn_pressed() -> void:
 	if mesh_editor: mesh_editor.set_visualization_mode(MeshEditor.VisualizationMode.XRAY)
 
 func _on_symmetry_toggled(button_pressed: bool) -> void:
+	if _updating_ui:
+		return
 	if mesh_editor: mesh_editor.symmetry_x_enabled = button_pressed
+	if mirror_check and mirror_check.button_pressed != button_pressed:
+		mirror_check.set_pressed_no_signal(button_pressed)
+	if symmetry_check and symmetry_check.button_pressed != button_pressed:
+		symmetry_check.set_pressed_no_signal(button_pressed)
 
-# Structure Element Sub-Modes (Points, Edges, Faces, Corners)
+
+# ==============================================================================
+# 6. PRESETS & PRESET TABS
+# ==============================================================================
+
+func _on_hull_preset_selected(index: int) -> void:
+	if hull_builder == null or _updating_ui:
+		return
+	_updating_ui = true
+	match index:
+		0: # Standard Wedge
+			hull_builder.set_dimensions(6.8, 3.4, 1.4, 60.0)
+			hull_builder.front_armor_mm = 450.0
+		1: # Heavy Box
+			hull_builder.set_dimensions(6.3, 3.7, 1.6, 25.0)
+			hull_builder.front_armor_mm = 300.0
+		2: # Pike Nose
+			hull_builder.set_dimensions(6.9, 3.2, 1.3, 72.0)
+			hull_builder.front_armor_mm = 500.0
+		3: # Modern MBT
+			hull_builder.set_dimensions(7.2, 3.6, 1.2, 68.0)
+			hull_builder.front_armor_mm = 650.0
+		4: # Compact Light
+			hull_builder.set_dimensions(5.2, 2.8, 1.3, 50.0)
+			hull_builder.front_armor_mm = 180.0
+	_updating_ui = false
+	_sync_sliders_with_builders()
+	_update_ttx()
+
+func _on_turret_preset_selected(index: int) -> void:
+	if turret_builder == null or _updating_ui:
+		return
+	_updating_ui = true
+	match index:
+		0: # Standard Wedge
+			turret_builder.set_turret_dimensions(3.2, 2.8, 1.1, 45.0, 6.2, 750.0)
+		1: # Hemispherical Dome
+			turret_builder.set_turret_dimensions(2.6, 2.6, 0.95, 65.0, 5.8, 400.0)
+		2: # Box Bustle
+			turret_builder.set_turret_dimensions(3.8, 2.4, 1.2, 30.0, 6.0, 350.0)
+		3: # Angular MBT
+			turret_builder.set_turret_dimensions(3.5, 3.1, 1.0, 55.0, 6.6, 850.0)
+		4: # Compact Light
+			turret_builder.set_turret_dimensions(2.4, 2.0, 0.85, 40.0, 4.5, 200.0)
+	_updating_ui = false
+	_sync_sliders_with_builders()
+	_update_ttx()
+
+func _on_turrets_tab_pressed() -> void:
+	_on_category_selected(3) # Switch to Firepower/Turret tab
+	if turret_preset_option:
+		var next_idx = (turret_preset_option.selected + 1) % turret_preset_option.item_count
+		turret_preset_option.select(next_idx)
+		_on_turret_preset_selected(next_idx)
+
+func _on_structural_tab_pressed() -> void:
+	_on_category_selected(0) # Switch to Compartments/Hull tab
+	if hull_preset_option:
+		var next_idx = (hull_preset_option.selected + 1) % hull_preset_option.item_count
+		hull_preset_option.select(next_idx)
+		_on_hull_preset_selected(next_idx)
+
+func _on_addon_tab_pressed() -> void:
+	_on_category_selected(5) # Switch to Paint/Addon tab
+
+
+# ==============================================================================
+# 7. BUILDER PARAMETER HANDLERS
+# ==============================================================================
+
+func _on_hull_slider_changed(_val: float) -> void:
+	if _updating_ui:
+		return
+	if hull_builder:
+		var l = hull_length_slider.value if hull_length_slider else 6.8
+		var w = hull_width_slider.value if hull_width_slider else 3.4
+		var h = hull_height_slider.value if hull_height_slider else 1.4
+		var g = glacis_angle_slider.value if glacis_angle_slider else 60.0
+		hull_builder.set_dimensions(l, w, h, g)
+	_update_slider_labels()
+	_update_ttx()
+
+func _on_turret_offset_changed(_val: float = 0.0) -> void:
+	if _updating_ui:
+		return
+	var x_off = turret_x_slider.value if turret_x_slider else 0.0
+	var z_off = turret_z_slider.value if turret_z_slider else 0.0
+
+	if turret_builder:
+		if turret_builder.has_method("set_turret_offset"):
+			turret_builder.set_turret_offset(x_off, z_off)
+		else:
+			turret_builder.position.x = x_off
+			turret_builder.position.z = z_off
+	if firepower_builder:
+		firepower_builder.position.x = x_off
+		firepower_builder.position.z = z_off
+
+	_update_slider_labels()
+	_update_ttx()
+
+func _on_sprocket_location_selected(index: int) -> void:
+	if _updating_ui:
+		return
+	if track_generator:
+		if track_generator.has_method("set_sprocket_location"):
+			track_generator.set_sprocket_location(index)
+		elif "sprocket_at_front" in track_generator:
+			track_generator.sprocket_at_front = (index == 0)
+			track_generator.generate_tracks_and_wheels()
+	_update_ttx()
+
+func _on_chassis_changed(_val: float) -> void:
+	if _updating_ui:
+		return
+	if track_generator:
+		var cnt = int(wheels_count_slider.value) if wheels_count_slider else 6
+		var diam = wheel_diam_slider.value if wheel_diam_slider else 0.65
+		var w = track_w_slider.value if track_w_slider else 0.6
+		track_generator.set_chassis_parameters(cnt, diam, w, 0.6)
+	_update_slider_labels()
+	_update_ttx()
+
+func _on_firepower_changed(_val: float) -> void:
+	if _updating_ui:
+		return
+	if firepower_builder:
+		var cal = gun_caliber_slider.value if gun_caliber_slider else 120.0
+		var len_m = barrel_length_slider.value if barrel_length_slider else 6.2
+		firepower_builder.set_caliber_and_length(cal, len_m)
+	_update_slider_labels()
+	_update_ttx()
+
+func _on_crew_changed(_val: float) -> void:
+	if _updating_ui:
+		return
+	_update_slider_labels()
+	_update_ttx()
+
+
+# ==============================================================================
+# 8. MESH EDITOR & GIZMO HANDLERS
+# ==============================================================================
+
+func _on_tool_translate_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.TRANSLATE)
+
+func _on_tool_rotate_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.ROTATE)
+
+func _on_tool_scale_pressed() -> void:
+	if mesh_editor:
+		mesh_editor.set_gizmo_mode(Gizmo3D.GizmoMode.SCALE)
+
+func _on_gizmo_mode_changed(mode: int) -> void:
+	if tool_translate_btn:
+		tool_translate_btn.flat = (mode != 0)
+	if tool_rotate_btn:
+		tool_rotate_btn.flat = (mode != 1)
+	if tool_scale_btn:
+		tool_scale_btn.flat = (mode != 2)
+
 func _on_mode_points_pressed() -> void:
 	if mesh_editor: mesh_editor.set_edit_mode(MeshEditor.EditMode.VERTEX)
 
@@ -761,44 +885,46 @@ func _on_mode_faces_pressed() -> void:
 func _on_mode_corners_pressed() -> void:
 	if mesh_editor: mesh_editor.set_edit_mode(MeshEditor.EditMode.CORNER)
 
-# Topology Operations
 func _on_extrude_pressed() -> void:
 	if mesh_editor: mesh_editor.extrude_selected_face()
 
 func _on_flip_normals_pressed() -> void:
 	if mesh_editor: mesh_editor.flip_selected_normals()
 
-# Category Sidebar Switching
-func _on_category_selected(cat_index: int) -> void:
-	if category_stack:
-		for i in range(category_stack.get_child_count()):
-			category_stack.get_child(i).visible = (i == cat_index)
-
-# Sliders & Parameter Handlers
-func _on_hull_slider_changed(_val: float) -> void:
-	if hull_builder:
-		var l = hull_length_slider.value if hull_length_slider else 6.8
-		var w = hull_width_slider.value if hull_width_slider else 3.4
-		var h = hull_height_slider.value if hull_height_slider else 1.4
-		var g = glacis_angle_slider.value if glacis_angle_slider else 60.0
-		hull_builder.set_dimensions(l, w, h, g)
+func _on_smooth_angle_changed(val: float) -> void:
+	if _updating_ui:
+		return
+	if mesh_editor and "smooth_angle" in mesh_editor:
+		mesh_editor.smooth_angle = val
 	_update_slider_labels()
-	_update_ttx()
+
+func _on_grid_size_changed(val: float) -> void:
+	if _updating_ui:
+		return
+	if mesh_editor and "grid_snap_size" in mesh_editor:
+		mesh_editor.grid_snap_size = val
+	_update_slider_labels()
+
+
+# ==============================================================================
+# 9. ARMOR & SANDWICH HANDLERS
+# ==============================================================================
 
 func _on_thickness_slider_changed(val: float) -> void:
+	if _updating_ui:
+		return
 	if thickness_value_label:
 		thickness_value_label.text = "%.0f mm" % val
 
-	if not _updating_ui:
-		var target = _get_current_target_builder()
-		if target and "armor_sandwich" in target and target.armor_sandwich != null:
-			if target.armor_sandwich.outer_layer != null:
-				target.armor_sandwich.outer_layer.thickness_mm = val
-				if layer1_thickness_slider:
-					layer1_thickness_slider.value = val
-				if layer1_thickness_label:
-					layer1_thickness_label.text = "%.0f mm" % val
-				_update_sandwich_ui_readout()
+	var target = _get_current_target_builder()
+	if target and "armor_sandwich" in target and target.armor_sandwich != null:
+		if target.armor_sandwich.outer_layer != null:
+			target.armor_sandwich.outer_layer.thickness_mm = val
+			if layer1_thickness_slider:
+				layer1_thickness_slider.value = val
+			if layer1_thickness_label:
+				layer1_thickness_label.text = "%.0f mm" % val
+			_update_sandwich_ui_readout()
 
 	if mesh_editor and mesh_editor.selected_target == hull_builder:
 		hull_builder.front_armor_mm = val
@@ -813,30 +939,22 @@ func _on_thickness_slider_changed(val: float) -> void:
 	_update_ttx()
 
 func _on_armor_type_selected(index: int) -> void:
+	if _updating_ui:
+		return
 	var is_comp = (index != 0)
 	if mesh_editor and mesh_editor.heatmap_material:
 		mesh_editor.heatmap_material.set_shader_parameter("is_composite", is_comp)
 
 func _on_paint_scheme_selected(index: int) -> void:
+	if _updating_ui:
+		return
 	if mesh_editor and mesh_editor.pbr_material is ShaderMaterial:
 		mesh_editor.pbr_material.set_shader_parameter("camo_type", index)
 
-func _on_chassis_changed(_val: float) -> void:
-	if track_generator:
-		var cnt = int(wheels_count_slider.value) if wheels_count_slider else 6
-		var diam = wheel_diam_slider.value if wheel_diam_slider else 0.65
-		var w = track_w_slider.value if track_w_slider else 0.6
-		track_generator.set_chassis_parameters(cnt, diam, w, 0.6)
-	_update_slider_labels()
-	_update_ttx()
 
-func _on_firepower_changed(_val: float) -> void:
-	if firepower_builder:
-		var cal = gun_caliber_slider.value if gun_caliber_slider else 120.0
-		var len_m = barrel_length_slider.value if barrel_length_slider else 6.2
-		firepower_builder.set_caliber_and_length(cal, len_m)
-	_update_slider_labels()
-	_update_ttx()
+# ==============================================================================
+# 10. INSPECTION & HOVER CALLBACKS
+# ==============================================================================
 
 func _on_selection_changed() -> void:
 	if mesh_editor == null:
@@ -872,36 +990,3 @@ func _on_face_hovered(thickness_mm: float, angle_deg: float, eff_ke_mm: float, e
 	if armor_angle_los_label:
 		armor_angle_los_label.text = "Angle: %.1f° | KE: %.0fmm | HEAT: %.0fmm RHA" % [angle_deg, eff_ke_mm, eff_heat_mm]
 
-func _sync_sliders_with_builders() -> void:
-	_updating_ui = true
-	if hull_builder:
-		if hull_length_slider: hull_length_slider.value = hull_builder.length
-		if hull_width_slider: hull_width_slider.value = hull_builder.width
-		if hull_height_slider: hull_height_slider.value = hull_builder.height
-		if glacis_angle_slider: glacis_angle_slider.value = hull_builder.front_glacis_angle_deg
-		if thickness_slider: thickness_slider.value = hull_builder.front_armor_mm
-
-	if turret_builder:
-		if turret_x_slider: turret_x_slider.value = turret_builder.position.x
-		if turret_z_slider: turret_z_slider.value = turret_builder.position.z
-
-	if track_generator:
-		if wheels_count_slider: wheels_count_slider.value = track_generator.road_wheels_count
-		if wheel_diam_slider: wheel_diam_slider.value = track_generator.wheel_diameter
-		if track_w_slider: track_w_slider.value = track_generator.track_width
-		if sprocket_location_option and "sprocket_at_front" in track_generator:
-			sprocket_location_option.select(0 if track_generator.sprocket_at_front else 1)
-
-	if firepower_builder:
-		if gun_caliber_slider: gun_caliber_slider.value = firepower_builder.caliber_mm
-		if barrel_length_slider: barrel_length_slider.value = firepower_builder.barrel_length_m
-
-	_updating_ui = false
-	_update_slider_labels()
-
-func _update_ttx() -> void:
-	var power_hp = engine_power_slider.value if engine_power_slider else 1200.0
-	var ttx = TankStatsCalculator.calculate_stats(hull_builder, turret_builder, track_generator, power_hp)
-
-	if mass_badge_label: mass_badge_label.text = "%.2ft" % ttx.total_mass_tons
-	if space_badge_label: space_badge_label.text = "%.2fk" % (ttx.total_mass_tons * 0.8)

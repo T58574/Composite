@@ -74,8 +74,11 @@ func _setup_selection_overlay() -> void:
 
 	selection_material = StandardMaterial3D.new()
 	selection_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	selection_material.albedo_color = Color(1.0, 0.6, 0.1, 1.0) # Orange primary selection
+	selection_material.vertex_color_use_as_albedo = true
+	selection_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	selection_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	selection_material.no_depth_test = true
+	selection_overlay_mesh.material_override = selection_material
 
 func _unhandled_input(event: InputEvent) -> void:
 	if gizmo_3d and gizmo_3d.process_input_event(camera_3d, event):
@@ -172,6 +175,14 @@ func _raycast_targets(ray_origin: Vector3, ray_dir: Vector3) -> Dictionary:
 	for target in targets:
 		var mesh = target.mesh
 		if mesh == null:
+			continue
+
+		# Fast AABB bounding box check to prevent frame drops on hover
+		var inv_gt = target.global_transform.affine_inverse()
+		var local_origin = inv_gt * ray_origin
+		var local_dir = (inv_gt.basis * ray_dir).normalized()
+		var aabb = mesh.get_aabb().grow(0.05)
+		if aabb.intersects_ray(local_origin, local_dir) == null:
 			continue
 
 		var faces = mesh.get_faces()
@@ -301,25 +312,54 @@ func _update_cached_colocated_vertices() -> void:
 	var inv_gt = target_gt.basis.inverse()
 
 	var target_local_positions: Array[Vector3] = []
-	for pos in selected_positions:
-		target_local_positions.append(inv_gt * pos)
+	var target_local_normals: Array[Vector3] = []
 
 	var vertex_count = mdt.get_vertex_count()
+
+	for pos in selected_positions:
+		var loc_pos = inv_gt * pos
+		target_local_positions.append(loc_pos)
+
+		var best_idx = -1
+		var best_dist = 1e9
+		for i in range(vertex_count):
+			var d = mdt.get_vertex(i).distance_to(loc_pos)
+			if d < best_dist:
+				best_dist = d
+				best_idx = i
+		if best_idx >= 0:
+			target_local_normals.append(mdt.get_vertex_normal(best_idx))
+		else:
+			target_local_normals.append(Vector3.UP)
+
+	var dist_threshold = 0.015
+
 	for i in range(vertex_count):
 		var v_pos = mdt.get_vertex(i)
+		var v_norm = mdt.get_vertex_normal(i)
 		var matched = false
-		for target_pos in target_local_positions:
-			if v_pos.distance_to(target_pos) < 0.05:
-				cached_colocated_vertex_indices.append(i)
-				matched = true
-				break
+
+		for k in range(target_local_positions.size()):
+			var t_pos = target_local_positions[k]
+			var t_norm = target_local_normals[k]
+
+			if v_pos.distance_to(t_pos) < dist_threshold:
+				if t_norm.length_squared() < 0.01 or v_norm.length_squared() < 0.01 or v_norm.dot(t_norm) > 0.5:
+					cached_colocated_vertex_indices.append(i)
+					matched = true
+					break
 
 		if not matched and symmetry_x_enabled:
-			for target_pos in target_local_positions:
-				var sym_target = Vector3(-target_pos.x, target_pos.y, target_pos.z)
-				if v_pos.distance_to(sym_target) < 0.05:
-					cached_symmetric_vertex_indices.append(i)
-					break
+			for k in range(target_local_positions.size()):
+				var t_pos = target_local_positions[k]
+				var t_norm = target_local_normals[k]
+				var sym_pos = Vector3(-t_pos.x, t_pos.y, t_pos.z)
+				var sym_norm = Vector3(-t_norm.x, t_norm.y, t_norm.z)
+
+				if v_pos.distance_to(sym_pos) < dist_threshold:
+					if sym_norm.length_squared() < 0.01 or v_norm.length_squared() < 0.01 or v_norm.dot(sym_norm) > 0.5:
+						cached_symmetric_vertex_indices.append(i)
+						break
 
 func _on_gizmo_transform_started() -> void:
 	_update_cached_colocated_vertices()
@@ -391,38 +431,52 @@ func _on_gizmo_transform_ended() -> void:
 	_drag_start_selected_positions.clear()
 
 func extrude_selected_face() -> void:
-	if selected_target == null or selected_target.mesh == null:
+	if selected_target == null or selected_target.mesh == null or selected_face_index < 0:
 		return
 
 	var target = selected_target
-	var old_hull_len = hull_builder.length if hull_builder else 0.0
-	var old_turret_len = turret_builder.turret_length if turret_builder else 0.0
-	var old_arrays: Array = []
-	if target.mesh is ArrayMesh and (target.mesh as ArrayMesh).get_surface_count() > 0:
-		old_arrays = _duplicate_surface_arrays((target.mesh as ArrayMesh).surface_get_arrays(0))
+	var array_mesh = target.mesh as ArrayMesh
+	if array_mesh == null or array_mesh.get_surface_count() == 0:
+		return
+
+	var old_arrays = _duplicate_surface_arrays(array_mesh.surface_get_arrays(0))
 	var old_positions = selected_positions.duplicate()
 
-	if selected_target == hull_builder:
-		hull_builder.length = clamp(hull_builder.length + 0.4, 2.0, 10.0)
-		hull_builder.generate_hull_mesh()
-	elif turret_builder and selected_target == turret_builder.turret_mesh_instance:
-		turret_builder.turret_length = clamp(turret_builder.turret_length + 0.4, 1.5, 4.5)
-		turret_builder.generate_turret_and_gun()
+	# Real 3D geometry extrusion creating side quad faces and offsetting top face vertices
+	var extrude_dist: float = 0.4
+	var sym_idx = -1
+	if symmetry_x_enabled:
+		sym_idx = MeshTopologyOps.find_symmetric_face_index(array_mesh, selected_face_index)
+
+	array_mesh = MeshTopologyOps.extrude_face(array_mesh, selected_face_index, extrude_dist)
+	if sym_idx >= 0 and sym_idx != selected_face_index:
+		array_mesh = MeshTopologyOps.extrude_face(array_mesh, sym_idx, extrude_dist)
+
+	target.mesh = array_mesh
+
+	if target == hull_builder and hull_builder.has_method("_update_collision_shape"):
+		hull_builder.call("_update_collision_shape")
+
+	var faces = array_mesh.get_faces()
+	var target_gt = target.global_transform
+	if selected_face_index * 3 + 2 < faces.size():
+		var p0 = target_gt * faces[selected_face_index * 3 + 0]
+		var p1 = target_gt * faces[selected_face_index * 3 + 1]
+		var p2 = target_gt * faces[selected_face_index * 3 + 2]
+		selected_positions = [p0, p1, p2]
+		if gizmo_3d:
+			gizmo_3d.attach_to_position((p0 + p1 + p2) / 3.0)
 
 	_update_cached_colocated_vertices()
 	_update_selection_visuals()
 	selection_changed.emit()
 
-	var new_hull_len = hull_builder.length if hull_builder else 0.0
-	var new_turret_len = turret_builder.turret_length if turret_builder else 0.0
-	var new_arrays: Array = []
-	if target.mesh is ArrayMesh and (target.mesh as ArrayMesh).get_surface_count() > 0:
-		new_arrays = _duplicate_surface_arrays((target.mesh as ArrayMesh).surface_get_arrays(0))
+	var new_arrays = _duplicate_surface_arrays(array_mesh.surface_get_arrays(0))
 	var new_positions = selected_positions.duplicate()
 
 	undo_redo.create_action("Extrude Face")
-	undo_redo.add_do_method(self, "_apply_extrude_state", target, new_hull_len, new_turret_len, new_arrays, new_positions)
-	undo_redo.add_undo_method(self, "_apply_extrude_state", target, old_hull_len, old_turret_len, old_arrays, old_positions)
+	undo_redo.add_do_method(self, "_restore_mesh_state", target, new_arrays, new_positions)
+	undo_redo.add_undo_method(self, "_restore_mesh_state", target, old_arrays, old_positions)
 	undo_redo.commit_action(false)
 
 func _apply_extrude_state(target: MeshInstance3D, hull_len: float, turret_len: float, surface_arrays: Array, sel_positions: Array[Vector3]) -> void:
@@ -438,6 +492,37 @@ func _apply_extrude_state(target: MeshInstance3D, hull_len: float, turret_len: f
 
 	if selected_target == target:
 		selected_positions = sel_positions.duplicate()
+		_update_cached_colocated_vertices()
+		_update_selection_visuals()
+		selection_changed.emit()
+
+func _duplicate_surface_arrays(arrays: Array) -> Array:
+	var copy: Array = []
+	copy.resize(arrays.size())
+	for i in range(arrays.size()):
+		var val = arrays[i]
+		if val is PackedVector3Array or val is PackedVector2Array or val is PackedColorArray or val is PackedInt32Array or val is PackedFloat32Array or val is PackedByteArray:
+			copy[i] = val.duplicate()
+		elif val != null and val is Array:
+			copy[i] = (val as Array).duplicate(true)
+		else:
+			copy[i] = val
+	return copy
+
+func _restore_mesh_state(target: MeshInstance3D, surface_arrays: Array, sel_positions: Array[Vector3]) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var array_mesh = target.mesh as ArrayMesh
+	if array_mesh and not surface_arrays.is_empty():
+		array_mesh.clear_surfaces()
+		array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _duplicate_surface_arrays(surface_arrays))
+	if target == hull_builder and hull_builder.has_method("_update_collision_shape"):
+		hull_builder.call("_update_collision_shape")
+	if selected_target == target:
+		selected_positions = sel_positions.duplicate()
+		_update_cached_colocated_vertices()
+		_update_selection_visuals()
+		selection_changed.emit()
 		_update_cached_colocated_vertices()
 		_update_selection_visuals()
 		selection_changed.emit()
@@ -471,6 +556,10 @@ func flip_selected_normals() -> void:
 func _delete_selected_element() -> void:
 	if selected_target == null or selected_target.mesh == null:
 		_clear_selection()
+		return
+
+	var array_mesh = selected_target.mesh as ArrayMesh
+	if array_mesh == null:
 		return
 
 	match current_edit_mode:
@@ -559,21 +648,22 @@ func _update_selection_visuals() -> void:
 	elif selected_positions.size() >= 2:
 		_add_thick_line(st, selected_positions[0], selected_positions[1], Color(1.0, 0.85, 0.1), 0.015)
 
-	# 3. Unique Corner Vertex Handle Nodes (Red Cubes) - Deduplicated by 3D position
+	# 3. Unique Corner Vertex Handle Nodes (Red Cubes) - Deduplicated by 3D position using spatial grid hashing
 	if selected_target and selected_target.mesh:
 		var faces = selected_target.mesh.get_faces()
 		var gt = selected_target.global_transform
-		var added_positions: Array[Vector3] = []
+		var cell_size: float = 0.02
+		var seen_grid = {}
 
 		for i in range(faces.size()):
 			var v_g = gt * faces[i]
-			var is_duplicate = false
-			for existing in added_positions:
-				if existing.distance_to(v_g) < 0.02:
-					is_duplicate = true
-					break
-			if not is_duplicate:
-				added_positions.append(v_g)
+			var key = Vector3i(
+				int(round(v_g.x / cell_size)),
+				int(round(v_g.y / cell_size)),
+				int(round(v_g.z / cell_size))
+			)
+			if not seen_grid.has(key):
+				seen_grid[key] = true
 				_add_box(st, v_g, 0.07, Color(1.0, 0.2, 0.2))
 
 	# 4. Center Cyan Wireframe Diamond Anchor
@@ -586,15 +676,6 @@ func _update_selection_visuals() -> void:
 
 	st.generate_tangents()
 	selection_overlay_mesh.mesh = st.commit()
-
-	# Unshaded translucent overlay material
-	var overlay_mat = StandardMaterial3D.new()
-	overlay_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	overlay_mat.vertex_color_use_as_albedo = true
-	overlay_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	overlay_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	overlay_mat.no_depth_test = true
-	selection_overlay_mesh.material_override = overlay_mat
 
 func _symmetry_x(pos: Vector3) -> Vector3:
 	return Vector3(-pos.x, pos.y, pos.z)
