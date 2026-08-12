@@ -702,7 +702,7 @@ func _start_in_constructor_test_drive() -> void:
 		_test_chase_cam.add_child(cam3d)
 		scene_root.add_child(_test_chase_cam)
 
-	_test_chase_cam.set("target", _test_vehicle_body.get_path())
+	_test_chase_cam.target = _test_vehicle_body
 	var cam_node = _test_chase_cam.get_node_or_null("Camera3D")
 	if cam_node is Camera3D:
 		cam_node.make_current()
@@ -738,6 +738,7 @@ func _start_in_constructor_test_drive() -> void:
 	_test_drive_hud_overlay.visible = true
 
 func _stop_in_constructor_test_drive() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if _test_drive_hud_overlay:
 		_test_drive_hud_overlay.visible = false
 
@@ -758,9 +759,8 @@ func _stop_in_constructor_test_drive() -> void:
 
 	if editor_camera:
 		editor_camera.enabled = true
-		var main_cam = editor_camera.get_node_or_null("Camera3D")
-		if main_cam is Camera3D:
-			main_cam.make_current()
+		if editor_camera.camera_3d:
+			editor_camera.camera_3d.make_current()
 
 	if left_sidebar: left_sidebar.visible = not _left_sidebar_collapsed
 	if right_structure_inspector: right_structure_inspector.visible = not _right_inspector_collapsed

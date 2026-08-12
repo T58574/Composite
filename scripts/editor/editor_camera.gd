@@ -17,6 +17,7 @@ extends Node3D
 @export var zoom_speed: float = 1.0
 @export var min_distance: float = 2.0
 @export var max_distance: float = 30.0
+@export var enabled: bool = true
 
 var pitch_deg: float = -20.0
 var yaw_deg: float = 45.0
@@ -54,9 +55,13 @@ func _setup_nodes() -> void:
 			spring_arm.add_child(camera_3d)
 
 func _process(delta: float) -> void:
+	if not enabled:
+		return
 	_handle_keyboard_movement(delta)
 
 func _handle_keyboard_movement(delta: float) -> void:
+	if not enabled:
+		return
 	var move_dir = Vector3.ZERO
 	var rot_basis = global_transform.basis
 	
@@ -78,6 +83,8 @@ func _handle_keyboard_movement(delta: float) -> void:
 		global_position.y = maxf(global_position.y, 0.4)
 
 func _input(event: InputEvent) -> void:
+	if not enabled:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:

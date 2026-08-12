@@ -250,8 +250,8 @@ func _apply_suspension_forces(delta: float) -> void:
 			apply_force(force_vector, ray_origin - global_position)
 			_apply_lateral_friction(ray_origin, wheel_velocity, delta, total_force_magnitude)
 
-func _apply_lateral_friction(point: Vector3, velocity: Vector3, delta: float, normal_force: float = 0.0) -> void:
-	var right_dir = global_transform.basis.z # Lateral direction across vehicle width
+func _apply_lateral_friction(_point: Vector3, velocity: Vector3, _delta: float, normal_force: float = 0.0) -> void:
+	var right_dir = global_transform.basis.z
 	var lateral_vel = velocity.dot(right_dir)
 	if abs(lateral_vel) < 0.001:
 		return
@@ -259,15 +259,11 @@ func _apply_lateral_friction(point: Vector3, velocity: Vector3, delta: float, no
 	var active_wheels = max(1, _ray_entries.size())
 	var wheel_mass = mass / float(active_wheels)
 	
-	var track_grip_coeff: float = 0.95
-	var desired_force = -right_dir * (lateral_vel * wheel_mass * track_grip_coeff / max(0.001, delta))
-	
-	if normal_force > 0.0:
-		var max_friction = normal_force * 1.3
-		if desired_force.length() > max_friction:
-			desired_force = desired_force.normalized() * max_friction
-			
-	apply_force(desired_force, point - global_position)
+	# Smooth load-dependent lateral friction force (prevents wild spinning feedback loop)
+	var damping_factor = wheel_mass * 12.0
+	var force_mag = clamp(lateral_vel * damping_factor, -normal_force * 1.2, normal_force * 1.2)
+	var friction_force = -right_dir * force_mag
+	apply_central_force(friction_force)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _ray_entries.size()

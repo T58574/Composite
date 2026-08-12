@@ -129,7 +129,7 @@ func _create_road_wheels_and_belts() -> void:
 		# 5. Continuous Track Belt Loop with Sag Curve along X axis
 		_build_track_loop_mesh(z_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width)
 
-## Creates a detailed Dual Rim Road Wheel (Inner Rim + Outer Rim + Rubber Tire + Central Axle Hub Cap)
+## Creates a detailed Solid Dual Rim Road Wheel (Tire + Solid Metal Dish + Central Axle Hub Cap)
 func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> MeshInstance3D:
 	var mi = MeshInstance3D.new()
 	var st = SurfaceTool.new()
@@ -141,7 +141,7 @@ func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> M
 	var rim_offsets = [-gap * 0.5 - rim_width * 0.5, gap * 0.5 + rim_width * 0.5]
 
 	for offset in rim_offsets:
-		var inner_r = radius * 0.72
+		var inner_r = radius * 0.70
 		for i in range(sides):
 			var a1 = (float(i) / float(sides)) * TAU
 			var a2 = (float(i + 1) / float(sides)) * TAU
@@ -159,22 +159,33 @@ func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> M
 			var i1_out = Vector3(cos(a1) * radius, sin(a1) * radius, offset + rim_width * 0.5)
 			var i2_out = Vector3(cos(a2) * radius, sin(a2) * radius, offset + rim_width * 0.5)
 
-			# Rubber tread outer face
+			# 1. Rubber tread outer face (smooth cylinder)
 			_add_quad_smooth_normal(st, o1_out, o2_out, i2_out, i1_out, n1, n2, n2, n1)
 
-			# Wheel dish rim face
-			var cap_n = Vector3(0, 0, side)
-			_add_quad_flat_normal(st, o1_in, o2_in, o2_out, o1_out, cap_n)
+			# 2. Outer Tire Sidewall ring (Radius inner_r to radius)
+			var cap_n_outer = Vector3(0, 0, -1.0)
+			_add_quad_flat_normal(st, o1_in, o2_in, o2_out, o1_out, cap_n_outer)
 
-	# Axle hub cap
-	var hub_r = radius * 0.35
-	var hub_h = width * 0.15
+			# 3. Inner Tire Sidewall ring
+			var cap_n_inner = Vector3(0, 0, 1.0)
+			_add_quad_flat_normal(st, i1_out, i2_out, i2_in, i1_in, cap_n_inner)
+
+			# 4. Solid Wheel Center Metal Dish (Center (0,0) to inner_r)
+			var center_back = Vector3(0, 0, offset - rim_width * 0.2)
+			var center_front = Vector3(0, 0, offset + rim_width * 0.2)
+			_add_triangle_flat_normal(st, center_back, o2_in, o1_in, cap_n_outer)
+			_add_triangle_flat_normal(st, center_front, i1_in, i2_in, cap_n_inner)
+
+	# Axle hub cap (Solid 3D Hub Cap)
+	var hub_r = radius * 0.38
+	var hub_h = width * 0.18
+	var hub_z = side * (width * 0.5)
 	for i in range(sides):
 		var a1 = (float(i) / float(sides)) * TAU
 		var a2 = (float(i + 1) / float(sides)) * TAU
-		var h1 = Vector3(cos(a1) * hub_r, sin(a1) * hub_r, side * (width * 0.5))
-		var h2 = Vector3(cos(a2) * hub_r, sin(a2) * hub_r, side * (width * 0.5))
-		var hc = Vector3(0, 0, side * (width * 0.5 + hub_h))
+		var h1 = Vector3(cos(a1) * hub_r, sin(a1) * hub_r, hub_z)
+		var h2 = Vector3(cos(a2) * hub_r, sin(a2) * hub_r, hub_z)
+		var hc = Vector3(0, 0, hub_z + side * hub_h)
 		_add_triangle_flat_normal(st, h1, h2, hc, Vector3(0, 0, side))
 
 	st.generate_tangents()
