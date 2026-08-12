@@ -23,25 +23,33 @@ func _ready() -> void:
 		camera_3d = Camera3D.new()
 		camera_3d.name = "Camera3D"
 		add_child(camera_3d)
-		camera_3d.current = true
+	camera_3d.current = true
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_V:
-		toggle_camera_mode()
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_V:
+			toggle_camera_mode()
+		elif event.keycode == KEY_ESCAPE:
+			if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			else:
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				
 	if event is InputEventMouseButton:
+		if event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			_rmb_held = event.pressed
-			if event.pressed:
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			else:
-				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			chase_distance = clampf(chase_distance - 1.0, 4.0, 20.0)
+			chase_distance = clampf(chase_distance - 1.0, 4.0, 22.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			chase_distance = clampf(chase_distance + 1.0, 4.0, 20.0)
-	if event is InputEventMouseMotion:
+			chase_distance = clampf(chase_distance + 1.0, 4.0, 22.0)
+
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_yaw -= event.relative.x * look_sensitivity
-		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.2, 0.4)
+		_pitch = clampf(_pitch - event.relative.y * look_sensitivity, -1.0, 0.5)
 
 func _physics_process(delta: float) -> void:
 	if target == null:
@@ -57,16 +65,14 @@ func _physics_process(delta: float) -> void:
 func _update_chase(delta: float) -> void:
 	if target == null:
 		return
-	var pivot_pos := target.global_position + Vector3(0.0, 1.2, 0.0)
-	# Camera offset relative to target pivot
-	var offset := Vector3(
-		-cos(_yaw) * cos(_pitch) * chase_distance,
-		sin(-_pitch) * chase_distance + 1.2,
-		sin(_yaw) * cos(_pitch) * chase_distance
-	)
-	var desired_pos := pivot_pos + offset
-	# Tight War Thunder style follow tracking
-	global_position = global_position.lerp(desired_pos, clampf(25.0 * delta, 0.0, 1.0))
+	var pivot_pos := target.global_position + Vector3(0.0, 1.4, 0.0)
+	var dir_x = -cos(_yaw) * cos(_pitch)
+	var dir_y = sin(-_pitch)
+	var dir_z = sin(_yaw) * cos(_pitch)
+	var desired_pos := pivot_pos + Vector3(dir_x, dir_y, dir_z) * chase_distance
+	
+	# Rigidly attach camera to tank pivot point
+	global_position = desired_pos
 	if camera_3d:
 		camera_3d.look_at(pivot_pos)
 

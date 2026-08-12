@@ -364,15 +364,18 @@ func _apply_suspension_forces(delta: float) -> void:
 				apply_force(-right_dir * f_frict, local_offset_com)
 
 	# Apply Anti-Sway Stabilizer Bar Forces between paired Left & Right wheels
-	var wheels_per_side = total_rays / 2
-	var anti_sway_k = spring_stiffness * 0.4
+	var wheels_per_side = max(1, total_rays / 2)
+	var anti_sway_k = spring_stiffness * 0.6
 	for i in range(wheels_per_side):
 		var comp_l: float = wheel_compressions.get("L_%d" % i, 0.0)
 		var comp_r: float = wheel_compressions.get("R_%d" % i, 0.0)
 		var diff = comp_l - comp_r
-		if abs(diff) > 0.01:
-			var sway_f = diff * anti_sway_k
-			apply_torque(-global_transform.basis.x * sway_f * 0.15)
+		if abs(diff) > 0.005:
+			var sway_force = clamp(diff * anti_sway_k, -max_force_per_wheel * 0.4, max_force_per_wheel * 0.4)
+			# Equal and opposite vertical forces: push compressed side down, pull uncompressed side up
+			var x_pos = lerp(-2.4, 2.4, float(i) / max(1.0, float(wheels_per_side - 1)))
+			apply_force(-up_dir * sway_force, Vector3(x_pos, center_of_mass.y, -1.4) - center_of_mass)
+			apply_force(up_dir * sway_force, Vector3(x_pos, center_of_mass.y, 1.4) - center_of_mass)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _ray_entries.size()
