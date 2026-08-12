@@ -35,6 +35,12 @@ var road_wheel_pairs: int:
 var _wheel_nodes: Array[MeshInstance3D] = []
 var _road_wheels_data: Array[Dictionary] = []
 
+# Per-side track belt dynamic data for ground-following rebuild
+var _track_loop_meshes: Dictionary = {}  # side_key -> MeshInstance3D
+var _track_loop_build_data: Dictionary = {}  # side_key -> { sprocket, idler, rollers, wheel_r, width, z_center }
+var _wheel_compressions: Dictionary = {}  # "L_0", "R_2" etc -> compression float
+var _pending_belt_update: bool = false
+
 func _ready() -> void:
 	generate_tracks_and_wheels()
 
@@ -42,6 +48,11 @@ func generate_tracks_and_wheels() -> void:
 	_clear_existing()
 	_ensure_default_material()
 	_create_road_wheels_and_belts()
+
+func _process(_delta: float) -> void:
+	if _pending_belt_update:
+		_pending_belt_update = false
+		_rebuild_all_track_belts()
 
 func _ensure_default_material() -> void:
 	if track_material != null:
@@ -58,6 +69,9 @@ func _clear_existing() -> void:
 		child.queue_free()
 	_wheel_nodes.clear()
 	_road_wheels_data.clear()
+	_track_loop_meshes.clear()
+	_track_loop_build_data.clear()
+	_wheel_compressions.clear()
 
 func _create_road_wheels_and_belts() -> void:
 	var wheel_radius = wheel_diameter * 0.5
@@ -128,7 +142,17 @@ func _create_road_wheels_and_belts() -> void:
 			_wheel_nodes.append(roller)
 
 		# 5. Continuous Track Belt Loop with Sag Curve along X axis
-		_build_track_loop_mesh(z_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width)
+		var side_key = "L" if side < 0 else "R"
+		_track_loop_build_data[side_key] = {
+			"sprocket": sprocket_pos,
+			"idler": idler_pos,
+			"rollers": roller_positions,
+			"wheel_r": wheel_radius,
+			"width": track_width,
+			"z_center": z_pos,
+			"side": side
+		}
+		_build_track_loop_mesh(side_key, z_pos, sprocket_pos, idler_pos, roller_positions, wheel_radius, track_width)
 
 ## Creates a detailed Solid Dual Rim Road Wheel (Tire + Solid Metal Dish + Central Axle Hub Cap)
 func _create_dual_road_wheel_mesh(radius: float, width: float, side: float) -> MeshInstance3D:
@@ -244,6 +268,7 @@ func _create_idler_mesh(radius: float, width: float, side: float) -> MeshInstanc
 
 ## Builds continuous Track Belt Loop around sprockets, idler, and road wheels with sag curve
 func _build_track_loop_mesh(
+	side_key: String,
 	z_center: float,
 	sprocket_pos: Vector3,
 	idler_pos: Vector3,
@@ -251,65 +276,101 @@ func _build_track_loop_mesh(
 	wheel_r: float,
 	w_width: float
 ) -> void:
-	var mi = MeshInstance3D.new()
-	mi.name = "TrackLoop_Z%.1f" % z_center
-	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var mi: MeshInstance3D
+	if _track_loop_meshes.has(side_key) and is_instance_valid(_track_loop_meshes[side_key]):
+		mi = _track_loop_meshes[side_key]
+	else:
+		mi = MeshInstance3D.new()
+		mi.name = "TrackLoop_%s" % side_key
+		add_child(mi)
+		_track_loop_meshes[side_key] = mi
 
-	var half_w = w_width * 0.52
-	var link_thick = 0.045
+	var path_points = _compute_track_path(side_key, z_center, sprocket_pos, idler_pos, roller_positions, wheel_r)
+	mi.mesh = _build_track_mesh_from_path(path_points, z_center, w_width)
+	mi.material_override = track_material
+
+func _compute_track_path(
+	side_key: String,
+	z_center: float,
+	sprocket_pos: Vector3,
+	idler_pos: Vector3,
+	roller_positions: Array[Vector3],
+	wheel_r: float
+) -> Array[Vector3]:
 	var path_points: Array[Vector3] = []
-
 	var front_pos = sprocket_pos if sprocket_pos.x > idler_pos.x else idler_pos
 	var rear_pos = idler_pos if sprocket_pos.x > idler_pos.x else sprocket_pos
 
-	# Bottom run (Road Wheels ground run along X, from Front +X to Rear -X)
-	var bot_y = -suspension_height - wheel_r
+	# Bottom run: interpolate Y between road wheel ground-contact positions
+	# Each road wheel's bottom Y = wheel_center_Y - wheel_radius
 	var front_bottom_x = front_pos.x - wheel_r * 0.5
 	var rear_bottom_x = rear_pos.x + wheel_r * 0.5
+	var chassis_length = (road_wheels_count - 1) * (wheel_diameter * 1.15)
+	var rear_x = -chassis_length * 0.5
 
-	var ground_segs = 12
+	var ground_segs = road_wheels_count * 2 + 2
 	for i in range(ground_segs + 1):
 		var t = float(i) / float(ground_segs)
 		var x = lerp(front_bottom_x, rear_bottom_x, t)
+
+		# Find wheel compression at this X position by interpolating between nearest wheels
+		var bot_y = -suspension_height - wheel_r
+		var best_comp: float = 0.0
+		var total_weight: float = 0.0
+		for wi in range(road_wheels_count):
+			var wx = rear_x + (float(wi) * wheel_diameter * 1.15)
+			var dist = abs(x - wx)
+			var influence = max(0.0, 1.0 - dist / (wheel_diameter * 1.2))
+			if influence > 0.0:
+				var comp_key = "%s_%d" % [side_key, wi]
+				var comp = _wheel_compressions.get(comp_key, 0.0)
+				best_comp += comp * influence
+				total_weight += influence
+		if total_weight > 0.0:
+			best_comp /= total_weight
+		bot_y += best_comp
 		path_points.append(Vector3(x, bot_y, z_center))
 
 	# Rear Idler Curve (-X)
 	var idler_segs = 8
 	for i in range(1, idler_segs + 1):
 		var angle = (float(i) / float(idler_segs)) * PI + (PI * 0.5)
-		var x = rear_pos.x + cos(angle) * (wheel_r * 0.95)
-		var y = rear_pos.y + sin(angle) * (wheel_r * 0.95)
-		path_points.append(Vector3(x, y, z_center))
+		var cx = rear_pos.x + cos(angle) * (wheel_r * 0.95)
+		var cy = rear_pos.y + sin(angle) * (wheel_r * 0.95)
+		path_points.append(Vector3(cx, cy, z_center))
 
 	# Top Run with Sag Curves over return rollers
 	var top_segs = 14
 	for i in range(1, top_segs):
-		var t = float(i) / float(top_segs)
-		var x = lerp(rear_pos.x, front_pos.x, t)
-		var base_y = lerp(rear_pos.y + wheel_r, front_pos.y + wheel_r, t)
-
-		# Add realistic catenary sag between rollers
-		var sag = sin(t * PI) * track_sag_m
-		var y = base_y - sag
-		path_points.append(Vector3(x, y, z_center))
+		var tt = float(i) / float(top_segs)
+		var tx = lerp(rear_pos.x, front_pos.x, tt)
+		var base_y = lerp(rear_pos.y + wheel_r, front_pos.y + wheel_r, tt)
+		var sag = sin(tt * PI) * track_sag_m
+		var ty = base_y - sag
+		path_points.append(Vector3(tx, ty, z_center))
 
 	# Front Sprocket Curve (+X)
 	var sprocket_segs = 8
 	for i in range(sprocket_segs):
 		var angle = (float(i) / float(sprocket_segs)) * PI - (PI * 0.5)
-		var x = front_pos.x + cos(angle) * (wheel_r * 0.95)
-		var y = front_pos.y + sin(angle) * (wheel_r * 0.95)
-		path_points.append(Vector3(x, y, z_center))
+		var cx = front_pos.x + cos(angle) * (wheel_r * 0.95)
+		var cy = front_pos.y + sin(angle) * (wheel_r * 0.95)
+		path_points.append(Vector3(cx, cy, z_center))
 
-	# Build 3D Track Link Segments along path_points
+	return path_points
+
+func _build_track_mesh_from_path(path_points: Array[Vector3], z_center: float, w_width: float) -> ArrayMesh:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var half_w = w_width * 0.52
+	var link_thick = 0.045
+
 	var pt_count = path_points.size()
 	for i in range(pt_count):
 		var p_curr = path_points[i]
 		var p_next = path_points[(i + 1) % pt_count]
 
 		var tangent = (p_next - p_curr).normalized()
-		# 2D Outward normal in X-Y plane
 		var norm = Vector3(-tangent.y, tangent.x, 0.0).normalized()
 		if norm.length_squared() < 0.0001:
 			norm = Vector3.DOWN
@@ -342,9 +403,21 @@ func _build_track_loop_mesh(
 		_add_triangle_flat_normal(st, h_base2, h_base1, h_tip, -tangent)
 
 	st.generate_tangents()
-	mi.mesh = st.commit()
-	mi.material_override = track_material
-	add_child(mi)
+	return st.commit()
+
+## Rebuild all track belts using current wheel compressions
+func _rebuild_all_track_belts() -> void:
+	for side_key in _track_loop_build_data.keys():
+		var data: Dictionary = _track_loop_build_data[side_key]
+		_build_track_loop_mesh(
+			side_key,
+			data["z_center"],
+			data["sprocket"],
+			data["idler"],
+			data["rollers"],
+			data["wheel_r"],
+			data["width"]
+		)
 
 func _add_quad_flat_normal(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, n: Vector3) -> void:
 	st.set_normal(n)
@@ -449,6 +522,9 @@ func get_road_wheel_specs() -> Array[Dictionary]:
 
 ## Moves a visual road wheel vertically (+Y) based on suspension compression over obstacles
 func update_road_wheel_suspension(side: float, index: int, compression_m: float) -> void:
+	var side_key = "L" if side < 0 else "R"
+	_wheel_compressions["%s_%d" % [side_key, index]] = compression_m
+	_pending_belt_update = true
 	for data in _road_wheels_data:
 		if abs(float(data["side"]) - side) < 0.1 and int(data["index"]) == index:
 			var node: MeshInstance3D = data["node"]
