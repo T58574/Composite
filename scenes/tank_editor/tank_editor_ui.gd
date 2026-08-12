@@ -155,8 +155,10 @@ func _ready() -> void:
 	_update_ttx()
 	_sync_sliders_with_builders()
 
-	if not SettingsManager.settings_changed.is_connected(_on_settings_changed):
-		SettingsManager.settings_changed.connect(_on_settings_changed)
+	var sm = get_node_or_null("/root/SettingsManager")
+	if sm and sm.has_signal("settings_changed"):
+		if not sm.settings_changed.is_connected(_on_settings_changed):
+			sm.settings_changed.connect(_on_settings_changed)
 
 func _process(_delta: float) -> void:
 	if fps_label:

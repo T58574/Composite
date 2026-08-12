@@ -102,6 +102,7 @@ class ArmorSandwich extends RefCounted:
 	var addon_protection: AddonProtectionType = AddonProtectionType.NONE
 	var era_detonated: bool = false
 	var sector_era_states: Dictionary = {}
+	var sector_hit_counts: Dictionary = {}
 
 	func _init() -> void:
 		outer_layer = ArmorLayer.new(MaterialType.RHA_STEEL, 60.0)
@@ -111,6 +112,7 @@ class ArmorSandwich extends RefCounted:
 		addon_protection = AddonProtectionType.NONE
 		era_detonated = false
 		sector_era_states = {}
+		sector_hit_counts = {}
 
 	func duplicate_sandwich() -> ArmorSandwich:
 		var copy = ArmorSandwich.new()
@@ -124,7 +126,12 @@ class ArmorSandwich extends RefCounted:
 		copy.addon_protection = addon_protection
 		copy.era_detonated = era_detonated
 		copy.sector_era_states = sector_era_states.duplicate()
+		copy.sector_hit_counts = sector_hit_counts.duplicate()
 		return copy
+
+	func register_hit_at_sector(sector_id: String) -> void:
+		if not sector_id.is_empty():
+			sector_hit_counts[sector_id] = sector_hit_counts.get(sector_id, 0) + 1
 
 	func is_era_detonated_at_sector(sector_id: String = "") -> bool:
 		if era_detonated:
@@ -158,10 +165,14 @@ class ArmorSandwich extends RefCounted:
 
 	func get_effective_rha_mm(projectile_type: AmmoType, los_factor: float = 1.0, impact_angle_deg: float = 0.0, sector_id: String = "") -> float:
 		var total_rha: float = 0.0
+		var hit_count: int = sector_hit_counts.get(sector_id, 0) if not sector_id.is_empty() else 0
 		var layers = [outer_layer, filler_layer, rear_layer]
 		for layer in layers:
 			if layer != null:
 				var mult = layer.get_ke_multiplier() if projectile_type == AmmoType.APFSDS else layer.get_heat_multiplier()
+				# Ceramic tile shattering degradation after repeated impacts
+				if layer.material == MaterialType.CERAMIC_SIC_AL2O3 and hit_count > 0:
+					mult *= maxf(0.45, 1.0 - 0.35 * float(hit_count))
 				total_rha += layer.thickness_mm * los_factor * mult
 		if has_spall_liner:
 			total_rha += 15.0 * los_factor * 0.3
@@ -456,6 +467,20 @@ static func evaluate_impact(
 	return result
 
 
+## Returns internal module positions dynamically scaled to vehicle hull/turret bounds
+static func get_dynamic_vehicle_modules(hull_length: float = 6.8, hull_width: float = 3.4, hull_height: float = 1.4) -> Dictionary:
+	var half_l := hull_length * 0.5
+	var half_w := hull_width * 0.5
+	var half_h := hull_height * 0.5
+	return {
+		"Driver": Vector3(0.0, -half_h * 0.1, -half_l * 0.55),
+		"Gunner": Vector3(-half_w * 0.35, half_h * 0.7, 0.0),
+		"Commander": Vector3(half_w * 0.35, half_h * 0.8, 0.0),
+		"Engine": Vector3(0.0, 0.0, half_l * 0.55),
+		"Ammunition Storage": Vector3(0.0, -half_h * 0.45, 0.0)
+	}
+
+
 ## Evaluates secondary internal damage to vehicle modules (Engine, Ammo Storage) and crew (Driver, Gunner, Commander)
 ## using spatial proximity and 3D vector cone direction.
 static func _evaluate_internal_damage(
@@ -483,15 +508,8 @@ static func _evaluate_internal_damage(
 	if pen_dir.length_squared() < 0.01:
 		pen_dir = Vector3(0.0, 0.0, -1.0) # Default forward-to-back fallback
 
-	# Estimated internal vehicle module coordinates in local space
-	# X: right(+)/left(-), Y: up(+)/down(-), Z: rear(+)/front(-)
-	var modules := {
-		"Driver": Vector3(0.0, 0.6, -1.8),
-		"Gunner": Vector3(-0.6, 1.4, -0.2),
-		"Commander": Vector3(0.6, 1.5, -0.2),
-		"Engine": Vector3(0.0, 0.7, 1.8),
-		"Ammunition Storage": Vector3(0.0, 0.3, 0.0)
-	}
+	# Proportional internal vehicle module coordinates dynamically calculated
+	var modules := get_dynamic_vehicle_modules()
 
 	var hit_pos := result.hit_position
 

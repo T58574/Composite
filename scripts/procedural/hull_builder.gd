@@ -323,12 +323,13 @@ func _update_collision_shape() -> void:
 		static_collision_body.name = "HullCollisionBody"
 		add_child(static_collision_body)
 
-	if collision_shape_node == null:
-		collision_shape_node = CollisionShape3D.new()
-		collision_shape_node.name = "CollisionShape3D"
-		static_collision_body.add_child(collision_shape_node)
+	for child in static_collision_body.get_children():
+		child.queue_free()
 
-	collision_shape_node.shape = mesh.create_convex_shape()
+	collision_shape_node = CollisionShape3D.new()
+	collision_shape_node.name = "CollisionShape3D"
+	collision_shape_node.shape = mesh.create_trimesh_shape()
+	static_collision_body.add_child(collision_shape_node)
 
 	if armor_sandwich == null:
 		armor_sandwich = ArmorCalculator.ArmorSandwich.create_default_glacis()

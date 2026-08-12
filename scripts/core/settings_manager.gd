@@ -160,6 +160,29 @@ func _setup_translations() -> void:
 		"STATS_HULL_VOLUME": ["Hull Volume: %.2f m³", "Объем корпуса: %.2f м³"],
 		"STATS_FRONT_ARMOR": ["Hull Front: %.0fmm RHA (LOS Eff: %.0fmm)", "Лоб корпуса: %.0fмм RHA (Приведенная: %.0fмм)"],
 
+		# Preset Cards
+		"PRESET_HULL_WEDGE_TITLE": ["MBT Wedge", "Клин ОБТ"],
+		"PRESET_HULL_WEDGE_SUB": ["60° Glacis (MBT)", "ВЛД 60° (МБТ)"],
+		"PRESET_HULL_BOX_TITLE": ["Box Hull", "Коробка"],
+		"PRESET_HULL_BOX_SUB": ["Vertical (Heavy)", "Вертикаль (Тяж)"],
+		"PRESET_HULL_PIKE_TITLE": ["Pike Nose", "Щучий Нос"],
+		"PRESET_HULL_PIKE_SUB": ["Pointed (IS-3)", "Острый (ИС-3)"],
+		"PRESET_HULL_MODERN_TITLE": ["Modern Glacis", "Модерн ВЛД"],
+		"PRESET_HULL_MODERN_SUB": ["Composite (MBT)", "Многослой (ОБТ)"],
+		"PRESET_HULL_COMPACT_TITLE": ["Compact", "Компакт"],
+		"PRESET_HULL_COMPACT_SUB": ["Light Hull", "Лёгкий корпус"],
+
+		"PRESET_TURRET_WEDGE_TITLE": ["Wedge Turret", "Клин Башня"],
+		"PRESET_TURRET_WEDGE_SUB": ["Sloped Cheeks", "Наклонные щёки"],
+		"PRESET_TURRET_DOME_TITLE": ["Cast Dome", "Литой Купол"],
+		"PRESET_TURRET_DOME_SUB": ["Hemisphere (T-54)", "Полусфера (Т-54)"],
+		"PRESET_TURRET_BOX_TITLE": ["Welded Box", "Сварная"],
+		"PRESET_TURRET_BOX_SUB": ["Rear Bustle", "Кормовая ниша"],
+		"PRESET_TURRET_ANGULAR_TITLE": ["Angular MBT", "Угловая ОБТ"],
+		"PRESET_TURRET_ANGULAR_SUB": ["Composite Cheeks", "Композит щёки"],
+		"PRESET_TURRET_COMPACT_TITLE": ["Compact Turret", "Компакт"],
+		"PRESET_TURRET_COMPACT_SUB": ["Small Turret", "Малая башня"],
+
 		# Combat Test Range
 		"RANGE_MAIN_MENU": ["← Main Menu", "← Главное меню"],
 		"RANGE_TO_BUILDER": ["🛠️ To Builder", "🛠️ В конструктор"],

@@ -124,17 +124,17 @@ func build_cards() -> void:
 	var presets: Array[PresetItemData] = []
 
 	if not is_turret_presets:
-		presets.append(PresetItemData.new("Клин ОБТ", "ВЛД 60° (МБТ)", 0))
-		presets.append(PresetItemData.new("Коробка", "Вертикаль (Тяж)", 1))
-		presets.append(PresetItemData.new("Щучий Нос", "Острый (ИС-3)", 2))
-		presets.append(PresetItemData.new("Модерн ВЛД", "Многослой (ОБТ)", 3))
-		presets.append(PresetItemData.new("Компакт", "Лёгкий корпус", 4))
+		presets.append(PresetItemData.new(tr("PRESET_HULL_WEDGE_TITLE"), tr("PRESET_HULL_WEDGE_SUB"), 0))
+		presets.append(PresetItemData.new(tr("PRESET_HULL_BOX_TITLE"), tr("PRESET_HULL_BOX_SUB"), 1))
+		presets.append(PresetItemData.new(tr("PRESET_HULL_PIKE_TITLE"), tr("PRESET_HULL_PIKE_SUB"), 2))
+		presets.append(PresetItemData.new(tr("PRESET_HULL_MODERN_TITLE"), tr("PRESET_HULL_MODERN_SUB"), 3))
+		presets.append(PresetItemData.new(tr("PRESET_HULL_COMPACT_TITLE"), tr("PRESET_HULL_COMPACT_SUB"), 4))
 	else:
-		presets.append(PresetItemData.new("Клин Башня", "Наклонные щёки", 0))
-		presets.append(PresetItemData.new("Литой Купол", "Полусфера (Т-54)", 1))
-		presets.append(PresetItemData.new("Сварная", "Кормовая ниша", 2))
-		presets.append(PresetItemData.new("Угловая ОБТ", "Композит щёки", 3))
-		presets.append(PresetItemData.new("Компакт", "Малая башня", 4))
+		presets.append(PresetItemData.new(tr("PRESET_TURRET_WEDGE_TITLE"), tr("PRESET_TURRET_WEDGE_SUB"), 0))
+		presets.append(PresetItemData.new(tr("PRESET_TURRET_DOME_TITLE"), tr("PRESET_TURRET_DOME_SUB"), 1))
+		presets.append(PresetItemData.new(tr("PRESET_TURRET_BOX_TITLE"), tr("PRESET_TURRET_BOX_SUB"), 2))
+		presets.append(PresetItemData.new(tr("PRESET_TURRET_ANGULAR_TITLE"), tr("PRESET_TURRET_ANGULAR_SUB"), 3))
+		presets.append(PresetItemData.new(tr("PRESET_TURRET_COMPACT_TITLE"), tr("PRESET_TURRET_COMPACT_SUB"), 4))
 
 	for data in presets:
 		var card = _create_card_button(data)

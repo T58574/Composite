@@ -351,7 +351,6 @@ func _get_coplanar_quad_face_vertices(target: MeshInstance3D, hit_face_idx: int)
 						quad_verts.append(tri_v)
 
 	return quad_verts
-	selection_changed.emit()
 
 func _update_cached_colocated_vertices() -> void:
 	cached_colocated_vertex_indices.clear()
@@ -416,11 +415,6 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 	if array_mesh == null or array_mesh.get_surface_count() == 0:
 		return
 
-	var mdt = MeshDataTool.new()
-	var err = mdt.create_from_surface(array_mesh, 0)
-	if err != OK:
-		return
-
 	var target_gt = selected_target.global_transform if selected_target.is_inside_tree() else selected_target.transform
 	var inv_gt = target_gt.basis.inverse()
 	var local_trans_delta = inv_gt * trans_delta
@@ -429,17 +423,22 @@ func _on_gizmo_transform_changed(trans_delta: Vector3, _rot_delta: Vector3, _sca
 	if cached_colocated_vertex_indices.is_empty() and not selected_positions.is_empty():
 		_update_cached_colocated_vertices()
 
+	var arrays = array_mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var vert_count = vertices.size()
+
 	for v_idx in cached_colocated_vertex_indices:
-		var current_p = mdt.get_vertex(v_idx)
-		mdt.set_vertex(v_idx, current_p + local_trans_delta)
+		if v_idx < vert_count:
+			vertices[v_idx] += local_trans_delta
 
 	if symmetry_x_enabled:
 		for v_idx in cached_symmetric_vertex_indices:
-			var current_p = mdt.get_vertex(v_idx)
-			mdt.set_vertex(v_idx, current_p + sym_trans_delta)
+			if v_idx < vert_count:
+				vertices[v_idx] += sym_trans_delta
 
+	arrays[Mesh.ARRAY_VERTEX] = vertices
 	array_mesh.clear_surfaces()
-	mdt.commit_to_surface(array_mesh)
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	selected_target.mesh = array_mesh
 
 	# Crucial: update selected_positions by trans_delta so subsequent drag frames continue smoothly!
