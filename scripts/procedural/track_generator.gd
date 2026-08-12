@@ -326,13 +326,20 @@ func _build_track_loop_mesh(
 
 		# Track shoe outer face
 		_add_quad_flat_normal(st, p1_in_t, p1_out_t, p2_out_t, p2_in_t, norm)
-		# Track guide horn pin in center
+		# Track shoe inner face
+		_add_quad_flat_normal(st, p1_in, p2_in, p2_out, p1_out, -norm)
+		# Left & Right 3D Track Link Side Edges
+		_add_quad_flat_normal(st, p1_in, p1_in_t, p2_in_t, p2_in, Vector3(0, 0, -1))
+		_add_quad_flat_normal(st, p1_out, p2_out, p2_out_t, p1_out_t, Vector3(0, 0, 1))
+
+		# 3D Metal Guide Horn Tooth (center tooth fitting between road wheel gap)
 		var horn_c = (p_curr + p_next) * 0.5
-		var horn_h = norm * (link_thick * 2.2)
-		var h1 = horn_c + Vector3(0, 0, -0.04)
-		var h2 = horn_c + Vector3(0, 0, 0.04)
-		var h3 = horn_c + horn_h
-		_add_triangle_flat_normal(st, h1, h2, h3, norm)
+		var horn_inward = -norm * 0.08
+		var h_base1 = horn_c + Vector3(0, 0, -0.035)
+		var h_base2 = horn_c + Vector3(0, 0, 0.035)
+		var h_tip = horn_c + horn_inward
+		_add_triangle_flat_normal(st, h_base1, h_base2, h_tip, tangent)
+		_add_triangle_flat_normal(st, h_base2, h_base1, h_tip, -tangent)
 
 	st.generate_tangents()
 	mi.mesh = st.commit()

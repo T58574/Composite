@@ -66,12 +66,19 @@ func _update_chase(delta: float) -> void:
 	if target == null:
 		return
 	var pivot_pos := target.global_position + Vector3(0.0, 1.4, 0.0)
-	var dir_x = -cos(_yaw) * cos(_pitch)
+	
+	# Tank heading yaw angle (tank nose is +X)
+	var tank_forward = target.global_transform.basis.x
+	var tank_yaw = atan2(tank_forward.z, tank_forward.x)
+	var total_yaw = tank_yaw + _yaw
+	
+	# Compute camera position behind tank relative to vehicle heading
+	var dir_x = -cos(total_yaw) * cos(_pitch)
 	var dir_y = sin(-_pitch)
-	var dir_z = sin(_yaw) * cos(_pitch)
+	var dir_z = -sin(total_yaw) * cos(_pitch)
 	var desired_pos := pivot_pos + Vector3(dir_x, dir_y, dir_z) * chase_distance
 	
-	# Rigidly attach camera to tank pivot point
+	# Position camera directly behind tank, looking forward along tank direction
 	global_position = desired_pos
 	if camera_3d:
 		camera_3d.look_at(pivot_pos)

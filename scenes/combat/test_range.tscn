@@ -155,6 +155,7 @@ enabled = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 12)
 script = ExtResource("5_chase_cam")
 target = NodePath("../TestVehicle")
+camera_3d = NodePath("Camera3D")
 
 [node name="Camera3D" type="Camera3D" parent="ChaseCamera"]
 current = true
