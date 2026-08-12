@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
+[gd_scene load_steps=23 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
 
 [ext_resource type="Script" path="res://scenes/tank_editor/tank_editor_ui.gd" id="1_editor_ui"]
 [ext_resource type="Script" path="res://scripts/editor/editor_camera.gd" id="2_camera"]
@@ -15,6 +15,7 @@
 [ext_resource type="Texture2D" path="res://assets/materials/concrete_floor.jpeg" id="13_grid_tex"]
 [ext_resource type="Texture2D" uid="uid://cw32xstdnptsh" path="res://assets/materials/hangar_floor_grid.jpg" id="14_hangar_tex"]
 [ext_resource type="Texture2D" path="res://assets/materials/tank_track_link.jpg" id="15_track_tex"]
+[ext_resource type="Script" path="res://scripts/editor/bounding_box_overlay.gd" id="16_overlay"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_tactical"]
 sky_top_color = Color(0.2, 0.35, 0.55, 1)
@@ -171,6 +172,12 @@ script = ExtResource("7_firepower")
 [node name="Gizmo3D" type="Node3D" parent="Node3D"]
 script = ExtResource("8_gizmo")
 
+[node name="BoundingBoxOverlay" type="Node3D" parent="Node3D" node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator")]
+script = ExtResource("16_overlay")
+hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
+turret_builder = NodePath("../ProceduralVehicle/ProceduralTurret")
+track_generator = NodePath("../ProceduralVehicle/TrackGenerator")
+
 [node name="MeshEditorController" type="Node3D" parent="Node3D" node_paths=PackedStringArray("hull_builder", "turret_builder", "camera_3d", "gizmo_3d")]
 script = ExtResource("3_mesh_editor")
 hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
@@ -181,7 +188,7 @@ pbr_material = SubResource("ShaderMaterial_pbr")
 heatmap_material = SubResource("ShaderMaterial_heatmap")
 xray_material = SubResource("ShaderMaterial_xray")
 
-[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor")]
+[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor", "bounding_box_overlay")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -196,6 +203,7 @@ track_generator = NodePath("../Node3D/ProceduralVehicle/TrackGenerator")
 firepower_builder = NodePath("../Node3D/ProceduralVehicle/FirepowerBuilder")
 editor_camera = NodePath("../Node3D/EditorCameraPivot")
 mesh_editor = NodePath("../Node3D/MeshEditorController")
+bounding_box_overlay = NodePath("../Node3D/BoundingBoxOverlay")
 
 [node name="TopHeaderBar" type="PanelContainer" parent="UIOverlay"]
 layout_mode = 1
@@ -214,6 +222,11 @@ theme_override_constants/margin_bottom = 6
 [node name="HBox" type="HBoxContainer" parent="UIOverlay/TopHeaderBar/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 10
+
+[node name="ToggleLeftBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "◀ Sidebar"
 
 [node name="MainMenuBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
 layout_mode = 2
@@ -297,7 +310,13 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "EDITOR_TEST_RANGE"
 
+[node name="ToggleRightBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Inspector ▶"
+
 [node name="LeftSidebar" type="PanelContainer" parent="UIOverlay"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 9
 anchor_bottom = 1.0
@@ -388,9 +407,29 @@ text = "TITLE_COMPARTMENTS"
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 layout_mode = 2
 
-[node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Hull Preset Shape:"
+
+[node name="HullPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="LengthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
 layout_mode = 2
 text = "LBL_HULL_LENGTH"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HullLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "6.8 m"
 
 [node name="HullLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -400,9 +439,21 @@ max_value = 10.0
 step = 0.1
 value = 6.8
 
-[node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="WidthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
 layout_mode = 2
 text = "LBL_HULL_WIDTH"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HullWidthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "3.4 m"
 
 [node name="HullWidthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -412,9 +463,21 @@ max_value = 5.0
 step = 0.1
 value = 3.4
 
-[node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HeightHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
 layout_mode = 2
 text = "LBL_HULL_HEIGHT"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HullHeightValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1.4 m"
 
 [node name="HullHeightSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -424,9 +487,21 @@ max_value = 2.5
 step = 0.1
 value = 1.4
 
-[node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="GlacisHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
 layout_mode = 2
 text = "LBL_GLACIS_ANGLE"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GlacisAngleValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "60°"
 
 [node name="GlacisAngleSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
 unique_name_in_owner = true
@@ -436,14 +511,96 @@ max_value = 80.0
 step = 1.0
 value = 60.0
 
+[node name="HSeparatorTurretPos" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="TurretPosTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+text = "Turret Position Offset:"
+
+[node name="TurretXHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="TurretXLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+layout_mode = 2
+text = "Turret X Offset:"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TurretXValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0.00 m"
+
+[node name="TurretXSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -3.0
+max_value = 3.0
+step = 0.05
+value = 0.0
+
+[node name="TurretZHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+layout_mode = 2
+
+[node name="TurretZLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+layout_mode = 2
+text = "Turret Z Offset:"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TurretZValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0.00 m"
+
+[node name="TurretZSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -1.5
+max_value = 1.5
+step = 0.05
+value = 0.0
+
 [node name="TracksPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="TracksTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+text = "CAT_TRACKS"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+
+[node name="SprocketLocationLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+text = "Drive Sprocket Location:"
+
+[node name="SprocketLocationOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="WheelsHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+
+[node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
 layout_mode = 2
 text = "LBL_WHEEL_PAIRS"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WheelsCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "6 pairs"
 
 [node name="WheelsCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -453,9 +610,21 @@ max_value = 8.0
 step = 1.0
 value = 6.0
 
-[node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="DiamHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+
+[node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
 layout_mode = 2
 text = "LBL_WHEEL_DIAM"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WheelDiamValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0.65 m"
 
 [node name="WheelDiamSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -465,9 +634,21 @@ max_value = 1.0
 step = 0.05
 value = 0.65
 
-[node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="TrackWHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+layout_mode = 2
+
+[node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
 layout_mode = 2
 text = "LBL_TRACK_WIDTH"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TrackWValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0.60 m"
 
 [node name="TrackWSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
 unique_name_in_owner = true
@@ -489,9 +670,21 @@ text = "TITLE_POWERTRAIN"
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 layout_mode = 2
 
-[node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+[node name="EngineHPHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+layout_mode = 2
+
+[node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
 layout_mode = 2
 text = "LBL_ENGINE_HP"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EnginePowerValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1200 hp"
 
 [node name="EnginePowerSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
 unique_name_in_owner = true
@@ -506,9 +699,36 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="FirepowerTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+text = "CAT_FIREPOWER"
+
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+
+[node name="TurretPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+text = "Turret Preset Shape:"
+
+[node name="TurretPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CaliberHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+
+[node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
 layout_mode = 2
 text = "LBL_GUN_CALIBER"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GunCaliberValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "120 mm"
 
 [node name="GunCaliberSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 unique_name_in_owner = true
@@ -518,9 +738,21 @@ max_value = 152.0
 step = 5.0
 value = 120.0
 
-[node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="BarrelHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+layout_mode = 2
+
+[node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
 layout_mode = 2
 text = "LBL_BARREL_LENGTH"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BarrelLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "6.2 m"
 
 [node name="BarrelLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
 unique_name_in_owner = true
@@ -542,9 +774,21 @@ text = "TITLE_CREW"
 [node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 layout_mode = 2
 
-[node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+[node name="CrewHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+layout_mode = 2
+
+[node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
 layout_mode = 2
 text = "LBL_CREW_COUNT"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CrewCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "4 crew"
 
 [node name="CrewCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
 unique_name_in_owner = true
@@ -595,6 +839,7 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="RightStructureInspector" type="PanelContainer" parent="UIOverlay"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 11
 anchor_left = 1.0
@@ -706,10 +951,22 @@ layout_mode = 2
 button_pressed = true
 text = "CHK_MIRROR"
 
-[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SmoothHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "LBL_SMOOTH_ANGLE"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SmoothAngleValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "36°"
 
 [node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
@@ -719,9 +976,21 @@ max_value = 90.0
 step = 1.0
 value = 36.0
 
-[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="GridSizeHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+layout_mode = 2
+
+[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
 layout_mode = 2
 text = "LBL_GRID_SIZE"
+
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GridSizeValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 mm"
 
 [node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
 unique_name_in_owner = true
@@ -941,14 +1210,17 @@ theme_override_constants/separation = 12
 layout_mode = 2
 
 [node name="TurretsTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_TURRETS"
 
 [node name="StructuralTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_STRUCTURAL"
 
 [node name="AddonTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_ADDON"
 

@@ -7,11 +7,16 @@ extends Node3D
 
 signal turret_rotated(yaw_deg: float, pitch_deg: float)
 
+enum TurretStyle { WEDGE_CHEEK, CAST_DOME, BOX_WELDED }
+
 @export_group("Turret Dimensions")
+@export var turret_style: TurretStyle = TurretStyle.WEDGE_CHEEK
 @export_range(1.5, 4.5, 0.1) var turret_length: float = 3.2 ## Meters
 @export_range(1.5, 4.5, 0.1) var turret_width: float = 2.8 ## Meters
 @export_range(0.6, 2.0, 0.1) var turret_height: float = 1.1 ## Meters
 @export_range(15.0, 75.0, 1.0) var cheek_angle_deg: float = 45.0 ## Wedge cheek slope angle
+@export var turret_offset_x: float = 0.0
+@export var turret_offset_z: float = 0.0
 
 @export_group("Main Gun & Mantlet")
 @export_range(3.0, 9.0, 0.1) var barrel_length: float = 6.2 ## Meters (e.g. 120mm/125mm L/55)
@@ -80,9 +85,6 @@ func _generate_turret_mesh() -> void:
 	var half_w = turret_width * 0.5
 	var half_h = turret_height * 0.5
 
-	var cheek_offset = turret_height * tan(deg_to_rad(90.0 - cheek_angle_deg))
-	cheek_offset = clamp(cheek_offset, 0.2, half_l * 0.7)
-
 	# ---------------------------------------------------------
 	# 1. TURRET RING BASE COLLAR (16-sided cylinder)
 	# ---------------------------------------------------------
@@ -107,72 +109,129 @@ func _generate_turret_mesh() -> void:
 		_add_quad_smooth_normal(st, p1_bot, p1_top, p2_top, p2_bot, n1, n1, n2, n2)
 
 	# ---------------------------------------------------------
-	# 2. MAIN TURRET BODY & SLOPED CHEEKS (Hard-surface flat plates)
+	# 2. MAIN TURRET BODY GEOMETRY BY TURRET STYLE
 	# ---------------------------------------------------------
-	var v_front_top = Vector3(half_l * 0.85, half_h * 0.7, 0.0)
-	var v_front_bot = Vector3(half_l * 0.85, -half_h * 0.6, 0.0)
+	match turret_style:
+		TurretStyle.WEDGE_CHEEK:
+			var cheek_offset = turret_height * tan(deg_to_rad(90.0 - cheek_angle_deg))
+			cheek_offset = clamp(cheek_offset, 0.2, half_l * 0.7)
 
-	var v_cheek_l = Vector3(half_l - cheek_offset, half_h, -half_w)
-	var v_cheek_r = Vector3(half_l - cheek_offset, half_h, half_w)
-	var v_bot_cheek_l = Vector3(half_l - cheek_offset, -half_h, -half_w)
-	var v_bot_cheek_r = Vector3(half_l - cheek_offset, -half_h, half_w)
+			var v_front_top = Vector3(half_l * 0.85, half_h * 0.7, 0.0)
+			var v_front_bot = Vector3(half_l * 0.85, -half_h * 0.6, 0.0)
 
-	var bustle_start_x = -half_l * 0.25
-	var v_top_bl = Vector3(bustle_start_x, half_h, -half_w * 0.95)
-	var v_top_br = Vector3(bustle_start_x, half_h, half_w * 0.95)
-	var v_bot_bl = Vector3(bustle_start_x, -half_h, -half_w * 0.95)
-	var v_bot_br = Vector3(bustle_start_x, -half_h, half_w * 0.95)
+			var v_cheek_l = Vector3(half_l - cheek_offset, half_h, -half_w)
+			var v_cheek_r = Vector3(half_l - cheek_offset, half_h, half_w)
+			var v_bot_cheek_l = Vector3(half_l - cheek_offset, -half_h, -half_w)
+			var v_bot_cheek_r = Vector3(half_l - cheek_offset, -half_h, half_w)
 
-	# Main Roof (Normal +Y)
-	_add_quad(st, v_top_bl, v_cheek_l, v_cheek_r, v_top_br)
-	_add_triangle(st, v_cheek_l, v_front_top, v_cheek_r)
+			var bustle_start_x = -half_l * 0.25
+			var v_top_bl = Vector3(bustle_start_x, half_h, -half_w * 0.95)
+			var v_top_br = Vector3(bustle_start_x, half_h, half_w * 0.95)
+			var v_bot_bl = Vector3(bustle_start_x, -half_h, -half_w * 0.95)
+			var v_bot_br = Vector3(bustle_start_x, -half_h, half_w * 0.95)
 
-	# Bottom Floor (Normal -Y)
-	_add_quad(st, v_bot_cheek_l, v_bot_br, v_bot_bl, v_bot_cheek_r)
-	_add_triangle(st, v_front_bot, v_bot_cheek_r, v_bot_cheek_l)
+			# Main Roof (Normal +Y)
+			_add_quad(st, v_top_bl, v_cheek_l, v_cheek_r, v_top_br)
+			_add_triangle(st, v_cheek_l, v_front_top, v_cheek_r)
 
-	# Front Cheeks
-	_add_triangle(st, v_cheek_l, v_bot_cheek_l, v_front_top)
-	_add_triangle(st, v_front_top, v_bot_cheek_l, v_front_bot)
+			# Bottom Floor (Normal -Y)
+			_add_quad(st, v_bot_cheek_l, v_bot_br, v_bot_bl, v_bot_cheek_r)
+			_add_triangle(st, v_front_bot, v_bot_cheek_r, v_bot_cheek_l)
 
-	_add_triangle(st, v_front_top, v_bot_cheek_r, v_cheek_r)
-	_add_triangle(st, v_front_top, v_front_bot, v_bot_cheek_r)
+			# Front Cheeks
+			_add_triangle(st, v_cheek_l, v_bot_cheek_l, v_front_top)
+			_add_triangle(st, v_front_top, v_bot_cheek_l, v_front_bot)
 
-	# Main Turret Sides
-	_add_quad(st, v_top_bl, v_bot_bl, v_bot_cheek_l, v_cheek_l) # Left side (-Z)
-	_add_quad(st, v_cheek_r, v_bot_cheek_r, v_bot_br, v_top_br) # Right side (+Z)
+			_add_triangle(st, v_front_top, v_bot_cheek_r, v_cheek_r)
+			_add_triangle(st, v_front_top, v_front_bot, v_bot_cheek_r)
 
-	# ---------------------------------------------------------
-	# 3. REAR BUSTLE BOX
-	# ---------------------------------------------------------
-	var bustle_end_x = -half_l * 1.15
-	var bustle_w = half_w * 0.88
-	var bustle_bot_y = -half_h * 0.2
+			# Main Turret Sides
+			_add_quad(st, v_top_bl, v_bot_bl, v_bot_cheek_l, v_cheek_l)
+			_add_quad(st, v_cheek_r, v_bot_cheek_r, v_bot_br, v_top_br)
 
-	var b_top_fl = v_top_bl
-	var b_top_fr = v_top_br
-	var b_top_bl = Vector3(bustle_end_x, half_h, -bustle_w)
-	var b_top_br = Vector3(bustle_end_x, half_h, bustle_w)
+			# Bustle Box
+			_add_bustle_box(st, half_l, half_w, half_h, v_top_bl, v_top_br, v_bot_bl, v_bot_br)
 
-	var b_bot_fl = v_bot_bl
-	var b_bot_fr = v_bot_br
-	var b_bot_bl = Vector3(bustle_end_x, bustle_bot_y, -bustle_w)
-	var b_bot_br = Vector3(bustle_end_x, bustle_bot_y, bustle_w)
+		TurretStyle.CAST_DOME:
+			var slices = 16
+			var stacks = 6
+			var rx = half_l * 0.75
+			var rz = half_w * 0.8
+			var ry = turret_height * 0.95
 
-	# Bustle roof
-	_add_quad(st, b_top_bl, b_top_fl, b_top_fr, b_top_br)
-	# Bustle angled floor
-	_add_quad(st, b_bot_fl, b_bot_bl, b_bot_br, b_bot_fr)
-	# Bustle rear plate
-	_add_quad(st, b_top_br, b_top_bl, b_bot_bl, b_bot_br)
-	# Bustle sides
-	_add_quad(st, b_top_bl, b_bot_bl, b_bot_fl, b_top_fl)
-	_add_quad(st, b_top_fr, b_bot_fr, b_bot_br, b_top_br)
+			for j in range(stacks):
+				var phi1 = (float(j) / float(stacks)) * (PI * 0.48)
+				var phi2 = (float(j + 1) / float(stacks)) * (PI * 0.48)
 
-	# ---------------------------------------------------------
-	# 4. COMMANDER CUPOLA HATCH (Smooth Cylinder)
-	# ---------------------------------------------------------
+				for i in range(slices):
+					var theta1 = (float(i) / float(slices)) * TAU
+					var theta2 = (float(i + 1) / float(slices)) * TAU
+
+					var n11 = Vector3(cos(theta1) * cos(phi1), sin(phi1), sin(theta1) * cos(phi1)).normalized()
+					var n21 = Vector3(cos(theta2) * cos(phi1), sin(phi1), sin(theta2) * cos(phi1)).normalized()
+					var n12 = Vector3(cos(theta1) * cos(phi2), sin(phi2), sin(theta1) * cos(phi2)).normalized()
+					var n22 = Vector3(cos(theta2) * cos(phi2), sin(phi2), sin(theta2) * cos(phi2)).normalized()
+
+					var p11 = Vector3(cos(theta1) * cos(phi1) * rx, sin(phi1) * ry - half_h, sin(theta1) * cos(phi1) * rz)
+					var p21 = Vector3(cos(theta2) * cos(phi1) * rx, sin(phi1) * ry - half_h, sin(theta2) * cos(phi1) * rz)
+					var p12 = Vector3(cos(theta1) * cos(phi2) * rx, sin(phi2) * ry - half_h, sin(theta1) * cos(phi2) * rz)
+					var p22 = Vector3(cos(theta2) * cos(phi2) * rx, sin(phi2) * ry - half_h, sin(theta2) * cos(phi2) * rz)
+
+					_add_quad_smooth_normal(st, p11, p12, p22, p21, n11, n12, n22, n21)
+
+			# Cap top center roof of cast dome
+			var top_phi = (float(stacks) / float(stacks)) * (PI * 0.48)
+			var top_y = sin(top_phi) * ry - half_h
+			var center_top = Vector3(0.0, top_y + 0.02, 0.0)
+			for i in range(slices):
+				var theta1 = (float(i) / float(slices)) * TAU
+				var theta2 = (float(i + 1) / float(slices)) * TAU
+				var p1 = Vector3(cos(theta1) * cos(top_phi) * rx, top_y, sin(theta1) * cos(top_phi) * rz)
+				var p2 = Vector3(cos(theta2) * cos(top_phi) * rx, top_y, sin(theta2) * cos(top_phi) * rz)
+				_add_triangle(st, center_top, p2, p1)
+
+			# Small rear bustle shelf for dome
+			var b_top_fl = Vector3(-rx * 0.6, 0.0, -rz * 0.7)
+			var b_top_fr = Vector3(-rx * 0.6, 0.0, rz * 0.7)
+			var b_bot_fl = Vector3(-rx * 0.6, -half_h, -rz * 0.7)
+			var b_bot_fr = Vector3(-rx * 0.6, -half_h, rz * 0.7)
+			_add_bustle_box(st, half_l, half_w, half_h, b_top_fl, b_top_fr, b_bot_fl, b_bot_fr)
+
+		TurretStyle.BOX_WELDED:
+			var front_x = half_l * 0.75
+			var bustle_start_x = -half_l * 0.25
+			var box_w = half_w * 0.9
+
+			var v_top_fl = Vector3(front_x, half_h, -box_w)
+			var v_top_fr = Vector3(front_x, half_h, box_w)
+			var v_top_bl = Vector3(bustle_start_x, half_h, -box_w)
+			var v_top_br = Vector3(bustle_start_x, half_h, box_w)
+
+			var v_bot_fl = Vector3(front_x, -half_h, -box_w)
+			var v_bot_fr = Vector3(front_x, -half_h, box_w)
+			var v_bot_bl = Vector3(bustle_start_x, -half_h, -box_w)
+			var v_bot_br = Vector3(bustle_start_x, -half_h, box_w)
+
+			# Flat Front Face (Normal +X)
+			_add_quad(st, v_top_fr, v_bot_fr, v_bot_fl, v_top_fl)
+
+			# Main Roof (Normal +Y)
+			_add_quad(st, v_top_bl, v_top_fl, v_top_fr, v_top_br)
+
+			# Main Floor (Normal -Y)
+			_add_quad(st, v_bot_fl, v_bot_bl, v_bot_br, v_bot_fr)
+
+			# Main Sides
+			_add_quad(st, v_top_bl, v_bot_bl, v_bot_fl, v_top_fl)
+			_add_quad(st, v_top_fr, v_bot_fr, v_bot_br, v_top_br)
+
+			# Bustle Box
+			_add_bustle_box(st, half_l, half_w, half_h, v_top_bl, v_top_br, v_bot_bl, v_bot_br)
+
+	# Commander Cupola (common across styles)
 	var cupola_pos = Vector3(-half_l * 0.1, half_h, -half_w * 0.35)
+	if turret_style == TurretStyle.CAST_DOME:
+		cupola_pos.y = half_h * 0.75
 	var cupola_r = 0.35
 	var cupola_h = 0.16
 	var cupola_sides = 16
@@ -199,14 +258,35 @@ func _generate_turret_mesh() -> void:
 	st.generate_tangents()
 
 	turret_mesh_instance.mesh = st.commit()
+	turret_mesh_instance.position = Vector3(turret_offset_x, 0.0, turret_offset_z)
 	if turret_material:
 		turret_mesh_instance.material_override = turret_material
+
+func _add_bustle_box(st: SurfaceTool, half_l: float, half_w: float, half_h: float, b_top_fl: Vector3, b_top_fr: Vector3, b_bot_fl: Vector3, b_bot_fr: Vector3) -> void:
+	var bustle_end_x = -half_l * 1.15
+	var bustle_w = half_w * 0.88
+	var bustle_bot_y = -half_h * 0.2
+
+	var b_top_bl = Vector3(bustle_end_x, half_h, -bustle_w)
+	var b_top_br = Vector3(bustle_end_x, half_h, bustle_w)
+	var b_bot_bl = Vector3(bustle_end_x, bustle_bot_y, -bustle_w)
+	var b_bot_br = Vector3(bustle_end_x, bustle_bot_y, bustle_w)
+
+	# Bustle roof
+	_add_quad(st, b_top_bl, b_top_fl, b_top_fr, b_top_br)
+	# Bustle angled floor
+	_add_quad(st, b_bot_fl, b_bot_bl, b_bot_br, b_bot_fr)
+	# Bustle rear plate
+	_add_quad(st, b_top_br, b_top_bl, b_bot_bl, b_bot_br)
+	# Bustle sides
+	_add_quad(st, b_top_bl, b_bot_bl, b_bot_fl, b_top_fl)
+	_add_quad(st, b_top_fr, b_bot_fr, b_bot_br, b_top_br)
 
 func _generate_gun_mesh() -> void:
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-	gun_mantlet_node.position = Vector3(turret_length * 0.42, 0.0, 0.0)
+	gun_mantlet_node.position = Vector3(turret_length * 0.42 + turret_offset_x, 0.0, turret_offset_z)
 
 	# ---------------------------------------------------------
 	# 1. GUN MANTLET BLOCK (Armored Housing Box)
@@ -424,14 +504,21 @@ func set_aim_target(yaw_deg: float, pitch_deg: float) -> void:
 	target_yaw_deg = yaw_deg
 	target_pitch_deg = clamp(pitch_deg, min_pitch_deg, max_pitch_deg)
 
-func set_turret_dimensions(l: float, w: float, h: float, cheek_deg: float, b_length: float, front_armor: float) -> void:
+func set_turret_dimensions(l: float, w: float, h: float, cheek_deg: float, b_length: float, front_armor: float, p_turret_style: TurretStyle = turret_style) -> void:
 	self.turret_length = l
 	self.turret_width = w
 	self.turret_height = h
 	self.cheek_angle_deg = cheek_deg
 	self.barrel_length = b_length
 	self.front_turret_armor_mm = front_armor
+	self.turret_style = p_turret_style
 	generate_turret_and_gun()
+
+func set_turret_offset(x_off: float, z_off: float) -> void:
+	self.turret_offset_x = x_off
+	self.turret_offset_z = z_off
+	position.x = x_off
+	position.z = z_off
 
 ## Determine local armor sector name from world hit position
 func get_sector_at(world_hit_pos: Vector3) -> String:

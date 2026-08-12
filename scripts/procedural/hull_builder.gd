@@ -5,7 +5,10 @@ extends MeshInstance3D
 ## Generates a clean sloped base tank hull: upper & lower glacis, side sponson overhangs,
 ## roof deck, and rear plate with explicit flat normals and solid CCW face winding.
 
+enum GlacisStyle { SLOPED_WEDGE, FLAT_VERTICAL, STEPPED }
+
 @export_group("Hull Dimensions")
+@export var glacis_style: GlacisStyle = GlacisStyle.SLOPED_WEDGE
 @export_range(2.0, 10.0, 0.1) var length: float = 6.8 ## Meters
 @export_range(1.5, 5.0, 0.1) var width: float = 3.4 ## Meters
 @export_range(0.5, 2.5, 0.1) var height: float = 1.4 ## Meters
@@ -45,76 +48,148 @@ func generate_hull_mesh() -> void:
 	var belly_w = half_w * (1.0 - sponson_width_ratio)
 	var sponson_y = -half_h * 0.15
 
-	# Front glacis offset based on angle
-	var glacis_x_offset = height * tan(deg_to_rad(90.0 - front_glacis_angle_deg))
-	glacis_x_offset = clamp(glacis_x_offset, 0.3, half_l * 0.85)
-
-	var top_front_x = half_l - glacis_x_offset
-	var nose_x = half_l + 0.15
-	var nose_y = sponson_y
-	var nose_w = belly_w * 0.85
-
-	# ---------------------------------------------------------
-	# 1. LOWER BELLY & LOWER GLACIS
-	# ---------------------------------------------------------
+	# Lower Belly base points
 	var v_belly_bl = Vector3(-half_l + 0.3, -half_h, -belly_w)
 	var v_belly_br = Vector3(-half_l + 0.3, -half_h, belly_w)
 	var v_belly_fl = Vector3(half_l * 0.6, -half_h, -belly_w)
 	var v_belly_fr = Vector3(half_l * 0.6, -half_h, belly_w)
 
-	var v_nose_l = Vector3(nose_x, nose_y, -nose_w)
-	var v_nose_r = Vector3(nose_x, nose_y, nose_w)
-
 	# Belly bottom face (Normal -Y)
 	_add_quad(st, v_belly_fl, v_belly_fr, v_belly_br, v_belly_bl)
 
-	# Lower Glacis (Normal +X, -Y)
-	_add_quad(st, v_nose_l, v_nose_r, v_belly_fr, v_belly_fl)
-
-	# ---------------------------------------------------------
-	# 2. SIDE SPONSON OVERHANGS
-	# ---------------------------------------------------------
-	var v_spons_fl = Vector3(half_l * 0.6, sponson_y, -half_w)
-	var v_spons_fr = Vector3(half_l * 0.6, sponson_y, half_w)
+	# Sponson side rear points
 	var v_spons_bl = Vector3(-half_l + 0.3, sponson_y, -half_w)
 	var v_spons_br = Vector3(-half_l + 0.3, sponson_y, half_w)
-
-	# Under-sponson sloped plates (Left & Right)
-	_add_quad(st, v_belly_fl, v_belly_bl, v_spons_bl, v_spons_fl)
-	_add_quad(st, v_spons_fr, v_spons_br, v_belly_br, v_belly_fr)
-
-	# Top deck outer edges
-	var v_top_fl = Vector3(top_front_x, half_h, -half_w)
-	var v_top_fr = Vector3(top_front_x, half_h, half_w)
 	var v_top_bl = Vector3(-half_l, half_h, -half_w)
 	var v_top_br = Vector3(-half_l, half_h, half_w)
 
-	# Sponson side outer walls (Solid CCW order)
-	_add_quad(st, v_top_bl, v_spons_bl, v_spons_fl, v_top_fl) # Left side (-Z)
-	_add_quad(st, v_top_fr, v_spons_fr, v_spons_br, v_top_br) # Right side (+Z)
-
 	# ---------------------------------------------------------
-	# 3. UPPER GLACIS & FRONT NOSE
+	# FRONT GLACIS & SPONSON OVERHANG GEOMETRY BY GLACIS STYLE
 	# ---------------------------------------------------------
-	var upper_glacis_w = half_w * 0.75
-	var v_glacis_top_l = Vector3(top_front_x, half_h, -upper_glacis_w)
-	var v_glacis_top_r = Vector3(top_front_x, half_h, upper_glacis_w)
+	match glacis_style:
+		GlacisStyle.SLOPED_WEDGE:
+			var glacis_x_offset = height * tan(deg_to_rad(90.0 - front_glacis_angle_deg))
+			glacis_x_offset = clamp(glacis_x_offset, 0.3, half_l * 0.85)
 
-	# Central Upper Glacis plate (Normal +X, +Y)
-	_add_quad(st, v_glacis_top_l, v_nose_l, v_nose_r, v_glacis_top_r)
+			var top_front_x = half_l - glacis_x_offset
+			var nose_x = half_l + 0.15
+			var nose_y = sponson_y
+			var nose_w = belly_w * 0.85
 
-	# Front cheek transitions to sponsons
-	_add_quad(st, v_top_fl, v_spons_fl, v_nose_l, v_glacis_top_l)
-	_add_quad(st, v_glacis_top_r, v_nose_r, v_spons_fr, v_top_fr)
+			var v_nose_l = Vector3(nose_x, nose_y, -nose_w)
+			var v_nose_r = Vector3(nose_x, nose_y, nose_w)
 
-	# Front nose cap
-	_add_quad(st, v_spons_fl, v_spons_fr, v_nose_r, v_nose_l)
+			# Lower Glacis (Normal +X, -Y)
+			_add_quad(st, v_nose_l, v_nose_r, v_belly_fr, v_belly_fl)
 
-	# ---------------------------------------------------------
-	# 4. UPPER CREW DECK & ENGINE DECK
-	# ---------------------------------------------------------
-	# Roof deck
-	_add_quad(st, v_top_fl, v_top_bl, v_top_br, v_top_fr)
+			# Sponson side outer points & under-sponson
+			var v_spons_fl = Vector3(half_l * 0.6, sponson_y, -half_w)
+			var v_spons_fr = Vector3(half_l * 0.6, sponson_y, half_w)
+			_add_quad(st, v_belly_fl, v_belly_bl, v_spons_bl, v_spons_fl)
+			_add_quad(st, v_spons_fr, v_spons_br, v_belly_br, v_belly_fr)
+
+			var v_top_fl = Vector3(top_front_x, half_h, -half_w)
+			var v_top_fr = Vector3(top_front_x, half_h, half_w)
+
+			# Sponson side outer walls
+			_add_quad(st, v_top_bl, v_spons_bl, v_spons_fl, v_top_fl)
+			_add_quad(st, v_top_fr, v_spons_fr, v_spons_br, v_top_br)
+
+			# Upper Glacis & Front Cheeks
+			var upper_glacis_w = half_w * 0.75
+			var v_glacis_top_l = Vector3(top_front_x, half_h, -upper_glacis_w)
+			var v_glacis_top_r = Vector3(top_front_x, half_h, upper_glacis_w)
+
+			_add_quad(st, v_glacis_top_l, v_nose_l, v_nose_r, v_glacis_top_r)
+			_add_quad(st, v_top_fl, v_spons_fl, v_nose_l, v_glacis_top_l)
+			_add_quad(st, v_glacis_top_r, v_nose_r, v_spons_fr, v_top_fr)
+			_add_quad(st, v_spons_fl, v_spons_fr, v_nose_r, v_nose_l)
+
+			# Roof deck
+			_add_quad(st, v_top_fl, v_top_bl, v_top_br, v_top_fr)
+
+		GlacisStyle.FLAT_VERTICAL:
+			var front_x = half_l * 0.85
+			var v_top_fl = Vector3(front_x, half_h, -half_w)
+			var v_top_fr = Vector3(front_x, half_h, half_w)
+			var v_front_bot_l = Vector3(front_x, sponson_y, -half_w)
+			var v_front_bot_r = Vector3(front_x, sponson_y, half_w)
+
+			var v_spons_fl = Vector3(front_x, sponson_y, -half_w)
+			var v_spons_fr = Vector3(front_x, sponson_y, half_w)
+
+			# Under-sponson sloped plates
+			_add_quad(st, v_belly_fl, v_belly_bl, v_spons_bl, v_spons_fl)
+			_add_quad(st, v_spons_fr, v_spons_br, v_belly_br, v_belly_fr)
+
+			# Lower Glacis (slopes from front_x down to belly front)
+			var v_lower_glacis_l = Vector3(front_x, sponson_y, -belly_w)
+			var v_lower_glacis_r = Vector3(front_x, sponson_y, belly_w)
+			_add_quad(st, v_lower_glacis_l, v_lower_glacis_r, v_belly_fr, v_belly_fl)
+
+			# Front under-sponson cheek caps
+			_add_triangle(st, v_front_bot_l, v_lower_glacis_l, v_belly_fl)
+			_add_triangle(st, v_lower_glacis_r, v_front_bot_r, v_belly_fr)
+
+			# Sponson side outer walls
+			_add_quad(st, v_top_bl, v_spons_bl, v_front_bot_l, v_top_fl)
+			_add_quad(st, v_top_fr, v_front_bot_r, v_spons_br, v_top_br)
+
+			# Main Flat Vertical Front Plate (Normal +X)
+			_add_quad(st, v_top_fr, v_front_bot_r, v_front_bot_l, v_top_fl)
+
+			# Roof deck
+			_add_quad(st, v_top_fl, v_top_bl, v_top_br, v_top_fr)
+
+		GlacisStyle.STEPPED:
+			var top_front_x = half_l * 0.35
+			var step_x = half_l * 0.75
+			var step_y = half_h * 0.1
+			var upper_glacis_w = half_w * 0.8
+
+			var v_top_fl = Vector3(top_front_x, half_h, -half_w)
+			var v_top_fr = Vector3(top_front_x, half_h, half_w)
+			var v_top_fl_c = Vector3(top_front_x, half_h, -upper_glacis_w)
+			var v_top_fr_c = Vector3(top_front_x, half_h, upper_glacis_w)
+
+			var v_step_top_l = Vector3(step_x, step_y, -upper_glacis_w)
+			var v_step_top_r = Vector3(step_x, step_y, upper_glacis_w)
+			var v_step_side_l = Vector3(step_x, step_y, -half_w)
+			var v_step_side_r = Vector3(step_x, step_y, half_w)
+
+			var v_step_bot_l = Vector3(step_x, sponson_y, -upper_glacis_w)
+			var v_step_bot_r = Vector3(step_x, sponson_y, upper_glacis_w)
+			var v_step_side_bot_l = Vector3(step_x, sponson_y, -half_w)
+			var v_step_side_bot_r = Vector3(step_x, sponson_y, half_w)
+
+			var v_spons_fl = Vector3(half_l * 0.6, sponson_y, -half_w)
+			var v_spons_fr = Vector3(half_l * 0.6, sponson_y, half_w)
+
+			# Under-sponson plates
+			_add_quad(st, v_belly_fl, v_belly_bl, v_spons_bl, v_spons_fl)
+			_add_quad(st, v_spons_fr, v_spons_br, v_belly_br, v_belly_fr)
+
+			# 1. Upper sloped glacis
+			_add_quad(st, v_top_fl_c, v_step_top_l, v_step_top_r, v_top_fr_c)
+			_add_quad(st, v_top_fl, v_step_side_l, v_step_top_l, v_top_fl_c)
+			_add_quad(st, v_top_fr_c, v_step_top_r, v_step_side_r, v_top_fr)
+
+			# 2. Vertical Step Riser (Normal +X)
+			_add_quad(st, v_step_top_r, v_step_bot_r, v_step_bot_l, v_step_top_l)
+			_add_quad(st, v_step_side_r, v_step_side_bot_r, v_step_bot_r, v_step_top_r)
+			_add_quad(st, v_step_top_l, v_step_bot_l, v_step_side_bot_l, v_step_side_l)
+
+			# 3. Lower sloped glacis (Step bot to belly)
+			_add_quad(st, v_step_bot_l, v_step_bot_r, v_belly_fr, v_belly_fl)
+			_add_triangle(st, v_step_side_bot_l, v_step_bot_l, v_belly_fl)
+			_add_triangle(st, v_step_bot_r, v_step_side_bot_r, v_belly_fr)
+
+			# Sponson side outer walls
+			_add_quad(st, v_top_bl, v_spons_bl, v_step_side_bot_l, v_top_fl)
+			_add_quad(st, v_top_fr, v_step_side_bot_r, v_spons_br, v_top_br)
+
+			# Roof deck
+			_add_quad(st, v_top_fl, v_top_bl, v_top_br, v_top_fr)
 
 	# ---------------------------------------------------------
 	# 5. REAR HULL PLATE
@@ -244,11 +319,12 @@ func _update_collision_shape() -> void:
 	static_collision_body.set_meta("armor_type", ArmorCalculator.ArmorType.COMPOSITE)
 
 ## Public API to update hull dimensions dynamically from UI
-func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float) -> void:
+func set_dimensions(p_length: float, p_width: float, p_height: float, p_glacis_angle: float, p_glacis_style: GlacisStyle = glacis_style) -> void:
 	self.length = p_length
 	self.width = p_width
 	self.height = p_height
 	self.front_glacis_angle_deg = p_glacis_angle
+	self.glacis_style = p_glacis_style
 	generate_hull_mesh()
 
 ## Determine local armor sector name from world hit position

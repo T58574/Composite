@@ -9,12 +9,14 @@ extends Node3D
 enum SuspensionType { TORSION_BAR, HYDROPNEUMATIC, LEAF_SPRING }
 
 @export_group("Chassis Configuration")
+@export var sprocket_at_front: bool = true ## True for Front Drive Sprocket, False for Rear Drive Sprocket
 @export_range(4, 8, 1) var road_wheels_count: int = 6 ## Pairs of road wheels per side
 @export_range(0.3, 1.2, 0.05) var wheel_diameter: float = 0.65 ## Meters
 @export_range(0.3, 0.9, 0.05) var track_width: float = 0.6 ## Meters
 @export_range(0.3, 1.2, 0.05) var suspension_height: float = 0.6 ## Ground clearance
 @export_range(1.2, 2.5, 0.1) var track_span_width: float = 1.6 ## Distance from vehicle center (Z axis)
 @export_range(0.01, 0.15, 0.01) var track_sag_m: float = 0.06 ## Track sag depth on top run
+@export var front_drive_sprocket: bool = true ## Drive sprocket position (front if true, rear if false)
 
 @export_group("Suspension Tuning")
 @export var suspension_type: SuspensionType = SuspensionType.TORSION_BAR
@@ -69,16 +71,20 @@ func _create_road_wheels_and_belts() -> void:
 	for side in [-1.0, 1.0]: # Left (-1, -Z) and Right (1, +Z)
 		var z_pos = side * track_span_width
 
-		# 1. Drive Sprocket (Front, +X) with radial teeth
-		var sprocket_pos = Vector3(front_x + (wheel_radius * 1.3), 0.1, z_pos)
+		var front_wheel_pos = Vector3(front_x + (wheel_radius * 1.3), 0.1, z_pos)
+		var rear_wheel_pos = Vector3(rear_x - (wheel_radius * 1.3), 0.1, z_pos)
+
+		var sprocket_pos = front_wheel_pos if front_drive_sprocket else rear_wheel_pos
+		var idler_pos = rear_wheel_pos if front_drive_sprocket else front_wheel_pos
+
+		# 1. Drive Sprocket with radial teeth
 		var sprocket = _create_sprocket_mesh(wheel_radius * 0.9, track_width * 0.85, side)
 		sprocket.position = sprocket_pos
 		sprocket.material_override = track_material
 		add_child(sprocket)
 		_wheel_nodes.append(sprocket)
 
-		# 2. Idler Wheel (Rear, -X) with dished spokes
-		var idler_pos = Vector3(rear_x - (wheel_radius * 1.3), 0.1, z_pos)
+		# 2. Idler Wheel with dished spokes
 		var idler = _create_idler_mesh(wheel_radius * 0.85, track_width * 0.85, side)
 		idler.position = idler_pos
 		idler.material_override = track_material
@@ -265,10 +271,13 @@ func _build_track_loop_mesh(
 	var link_thick = 0.045
 	var path_points: Array[Vector3] = []
 
+	var front_pos = sprocket_pos if sprocket_pos.x > idler_pos.x else idler_pos
+	var rear_pos = idler_pos if sprocket_pos.x > idler_pos.x else sprocket_pos
+
 	# Bottom run (Road Wheels ground run along X, from Front +X to Rear -X)
 	var bot_y = -suspension_height * 0.5 - wheel_r
-	var front_bottom_x = sprocket_pos.x - wheel_r * 0.5
-	var rear_bottom_x = idler_pos.x + wheel_r * 0.5
+	var front_bottom_x = front_pos.x - wheel_r * 0.5
+	var rear_bottom_x = rear_pos.x + wheel_r * 0.5
 
 	var ground_segs = 12
 	for i in range(ground_segs + 1):
@@ -280,16 +289,16 @@ func _build_track_loop_mesh(
 	var idler_segs = 8
 	for i in range(1, idler_segs + 1):
 		var angle = (float(i) / float(idler_segs)) * PI + (PI * 0.5)
-		var x = idler_pos.x + cos(angle) * (wheel_r * 0.95)
-		var y = idler_pos.y + sin(angle) * (wheel_r * 0.95)
+		var x = rear_pos.x + cos(angle) * (wheel_r * 0.95)
+		var y = rear_pos.y + sin(angle) * (wheel_r * 0.95)
 		path_points.append(Vector3(x, y, z_center))
 
 	# Top Run with Sag Curves over return rollers
 	var top_segs = 14
 	for i in range(1, top_segs):
 		var t = float(i) / float(top_segs)
-		var x = lerp(idler_pos.x, sprocket_pos.x, t)
-		var base_y = lerp(idler_pos.y + wheel_r, sprocket_pos.y + wheel_r, t)
+		var x = lerp(rear_pos.x, front_pos.x, t)
+		var base_y = lerp(rear_pos.y + wheel_r, front_pos.y + wheel_r, t)
 
 		# Add realistic catenary sag between rollers
 		var sag = sin(t * PI) * track_sag_m
@@ -300,8 +309,8 @@ func _build_track_loop_mesh(
 	var sprocket_segs = 8
 	for i in range(sprocket_segs):
 		var angle = (float(i) / float(sprocket_segs)) * PI - (PI * 0.5)
-		var x = sprocket_pos.x + cos(angle) * (wheel_r * 0.95)
-		var y = sprocket_pos.y + sin(angle) * (wheel_r * 0.95)
+		var x = front_pos.x + cos(angle) * (wheel_r * 0.95)
+		var y = front_pos.y + sin(angle) * (wheel_r * 0.95)
 		path_points.append(Vector3(x, y, z_center))
 
 	# Build 3D Track Link Segments along path_points
@@ -408,6 +417,10 @@ func set_chassis_parameters(count: int, diameter: float, width: float, clearance
 	self.wheel_diameter = diameter
 	self.track_width = width
 	self.suspension_height = clearance
+	generate_tracks_and_wheels()
+
+func set_sprocket_location(location_index: int) -> void:
+	sprocket_at_front = (location_index == 0)
 	generate_tracks_and_wheels()
 
 func animate_tracks_and_wheels(speed_ms: float, delta: float) -> void:
