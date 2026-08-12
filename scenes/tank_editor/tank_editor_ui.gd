@@ -770,7 +770,7 @@ func _stop_in_constructor_test_drive() -> void:
 	if turret_builder and is_instance_valid(turret_builder):
 		turret_builder.reparent(scene_root)
 		turret_builder.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 0))
-		turret_builder.generate_turret_mesh()
+		turret_builder.generate_turret_and_gun()
 	if track_generator and is_instance_valid(track_generator):
 		track_generator.reparent(scene_root)
 		track_generator.transform = Transform3D.IDENTITY
