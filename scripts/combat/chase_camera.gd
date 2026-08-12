@@ -139,7 +139,13 @@ func _update_turret_aiming() -> void:
 	if not hit.is_empty():
 		aim_target = hit.position
 
-	var local_aim = turret.global_transform.affine_inverse() * aim_target
+	# Transform aim point into HULL (turret parent) local space, NOT turret local space,
+	# because set_aim_target sets rotation_degrees.y which is relative to the parent node.
+	var hull_transform: Transform3D = target.global_transform
+	var local_aim = hull_transform.affine_inverse() * aim_target
+	# Turret is offset from hull origin — subtract turret's local position
+	var turret_local_pos = turret.position
+	local_aim -= turret_local_pos
 	var aim_yaw_deg = rad_to_deg(atan2(-local_aim.z, local_aim.x))
 	var horiz_dist = Vector2(local_aim.x, local_aim.z).length()
 	var aim_pitch_deg = rad_to_deg(atan2(local_aim.y, horiz_dist))
