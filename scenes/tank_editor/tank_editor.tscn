@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://composite_sprocket_tank_editor_3d"]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/tank_editor/tank_editor_ui.gd" id="1_editor_ui"]
 [ext_resource type="Script" path="res://scripts/editor/editor_camera.gd" id="2_camera"]
@@ -11,20 +11,16 @@
 [ext_resource type="Shader" path="res://assets/shaders/triplanar_pbr.gdshader" id="9_pbr"]
 [ext_resource type="Shader" path="res://assets/shaders/armor_heatmap.gdshader" id="10_heatmap"]
 [ext_resource type="Shader" path="res://assets/shaders/xray_mesh.gdshader" id="11_xray"]
-[ext_resource type="Texture2D" uid="uid://dcywc1x61xtvj" path="res://assets/textures/metal/Metal038_2K-PNG_Color.png" id="12_armor_tex"]
-[ext_resource type="Texture2D" uid="uid://cpbmtlqyymd4a" path="res://assets/textures/metal/Metal038_2K-PNG_NormalGL.png" id="12_normal_tex"]
-[ext_resource type="Texture2D" uid="uid://dbki3ni5k7cib" path="res://assets/textures/metal/Metal038_2K-PNG_Roughness.png" id="12_roughness_tex"]
-[ext_resource type="Texture2D" uid="uid://cbed4l2bd78gf" path="res://assets/textures/metal/Metal038_2K-PNG_Metalness.png" id="12_metalness_tex"]
-[ext_resource type="Texture2D" path="res://assets/materials/tank_track_link.jpg" id="15_track_tex"]
-[ext_resource type="Texture2D" uid="uid://eq4pcq5nsw7p" path="res://assets/textures/sky/NightSkyHDRI008_4K_HDR.exr" id="18_hdri_sky"]
-[ext_resource type="Texture2D" uid="uid://b1jyp7gh2wq5t" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Color.png" id="19_ground_color"]
-[ext_resource type="Texture2D" uid="uid://qpfnxsy826du" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_NormalGL.png" id="19_ground_normal"]
-[ext_resource type="Texture2D" uid="uid://c31s3wm4rn3lr" path="res://assets/textures/ground/Ground108_2K-PNG/Ground108_2K-PNG_Roughness.png" id="19_ground_roughness"]
-[ext_resource type="Texture2D" uid="uid://cxaehxku61whs" path="res://assets/textures/wood/Wood035_1K-JPG_Color.jpg" id="20_wood_color"]
-[ext_resource type="Texture2D" uid="uid://cdlwbq6e8d0mq" path="res://assets/textures/wood/Wood035_1K-JPG_NormalGL.jpg" id="20_wood_normal"]
-[ext_resource type="Texture2D" uid="uid://badoij1g4cp2t" path="res://assets/textures/wood/Wood035_1K-JPG_Roughness.jpg" id="20_wood_roughness"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal/Metal038_2K-PNG_Color.png" id="12_armor_tex"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal/Metal038_2K-PNG_Metalness.png" id="12_metalness_tex"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal/Metal038_2K-PNG_NormalGL.png" id="12_normal_tex"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal/Metal038_2K-PNG_Roughness.png" id="12_roughness_tex"]
 [ext_resource type="Script" path="res://scripts/editor/bounding_box_overlay.gd" id="16_overlay"]
 [ext_resource type="Script" path="res://scripts/editor/preset_card_selector.gd" id="17_card_selector"]
+[ext_resource type="Texture2D" path="res://assets/textures/sky/NightSkyHDRI008_4K_HDR.exr" id="18_hdri_sky"]
+[ext_resource type="Texture2D" path="res://assets/textures/wood/Wood035_1K-JPG_Color.jpg" id="20_wood_color"]
+[ext_resource type="Texture2D" path="res://assets/textures/wood/Wood035_1K-JPG_NormalGL.jpg" id="20_wood_normal"]
+[ext_resource type="Texture2D" path="res://assets/textures/wood/Wood035_1K-JPG_Roughness.jpg" id="20_wood_roughness"]
 [ext_resource type="Texture2D" path="res://assets/textures/concrete/concrete_tiles_color.jpg" id="21_concrete_tex"]
 [ext_resource type="Texture2D" path="res://assets/textures/metal/steel_ramp_color.jpg" id="22_steel_ramp_tex"]
 
@@ -33,7 +29,6 @@ panorama = ExtResource("18_hdri_sky")
 
 [sub_resource type="Sky" id="Sky_tactical"]
 sky_material = SubResource("PanoramaSkyMaterial_night")
-radiance_size = 3
 
 [sub_resource type="Environment" id="Environment_tactical"]
 background_mode = 2
@@ -44,49 +39,15 @@ ambient_light_sky_contribution = 0.7
 ambient_light_energy = 1.4
 tonemap_mode = 3
 tonemap_exposure = 1.2
+ssr_enabled = true
+ssr_depth_tolerance = 0.2
 ssao_enabled = true
 ssao_radius = 2.4
 ssao_intensity = 3.8
-ssao_power = 1.5
-ssao_detail = 0.5
-ssao_horizon = 0.06
 glow_enabled = true
 glow_intensity = 0.4
 glow_bloom = 0.15
 glow_blend_mode = 0
-ssr_enabled = true
-ssr_max_steps = 64
-ssr_fade_in = 0.15
-ssr_fade_out = 2.0
-ssr_depth_tolerance = 0.2
-volumetric_fog_enabled = false
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_pbr"]
-render_priority = 0
-shader = ExtResource("9_pbr")
-shader_parameter/albedo_texture = ExtResource("12_armor_tex")
-shader_parameter/normal_texture = ExtResource("12_normal_tex")
-shader_parameter/roughness_texture = ExtResource("12_roughness_tex")
-shader_parameter/metalness_texture = ExtResource("12_metalness_tex")
-shader_parameter/base_color = Color(0.24, 0.28, 0.2, 1)
-shader_parameter/metallic = 0.25
-shader_parameter/roughness = 0.58
-shader_parameter/uv_scale = 0.6
-shader_parameter/normal_strength = 1.0
-shader_parameter/edge_wear = 0.35
-shader_parameter/camo_type = 1
-shader_parameter/camo_scale = 0.8
-shader_parameter/dirt_amount = 0.25
-shader_parameter/dirt_height = 1.2
-shader_parameter/dirt_color = Color(0.28, 0.22, 0.15, 1)
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_heatmap"]
-render_priority = 0
-shader = ExtResource("10_heatmap")
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_xray"]
-render_priority = 0
-shader = ExtResource("11_xray")
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
 size = Vector2(500, 500)
@@ -98,7 +59,7 @@ roughness = 0.8
 uv1_scale = Vector3(100, 100, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_steel_ramp"]
-size = Vector3(1.1, 0.28, 9.0)
+size = Vector3(1.1, 0.28, 9)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_steel_ramp"]
 albedo_texture = ExtResource("22_steel_ramp_tex")
@@ -114,13 +75,11 @@ radial_segments = 8
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wood_pole"]
 albedo_texture = ExtResource("20_wood_color")
+roughness = 0.85
+roughness_texture = ExtResource("20_wood_roughness")
 normal_enabled = true
 normal_texture = ExtResource("20_wood_normal")
-roughness_texture = ExtResource("20_wood_roughness")
-roughness_texture_channel = 0
 uv1_scale = Vector3(1, 4, 1)
-metallic = 0.0
-roughness = 0.85
 
 [sub_resource type="SphereMesh" id="SphereMesh_lamp_bulb"]
 radius = 0.15
@@ -129,222 +88,267 @@ radial_segments = 12
 rings = 6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lamp_bulb"]
-albedo_color = Color(1.0, 0.92, 0.7, 1)
+albedo_color = Color(1, 0.92, 0.7, 1)
 emission_enabled = true
-emission = Color(1.0, 0.9, 0.65, 1)
+emission = Color(1, 0.9, 0.65, 1)
 emission_energy_multiplier = 3.0
 
-[node name="TankEditor" type="Control"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pbr"]
+render_priority = 0
+shader = ExtResource("9_pbr")
+shader_parameter/albedo_texture = ExtResource("12_armor_tex")
+shader_parameter/normal_texture = ExtResource("12_normal_tex")
+shader_parameter/roughness_texture = ExtResource("12_roughness_tex")
+shader_parameter/metalness_texture = ExtResource("12_metalness_tex")
+shader_parameter/base_color = Color(0.24, 0.28, 0.2, 1)
+shader_parameter/metallic = 0.25
+shader_parameter/roughness = 0.58
+shader_parameter/uv_scale = 0.6
+shader_parameter/edge_wear = 0.35
+shader_parameter/normal_strength = 1.0
+shader_parameter/camo_type = 1
+shader_parameter/camo_scale = 0.8
+shader_parameter/dirt_amount = 0.25
+shader_parameter/dirt_height = 1.2
+shader_parameter/dirt_color = Color(0.28, 0.22, 0.15, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_heatmap"]
+render_priority = 0
+shader = ExtResource("10_heatmap")
+shader_parameter/armor_thickness_mm = null
+shader_parameter/is_composite = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xray"]
+render_priority = 0
+shader = ExtResource("11_xray")
+shader_parameter/xray_color = null
+shader_parameter/fresnel_power = null
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_to0qw"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_51hew"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tet8h"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bx8da"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_naggw"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hhi77"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cnuq8"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qwy6g"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="TankEditor" type="Control" unique_id=898447681]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
-[node name="Node3D" type="Node3D" parent="."]
+[node name="Node3D" type="Node3D" parent="." unique_id=1518440931]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D"]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D" unique_id=733738329]
 environment = SubResource("Environment_tactical")
 
-[node name="SunKeyLight" type="DirectionalLight3D" parent="Node3D"]
+[node name="SunKeyLight" type="DirectionalLight3D" parent="Node3D" unique_id=561482755]
 transform = Transform3D(0.707107, -0.422618, 0.566606, 0, 0.801784, 0.597614, -0.707107, -0.422618, 0.566606, 0, 15, 0)
 light_color = Color(1, 0.98, 0.94, 1)
 light_energy = 1.25
 shadow_enabled = true
 shadow_blur = 1.2
-directional_shadow_mode = 2
 
-[node name="RimFillLight" type="DirectionalLight3D" parent="Node3D"]
+[node name="RimFillLight" type="DirectionalLight3D" parent="Node3D" unique_id=161251032]
 transform = Transform3D(-0.707107, 0.353553, -0.612372, 0, 0.866025, 0.5, 0.707107, 0.353553, -0.612372, 0, 12, 0)
 light_color = Color(0.8, 0.88, 1, 1)
 light_energy = 0.95
-shadow_enabled = false
 
-[node name="GroundFloor" type="MeshInstance3D" parent="Node3D"]
+[node name="GroundFloor" type="MeshInstance3D" parent="Node3D" unique_id=2041324528]
 mesh = SubResource("PlaneMesh_floor")
 surface_material_override/0 = SubResource("StandardMaterial3D_ground_floor")
 
-[node name="SteelRampLeft" type="MeshInstance3D" parent="Node3D"]
+[node name="SteelRampLeft" type="MeshInstance3D" parent="Node3D" unique_id=101832270]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, -0.42, 0)
 mesh = SubResource("BoxMesh_steel_ramp")
 surface_material_override/0 = SubResource("StandardMaterial3D_steel_ramp")
 
-[node name="SteelRampRight" type="MeshInstance3D" parent="Node3D"]
+[node name="SteelRampRight" type="MeshInstance3D" parent="Node3D" unique_id=1303023195]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, -0.42, 0)
 mesh = SubResource("BoxMesh_steel_ramp")
 surface_material_override/0 = SubResource("StandardMaterial3D_steel_ramp")
 
-[node name="LampPostFront" type="Node3D" parent="Node3D"]
+[node name="LampPostFront" type="Node3D" parent="Node3D" unique_id=485747378]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
 
-[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostFront"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostFront" unique_id=799486753]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
 mesh = SubResource("CylinderMesh_lamp_pole")
 surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
 
-[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostFront"]
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostFront" unique_id=860785948]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
 mesh = SubResource("SphereMesh_lamp_bulb")
 surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
 
-[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostFront"]
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostFront" unique_id=1614691924]
 transform = Transform3D(-1, 0, 0, 0, 0.926, 0.378, 0, 0.378, -0.926, 0, 5.9, 0)
-light_color = Color(1.0, 0.92, 0.75, 1)
+light_color = Color(1, 0.92, 0.75, 1)
 light_energy = 3.5
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_blur = 1.5
 spot_range = 18.0
 spot_angle = 40.0
-spot_attenuation = 1.0
-shadow_enabled = true
-shadow_blur = 1.5
-shadow_bias = 0.04
 
-[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostFront"]
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostFront" unique_id=929299969]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
-light_color = Color(1.0, 0.9, 0.7, 1)
+light_color = Color(1, 0.9, 0.7, 1)
 light_energy = 0.6
 omni_range = 3.0
 omni_attenuation = 1.5
-shadow_enabled = false
 
-[node name="LampPostBack" type="Node3D" parent="Node3D"]
+[node name="LampPostBack" type="Node3D" parent="Node3D" unique_id=1877666099]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
 
-[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostBack"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostBack" unique_id=9586119]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
 mesh = SubResource("CylinderMesh_lamp_pole")
 surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
 
-[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostBack"]
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostBack" unique_id=1592030867]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
 mesh = SubResource("SphereMesh_lamp_bulb")
 surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
 
-[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostBack"]
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostBack" unique_id=1837324559]
 transform = Transform3D(1, 0, 0, 0, 0.926, 0.378, 0, -0.378, 0.926, 0, 5.9, 0)
-light_color = Color(1.0, 0.92, 0.75, 1)
+light_color = Color(1, 0.92, 0.75, 1)
 light_energy = 3.5
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_blur = 1.5
 spot_range = 18.0
 spot_angle = 40.0
-spot_attenuation = 1.0
-shadow_enabled = true
-shadow_blur = 1.5
-shadow_bias = 0.04
 
-[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostBack"]
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostBack" unique_id=654223654]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
-light_color = Color(1.0, 0.9, 0.7, 1)
+light_color = Color(1, 0.9, 0.7, 1)
 light_energy = 0.6
 omni_range = 3.0
 omni_attenuation = 1.5
-shadow_enabled = false
 
-[node name="LampPostLeft" type="Node3D" parent="Node3D"]
+[node name="LampPostLeft" type="Node3D" parent="Node3D" unique_id=867121872]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
 
-[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostLeft"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostLeft" unique_id=976721008]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
 mesh = SubResource("CylinderMesh_lamp_pole")
 surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
 
-[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostLeft"]
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostLeft" unique_id=506291784]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
 mesh = SubResource("SphereMesh_lamp_bulb")
 surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
 
-[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostLeft"]
-transform = Transform3D(0, 0.440, -0.898, 0, 0.898, 0.440, 1, 0, 0, 0, 5.9, 0)
-light_color = Color(1.0, 0.92, 0.75, 1)
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostLeft" unique_id=1796502593]
+transform = Transform3D(0, 0.44, -0.898, 0, 0.898, 0.44, 1, 0, 0, 0, 5.9, 0)
+light_color = Color(1, 0.92, 0.75, 1)
 light_energy = 3.0
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_blur = 1.5
 spot_range = 16.0
 spot_angle = 40.0
-spot_attenuation = 1.0
-shadow_enabled = true
-shadow_blur = 1.5
-shadow_bias = 0.04
 
-[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostLeft"]
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostLeft" unique_id=689065144]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
-light_color = Color(1.0, 0.9, 0.7, 1)
+light_color = Color(1, 0.9, 0.7, 1)
 light_energy = 0.6
 omni_range = 3.0
 omni_attenuation = 1.5
-shadow_enabled = false
 
-[node name="LampPostRight" type="Node3D" parent="Node3D"]
+[node name="LampPostRight" type="Node3D" parent="Node3D" unique_id=723701728]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
 
-[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostRight"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.0, 0)
+[node name="Pole" type="MeshInstance3D" parent="Node3D/LampPostRight" unique_id=1809662081]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
 mesh = SubResource("CylinderMesh_lamp_pole")
 surface_material_override/0 = SubResource("StandardMaterial3D_wood_pole")
 
-[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostRight"]
+[node name="Bulb" type="MeshInstance3D" parent="Node3D/LampPostRight" unique_id=222984245]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
 mesh = SubResource("SphereMesh_lamp_bulb")
 surface_material_override/0 = SubResource("StandardMaterial3D_lamp_bulb")
 
-[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostRight"]
-transform = Transform3D(0, -0.440, 0.898, 0, 0.898, 0.440, -1, 0, 0, 0, 5.9, 0)
-light_color = Color(1.0, 0.92, 0.75, 1)
+[node name="SpotLight" type="SpotLight3D" parent="Node3D/LampPostRight" unique_id=1970850987]
+transform = Transform3D(0, -0.44, 0.898, 0, 0.898, 0.44, -1, 0, 0, 0, 5.9, 0)
+light_color = Color(1, 0.92, 0.75, 1)
 light_energy = 3.0
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_blur = 1.5
 spot_range = 16.0
 spot_angle = 40.0
-spot_attenuation = 1.0
-shadow_enabled = true
-shadow_blur = 1.5
-shadow_bias = 0.04
 
-[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostRight"]
+[node name="OmniGlow" type="OmniLight3D" parent="Node3D/LampPostRight" unique_id=147704629]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.1, 0)
-light_color = Color(1.0, 0.9, 0.7, 1)
+light_color = Color(1, 0.9, 0.7, 1)
 light_energy = 0.6
 omni_range = 3.0
 omni_attenuation = 1.5
-shadow_enabled = false
 
-[node name="EditorCameraPivot" type="Node3D" parent="Node3D"]
+[node name="EditorCameraPivot" type="Node3D" parent="Node3D" unique_id=1073714756]
 transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 1.2, 0)
 script = ExtResource("2_camera")
 
-[node name="SpringArm3D" type="SpringArm3D" parent="Node3D/EditorCameraPivot"]
+[node name="SpringArm3D" type="SpringArm3D" parent="Node3D/EditorCameraPivot" unique_id=885606093]
 spring_length = 8.0
 
-[node name="Camera3D" type="Camera3D" parent="Node3D/EditorCameraPivot/SpringArm3D"]
+[node name="Camera3D" type="Camera3D" parent="Node3D/EditorCameraPivot/SpringArm3D" unique_id=311698823]
 fov = 60.0
 
-[node name="ProceduralVehicle" type="Node3D" parent="Node3D"]
+[node name="ProceduralVehicle" type="Node3D" parent="Node3D" unique_id=1891895159]
 
-[node name="ProceduralHull" type="MeshInstance3D" parent="Node3D/ProceduralVehicle"]
+[node name="ProceduralHull" type="MeshInstance3D" parent="Node3D/ProceduralVehicle" unique_id=352059569]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 script = ExtResource("4_hull")
 hull_material = SubResource("ShaderMaterial_pbr")
 
-[node name="ProceduralTurret" type="Node3D" parent="Node3D/ProceduralVehicle"]
+[node name="ProceduralTurret" type="Node3D" parent="Node3D/ProceduralVehicle" unique_id=1724580012]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
 script = ExtResource("5_turret")
 turret_material = SubResource("ShaderMaterial_pbr")
 
-[node name="TrackGenerator" type="Node3D" parent="Node3D/ProceduralVehicle"]
+[node name="TrackGenerator" type="Node3D" parent="Node3D/ProceduralVehicle" unique_id=641905086]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 script = ExtResource("6_tracks")
 track_material = SubResource("ShaderMaterial_pbr")
 
-[node name="FirepowerBuilder" type="Node3D" parent="Node3D/ProceduralVehicle"]
+[node name="FirepowerBuilder" type="Node3D" parent="Node3D/ProceduralVehicle" unique_id=123774827]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
 script = ExtResource("7_firepower")
 
-[node name="Gizmo3D" type="Node3D" parent="Node3D"]
+[node name="Gizmo3D" type="Node3D" parent="Node3D" unique_id=846256762]
 script = ExtResource("8_gizmo")
 
-[node name="BoundingBoxOverlay" type="Node3D" parent="Node3D" node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator")]
+[node name="BoundingBoxOverlay" type="Node3D" parent="Node3D" unique_id=1630919348 node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator")]
 script = ExtResource("16_overlay")
 hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
 turret_builder = NodePath("../ProceduralVehicle/ProceduralTurret")
 track_generator = NodePath("../ProceduralVehicle/TrackGenerator")
 
-[node name="MeshEditorController" type="Node3D" parent="Node3D" node_paths=PackedStringArray("hull_builder", "turret_builder", "camera_3d", "gizmo_3d")]
+[node name="MeshEditorController" type="Node3D" parent="Node3D" unique_id=202592588 node_paths=PackedStringArray("hull_builder", "turret_builder", "camera_3d", "gizmo_3d")]
 script = ExtResource("3_mesh_editor")
 hull_builder = NodePath("../ProceduralVehicle/ProceduralHull")
 turret_builder = NodePath("../ProceduralVehicle/ProceduralTurret")
@@ -354,14 +358,78 @@ pbr_material = SubResource("ShaderMaterial_pbr")
 heatmap_material = SubResource("ShaderMaterial_heatmap")
 xray_material = SubResource("ShaderMaterial_xray")
 
-[node name="UIOverlay" type="Control" parent="." node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor", "bounding_box_overlay", "hull_preset_card_selector", "turret_preset_card_selector")]
-layout_mode = 3
+[node name="TestBump_0" type="CSGCylinder3D" parent="Node3D" unique_id=375678710]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -0.2, 5)
+material_override = SubResource("StandardMaterial3D_to0qw")
+use_collision = true
+radius = 1.5
+height = 1.0
+sides = 16
+
+[node name="TestBump_1" type="CSGCylinder3D" parent="Node3D" unique_id=185753507]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -0.2, -5)
+material_override = SubResource("StandardMaterial3D_51hew")
+use_collision = true
+radius = 2.0
+height = 1.5
+sides = 16
+
+[node name="TestBump_2" type="CSGCylinder3D" parent="Node3D" unique_id=34390639]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, -0.2, 5)
+material_override = SubResource("StandardMaterial3D_tet8h")
+use_collision = true
+radius = 2.5
+height = 1.0
+sides = 16
+
+[node name="TestBump_3" type="CSGCylinder3D" parent="Node3D" unique_id=786601749]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, -0.2, -5)
+material_override = SubResource("StandardMaterial3D_bx8da")
+use_collision = true
+radius = 1.5
+height = 1.5
+sides = 16
+
+[node name="TestBump_4" type="CSGCylinder3D" parent="Node3D" unique_id=1058282094]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 10)
+material_override = SubResource("StandardMaterial3D_naggw")
+use_collision = true
+radius = 2.0
+height = 1.0
+sides = 16
+
+[node name="TestBump_5" type="CSGCylinder3D" parent="Node3D" unique_id=1452897597]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, -10)
+material_override = SubResource("StandardMaterial3D_hhi77")
+use_collision = true
+radius = 2.5
+height = 1.5
+sides = 16
+
+[node name="TestBump_6" type="CSGCylinder3D" parent="Node3D" unique_id=741685382]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, -0.4, 0)
+material_override = SubResource("StandardMaterial3D_cnuq8")
+use_collision = true
+radius = 1.5
+height = 1.0
+sides = 16
+
+[node name="TestBump_7" type="CSGCylinder3D" parent="Node3D" unique_id=968770011]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, -0.4, 0)
+material_override = SubResource("StandardMaterial3D_qwy6g")
+use_collision = true
+radius = 2.0
+height = 1.5
+sides = 16
+
+[node name="UIOverlay" type="Control" parent="." unique_id=320922476 node_paths=PackedStringArray("hull_builder", "turret_builder", "track_generator", "firepower_builder", "editor_camera", "mesh_editor", "bounding_box_overlay", "hull_preset_card_selector", "turret_preset_card_selector")]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_editor_ui")
 hull_builder = NodePath("../Node3D/ProceduralVehicle/ProceduralHull")
 turret_builder = NodePath("../Node3D/ProceduralVehicle/ProceduralTurret")
@@ -373,117 +441,117 @@ bounding_box_overlay = NodePath("../Node3D/BoundingBoxOverlay")
 hull_preset_card_selector = NodePath("CategoryStack/Margin/CompartmentsPanel/HullPresetCardGrid")
 turret_preset_card_selector = NodePath("CategoryStack/Margin/FirepowerPanel/TurretPresetCardGrid")
 
-[node name="TopHeaderBar" type="PanelContainer" parent="UIOverlay"]
+[node name="TopHeaderBar" type="PanelContainer" parent="UIOverlay" unique_id=711869481]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 44.0
 grow_horizontal = 2
 
-[node name="Margin" type="MarginContainer" parent="UIOverlay/TopHeaderBar"]
+[node name="Margin" type="MarginContainer" parent="UIOverlay/TopHeaderBar" unique_id=64608107]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 6
 
-[node name="HBox" type="HBoxContainer" parent="UIOverlay/TopHeaderBar/Margin"]
+[node name="HBox" type="HBoxContainer" parent="UIOverlay/TopHeaderBar/Margin" unique_id=1346097662]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="ToggleLeftBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="ToggleLeftBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=213670271]
 unique_name_in_owner = true
 layout_mode = 2
 text = "◀ Sidebar"
 
-[node name="MainMenuBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="MainMenuBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=2133122010]
 layout_mode = 2
 text = "EDITOR_MENU"
 
-[node name="EraLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="EraLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1159147130]
 layout_mode = 2
 text = "EDITOR_ERA"
 
-[node name="EraOption" type="OptionButton" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="EraOption" type="OptionButton" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1580307474]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="TankNameEdit" type="LineEdit" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="TankNameEdit" type="LineEdit" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=503892128]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 text = "MM22"
 placeholder_text = "Tank Name..."
 
-[node name="SavePresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="SavePresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1897967165]
 layout_mode = 2
 text = "EDITOR_SAVE"
 
-[node name="LoadPresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="LoadPresetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=511844232]
 layout_mode = 2
 text = "EDITOR_LOAD"
 
-[node name="ResetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="ResetBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1401885172]
 layout_mode = 2
 text = "EDITOR_RESET"
 
-[node name="VSep1" type="VSeparator" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="VSep1" type="VSeparator" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1763557179]
 layout_mode = 2
 
-[node name="MassBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="MassBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=129464260]
 layout_mode = 2
 text = "EDITOR_MASS"
 
-[node name="MassBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="MassBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1994011525]
 unique_name_in_owner = true
 layout_mode = 2
 text = "64.91t"
 
-[node name="SpaceBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="SpaceBadgeIcon" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1627701027]
 layout_mode = 2
 text = "EDITOR_VOLUME"
 
-[node name="SpaceBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="SpaceBadgeLabel" type="Label" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=318177162]
 unique_name_in_owner = true
 layout_mode = 2
 text = "50.83k"
 
-[node name="Spacer" type="Control" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1829020930]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SolidBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="SolidBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1090364007]
 unique_name_in_owner = true
 layout_mode = 2
 text = "EDITOR_SOLID"
 
-[node name="HeatmapBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="HeatmapBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=547108352]
 unique_name_in_owner = true
 layout_mode = 2
 text = "EDITOR_HEATMAP"
 
-[node name="XrayBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="XrayBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1483359792]
 unique_name_in_owner = true
 layout_mode = 2
 text = "EDITOR_XRAY"
 
-[node name="SymmetryCheck" type="CheckBox" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="SymmetryCheck" type="CheckBox" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1198368085]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "EDITOR_SYMMETRY"
 
-[node name="TestDriveBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="TestDriveBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=1632791604]
 unique_name_in_owner = true
 layout_mode = 2
 text = "EDITOR_TEST_RANGE"
 
-[node name="ToggleRightBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox"]
+[node name="ToggleRightBtn" type="Button" parent="UIOverlay/TopHeaderBar/Margin/HBox" unique_id=7767715]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Inspector ▶"
 
-[node name="LeftSidebar" type="PanelContainer" parent="UIOverlay"]
+[node name="LeftSidebar" type="PanelContainer" parent="UIOverlay" unique_id=153242075]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 9
@@ -493,60 +561,60 @@ offset_right = 160.0
 offset_bottom = -60.0
 grow_vertical = 2
 
-[node name="Margin" type="MarginContainer" parent="UIOverlay/LeftSidebar"]
+[node name="Margin" type="MarginContainer" parent="UIOverlay/LeftSidebar" unique_id=265591062]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 10
 
-[node name="VBox" type="VBoxContainer" parent="UIOverlay/LeftSidebar/Margin"]
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/LeftSidebar/Margin" unique_id=297318627]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CatCompartmentsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatCompartmentsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=1697995807]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_COMPARTMENTS"
+alignment = 0
 
-[node name="CatTracksBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatTracksBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=1829871986]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_TRACKS"
+alignment = 0
 
-[node name="CatPowertrainBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatPowertrainBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=776457501]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_POWERTRAIN"
+alignment = 0
 
-[node name="CatFirepowerBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatFirepowerBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=1863960085]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_FIREPOWER"
+alignment = 0
 
-[node name="CatCrewBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatCrewBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=25237244]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_CREW"
+alignment = 0
 
-[node name="CatPaintBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatPaintBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=652963871]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_PAINT"
+alignment = 0
 
-[node name="CatDecalsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox"]
+[node name="CatDecalsBtn" type="Button" parent="UIOverlay/LeftSidebar/Margin/VBox" unique_id=372265736]
 unique_name_in_owner = true
 layout_mode = 2
-alignment = 0
 text = "CAT_DECALS"
+alignment = 0
 
-[node name="CategoryStack" type="PanelContainer" parent="UIOverlay"]
+[node name="CategoryStack" type="PanelContainer" parent="UIOverlay" unique_id=2067385519]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 9
@@ -557,56 +625,55 @@ offset_right = 380.0
 offset_bottom = -60.0
 grow_vertical = 2
 
-[node name="Margin" type="MarginContainer" parent="UIOverlay/CategoryStack"]
+[node name="Margin" type="MarginContainer" parent="UIOverlay/CategoryStack" unique_id=1967402740]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="CompartmentsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="CompartmentsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=1059602454]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="Title" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=545009767]
 layout_mode = 2
 text = "TITLE_COMPARTMENTS"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=559912187]
 layout_mode = 2
 
-[node name="HullPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=555783293]
 layout_mode = 2
 text = "Hull Preset Shape:"
 
-[node name="HullPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=662311180]
 unique_name_in_owner = true
 layout_mode = 2
 script = ExtResource("17_card_selector")
-is_turret_presets = false
 
-[node name="HullPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=2029581963]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="LengthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="LengthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=563778833]
 layout_mode = 2
 
-[node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
+[node name="LengthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox" unique_id=742640502]
 layout_mode = 2
 text = "LBL_HULL_LENGTH"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox" unique_id=1468972487]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HullLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox"]
+[node name="HullLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/LengthHBox" unique_id=398170151]
 unique_name_in_owner = true
 layout_mode = 2
 text = "6.8 m"
 
-[node name="HullLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=77130920]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 2.0
@@ -614,23 +681,23 @@ max_value = 10.0
 step = 0.1
 value = 6.8
 
-[node name="WidthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="WidthHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=182431595]
 layout_mode = 2
 
-[node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
+[node name="WidthLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox" unique_id=1307698033]
 layout_mode = 2
 text = "LBL_HULL_WIDTH"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox" unique_id=1780040623]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HullWidthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox"]
+[node name="HullWidthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/WidthHBox" unique_id=1011831953]
 unique_name_in_owner = true
 layout_mode = 2
 text = "3.4 m"
 
-[node name="HullWidthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullWidthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=520216721]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1.5
@@ -638,23 +705,23 @@ max_value = 5.0
 step = 0.1
 value = 3.4
 
-[node name="HeightHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HeightHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=795343297]
 layout_mode = 2
 
-[node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
+[node name="HeightLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox" unique_id=1454113073]
 layout_mode = 2
 text = "LBL_HULL_HEIGHT"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox" unique_id=2009183087]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HullHeightValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox"]
+[node name="HullHeightValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/HeightHBox" unique_id=468889807]
 unique_name_in_owner = true
 layout_mode = 2
 text = "1.4 m"
 
-[node name="HullHeightSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HullHeightSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=1211399193]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.5
@@ -662,146 +729,142 @@ max_value = 2.5
 step = 0.1
 value = 1.4
 
-[node name="GlacisHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="GlacisHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=2094214007]
 layout_mode = 2
 
-[node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
+[node name="GlacisLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox" unique_id=679223053]
 layout_mode = 2
 text = "LBL_GLACIS_ANGLE"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox" unique_id=107342514]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GlacisAngleValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox"]
+[node name="GlacisAngleValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/GlacisHBox" unique_id=2113713468]
 unique_name_in_owner = true
 layout_mode = 2
 text = "60°"
 
-[node name="GlacisAngleSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="GlacisAngleSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=415146043]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 10.0
 max_value = 80.0
-step = 1.0
 value = 60.0
 
-[node name="HSeparatorTurretPos" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="HSeparatorTurretPos" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=2108548447]
 layout_mode = 2
 
-[node name="TurretPosTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="TurretPosTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=624224312]
 layout_mode = 2
 text = "Turret Position Offset:"
 
-[node name="TurretXHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="TurretXHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=187511360]
 layout_mode = 2
 
-[node name="TurretXLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+[node name="TurretXLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox" unique_id=422334436]
 layout_mode = 2
 text = "Turret X Offset:"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox" unique_id=1349447633]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TurretXValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox"]
+[node name="TurretXValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretXHBox" unique_id=1587166438]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0.00 m"
 
-[node name="TurretXSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="TurretXSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=1656144283]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = -3.0
 max_value = 3.0
 step = 0.05
-value = 0.0
 
-[node name="TurretZHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="TurretZHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=894579508]
 layout_mode = 2
 
-[node name="TurretZLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+[node name="TurretZLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox" unique_id=1290942789]
 layout_mode = 2
 text = "Turret Z Offset:"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox" unique_id=919642238]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TurretZValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox"]
+[node name="TurretZValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel/TurretZHBox" unique_id=1134140407]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0.00 m"
 
-[node name="TurretZSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel"]
+[node name="TurretZSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CompartmentsPanel" unique_id=1729284573]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = -1.5
 max_value = 1.5
 step = 0.05
-value = 0.0
 
-[node name="TracksPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="TracksPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=2103855832]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TracksTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="TracksTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=198470211]
 layout_mode = 2
 text = "CAT_TRACKS"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=252460507]
 layout_mode = 2
 
-[node name="SprocketLocationLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="SprocketLocationLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=148990242]
 layout_mode = 2
 text = "Drive Sprocket Location:"
 
-[node name="SprocketLocationOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="SprocketLocationOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1907070441]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="WheelsHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="WheelsHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1710346359]
 layout_mode = 2
 
-[node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
+[node name="WheelsLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox" unique_id=1716384784]
 layout_mode = 2
 text = "LBL_WHEEL_PAIRS"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox" unique_id=940238302]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WheelsCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox"]
+[node name="WheelsCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/WheelsHBox" unique_id=1335387579]
 unique_name_in_owner = true
 layout_mode = 2
 text = "6 pairs"
 
-[node name="WheelsCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="WheelsCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1121097494]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 4.0
 max_value = 8.0
-step = 1.0
 value = 6.0
 
-[node name="DiamHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="DiamHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1767125912]
 layout_mode = 2
 
-[node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
+[node name="DiamLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox" unique_id=1603656862]
 layout_mode = 2
 text = "LBL_WHEEL_DIAM"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox" unique_id=932875886]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WheelDiamValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox"]
+[node name="WheelDiamValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/DiamHBox" unique_id=1981612034]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0.65 m"
 
-[node name="WheelDiamSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="WheelDiamSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1401657757]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.4
@@ -809,23 +872,23 @@ max_value = 1.0
 step = 0.05
 value = 0.65
 
-[node name="TrackWHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="TrackWHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=819959075]
 layout_mode = 2
 
-[node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
+[node name="TrackWLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox" unique_id=112056855]
 layout_mode = 2
 text = "LBL_TRACK_WIDTH"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox" unique_id=753988286]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TrackWValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox"]
+[node name="TrackWValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackWHBox" unique_id=1417606488]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0.60 m"
 
-[node name="TrackWSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel"]
+[node name="TrackWSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1831468919]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.3
@@ -833,35 +896,59 @@ max_value = 0.9
 step = 0.05
 value = 0.6
 
-[node name="PowertrainPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="TrackLinksHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1594874066]
+layout_mode = 2
+
+[node name="TrackLinksLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackLinksHBox" unique_id=2146906169]
+layout_mode = 2
+text = "LBL_TRACK_LINKS"
+
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackLinksHBox" unique_id=1823351282]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TrackLinksValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/TracksPanel/TrackLinksHBox" unique_id=100673370]
+unique_name_in_owner = true
+layout_mode = 2
+text = "80"
+
+[node name="TrackLinksSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/TracksPanel" unique_id=1973005583]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 40.0
+max_value = 120.0
+step = 5.0
+value = 80.0
+
+[node name="PowertrainPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=573996317]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="PowertrainTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+[node name="PowertrainTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel" unique_id=988603399]
 layout_mode = 2
 text = "TITLE_POWERTRAIN"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel" unique_id=445727266]
 layout_mode = 2
 
-[node name="EngineHPHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+[node name="EngineHPHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel" unique_id=337577936]
 layout_mode = 2
 
-[node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
+[node name="EngineHPLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox" unique_id=1967810851]
 layout_mode = 2
 text = "LBL_ENGINE_HP"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox" unique_id=1603535080]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="EnginePowerValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox"]
+[node name="EnginePowerValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel/EngineHPHBox" unique_id=1871761516]
 unique_name_in_owner = true
 layout_mode = 2
 text = "1200 hp"
 
-[node name="EnginePowerSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel"]
+[node name="EnginePowerSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/PowertrainPanel" unique_id=399912780]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 400.0
@@ -869,50 +956,50 @@ max_value = 1800.0
 step = 50.0
 value = 1200.0
 
-[node name="FirepowerPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="FirepowerPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=1040944422]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="FirepowerTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="FirepowerTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=1111870702]
 layout_mode = 2
 text = "CAT_FIREPOWER"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=1046290997]
 layout_mode = 2
 
-[node name="TurretPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="TurretPresetLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=1565581926]
 layout_mode = 2
 text = "Turret Preset Shape:"
 
-[node name="TurretPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="TurretPresetCardGrid" type="HFlowContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=995645206]
 unique_name_in_owner = true
 layout_mode = 2
 script = ExtResource("17_card_selector")
 is_turret_presets = true
 
-[node name="TurretPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="TurretPresetOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=506022168]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="CaliberHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="CaliberHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=588277353]
 layout_mode = 2
 
-[node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
+[node name="CaliberLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox" unique_id=1399808033]
 layout_mode = 2
 text = "LBL_GUN_CALIBER"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox" unique_id=2083278557]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GunCaliberValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox"]
+[node name="GunCaliberValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/CaliberHBox" unique_id=137264998]
 unique_name_in_owner = true
 layout_mode = 2
 text = "120 mm"
 
-[node name="GunCaliberSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="GunCaliberSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=519946635]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 30.0
@@ -920,23 +1007,23 @@ max_value = 152.0
 step = 5.0
 value = 120.0
 
-[node name="BarrelHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="BarrelHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=1341231774]
 layout_mode = 2
 
-[node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
+[node name="BarrelLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox" unique_id=1252971705]
 layout_mode = 2
 text = "LBL_BARREL_LENGTH"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox" unique_id=1244246420]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BarrelLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox"]
+[node name="BarrelLengthValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel/BarrelHBox" unique_id=443256015]
 unique_name_in_owner = true
 layout_mode = 2
 text = "6.2 m"
 
-[node name="BarrelLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel"]
+[node name="BarrelLengthSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/FirepowerPanel" unique_id=85092578]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 2.0
@@ -944,83 +1031,82 @@ max_value = 8.0
 step = 0.2
 value = 6.2
 
-[node name="CrewPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="CrewPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=2000433771]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="CrewTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+[node name="CrewTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel" unique_id=507927658]
 layout_mode = 2
 text = "TITLE_CREW"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/CrewPanel" unique_id=1496529982]
 layout_mode = 2
 
-[node name="CrewHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+[node name="CrewHBox" type="HBoxContainer" parent="UIOverlay/CategoryStack/Margin/CrewPanel" unique_id=1011049100]
 layout_mode = 2
 
-[node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
+[node name="CrewLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox" unique_id=2009257586]
 layout_mode = 2
 text = "LBL_CREW_COUNT"
 
-[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox" unique_id=1623717615]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="CrewCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox"]
+[node name="CrewCountValueLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/CrewPanel/CrewHBox" unique_id=1974880492]
 unique_name_in_owner = true
 layout_mode = 2
 text = "4 crew"
 
-[node name="CrewCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CrewPanel"]
+[node name="CrewCountSlider" type="HSlider" parent="UIOverlay/CategoryStack/Margin/CrewPanel" unique_id=1618934636]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 2.0
 max_value = 5.0
-step = 1.0
 value = 4.0
 
-[node name="PaintPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="PaintPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=433847799]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="PaintTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+[node name="PaintTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel" unique_id=1418486247]
 layout_mode = 2
 text = "TITLE_PAINT"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/PaintPanel" unique_id=1859383292]
 layout_mode = 2
 
-[node name="SchemeLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+[node name="SchemeLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/PaintPanel" unique_id=1348520694]
 layout_mode = 2
 text = "LBL_CAMO_PATTERN"
 
-[node name="PaintSchemeOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/PaintPanel"]
+[node name="PaintSchemeOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/PaintPanel" unique_id=1974725850]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="DecalsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin"]
+[node name="DecalsPanel" type="VBoxContainer" parent="UIOverlay/CategoryStack/Margin" unique_id=536489014]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="DecalTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+[node name="DecalTitle" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel" unique_id=1084513215]
 layout_mode = 2
 text = "TITLE_DECALS"
 
-[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+[node name="HSeparator" type="HSeparator" parent="UIOverlay/CategoryStack/Margin/DecalsPanel" unique_id=113624226]
 layout_mode = 2
 
-[node name="DecalLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+[node name="DecalLabel" type="Label" parent="UIOverlay/CategoryStack/Margin/DecalsPanel" unique_id=1949511568]
 layout_mode = 2
 text = "LBL_INSIGNIA_SYMBOL"
 
-[node name="DecalOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/DecalsPanel"]
+[node name="DecalOption" type="OptionButton" parent="UIOverlay/CategoryStack/Margin/DecalsPanel" unique_id=1271736316]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="RightStructureInspector" type="PanelContainer" parent="UIOverlay"]
+[node name="RightStructureInspector" type="PanelContainer" parent="UIOverlay" unique_id=577476485]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 11
@@ -1033,171 +1119,168 @@ offset_bottom = -60.0
 grow_horizontal = 0
 grow_vertical = 2
 
-[node name="Margin" type="MarginContainer" parent="UIOverlay/RightStructureInspector"]
+[node name="Margin" type="MarginContainer" parent="UIOverlay/RightStructureInspector" unique_id=541768972]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="ScrollContainer" type="ScrollContainer" parent="UIOverlay/RightStructureInspector/Margin"]
+[node name="ScrollContainer" type="ScrollContainer" parent="UIOverlay/RightStructureInspector/Margin" unique_id=911399750]
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer"]
+[node name="VBox" type="VBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer" unique_id=1894107920]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="InspectorHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="InspectorHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=254891512]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
+[node name="Title" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader" unique_id=237831342]
 layout_mode = 2
 text = "INSPECTOR_TITLE"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader" unique_id=1066885589]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="PartNameLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader"]
+[node name="PartNameLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/InspectorHeader" unique_id=1294690394]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "PART_FRONT_GLACIS"
 
-[node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SubModeContainer" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=287334462]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ModePointsBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
+[node name="ModePointsBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer" unique_id=579117803]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_POINTS"
 
-[node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
+[node name="ModeEdgesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer" unique_id=1589679058]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_EDGES"
 
-[node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
+[node name="ModeFacesBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer" unique_id=641926601]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_FACES"
 
-[node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer"]
+[node name="ModeCornersBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SubModeContainer" unique_id=990547050]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_CORNERS"
 
-[node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="EditLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=645709656]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.7, 0.2, 1)
 text = "EDIT_ACTIONS"
 
-[node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="EditActionsGrid" type="GridContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1579121002]
 layout_mode = 2
 columns = 2
 
-[node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
+[node name="DelBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid" unique_id=1231864158]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_DELETE"
 
-[node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
+[node name="ExtrudeBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid" unique_id=1934525843]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_EXTRUDE"
 
-[node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
+[node name="SplitBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid" unique_id=1214206612]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_SPLIT"
 
-[node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid"]
+[node name="FlipBtn" type="Button" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/EditActionsGrid" unique_id=1412248208]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BTN_FLIP"
 
-[node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="MirrorCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=558534416]
 unique_name_in_owner = true
 layout_mode = 2
 button_pressed = true
 text = "CHK_MIRROR"
 
-[node name="SmoothHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SmoothHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=274285377]
 layout_mode = 2
 
-[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
+[node name="SmoothLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox" unique_id=1120853411]
 unique_name_in_owner = true
 layout_mode = 2
 text = "LBL_SMOOTH_ANGLE"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox" unique_id=644062740]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SmoothAngleValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox"]
+[node name="SmoothAngleValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/SmoothHBox" unique_id=638935152]
 unique_name_in_owner = true
 layout_mode = 2
 text = "36°"
 
-[node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SmoothAngleSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1615944502]
 unique_name_in_owner = true
 layout_mode = 2
-min_value = 0.0
 max_value = 90.0
-step = 1.0
 value = 36.0
 
-[node name="GridSizeHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="GridSizeHBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1274104076]
 layout_mode = 2
 
-[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
+[node name="GridSizeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox" unique_id=1216790598]
 layout_mode = 2
 text = "LBL_GRID_SIZE"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox" unique_id=2044064886]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GridSizeValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox"]
+[node name="GridSizeValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/GridSizeHBox" unique_id=575792071]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0 mm"
 
-[node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="GridSizeSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1179966475]
 unique_name_in_owner = true
 layout_mode = 2
-min_value = 0.0
 max_value = 500.0
 step = 10.0
 
-[node name="ThicknessHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ThicknessHeader" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1234855055]
 layout_mode = 2
 
-[node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
+[node name="ThicknessTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader" unique_id=928183478]
 layout_mode = 2
 text = "TITLE_ARMOR_THICKNESS"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader" unique_id=1655078266]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ThicknessValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader"]
+[node name="ThicknessValueLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/ThicknessHeader" unique_id=1960053761]
 unique_name_in_owner = true
 layout_mode = 2
 text = "450 mm"
 
-[node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1466174768]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 5.0
@@ -1205,53 +1288,53 @@ max_value = 1200.0
 step = 5.0
 value = 450.0
 
-[node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ArmorTypeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1704828334]
 layout_mode = 2
 text = "LBL_MATERIAL_TYPE"
 
-[node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ArmorTypeOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1214362224]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ArmorAngleLosLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ArmorAngleLosLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=361970012]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 text = "ARMOR_LOS_FMT"
 
-[node name="HSeparatorSandwich" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="HSeparatorSandwich" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=565762819]
 layout_mode = 2
 
-[node name="SandwichTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SandwichTitleLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1120948600]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
 text = "Sandwich Construction"
 
-[node name="Layer1Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer1Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=726950422]
 layout_mode = 2
 text = "Layer 1 Outer Material"
 
-[node name="Layer1MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer1MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=266748391]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Layer1HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer1HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=592717223]
 layout_mode = 2
 
-[node name="L1ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+[node name="L1ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox" unique_id=1115660562]
 layout_mode = 2
 text = "Layer 1 Thickness:"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox" unique_id=2006534993]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Layer1ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox"]
+[node name="Layer1ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer1HBox" unique_id=874719029]
 unique_name_in_owner = true
 layout_mode = 2
 text = "60 mm"
 
-[node name="Layer1ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer1ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1016921909]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 5.0
@@ -1259,63 +1342,62 @@ max_value = 300.0
 step = 5.0
 value = 60.0
 
-[node name="Layer2Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer2Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1987854644]
 layout_mode = 2
 text = "Layer 2 Filler Material"
 
-[node name="Layer2MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer2MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1460298019]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Layer2HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer2HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=956566586]
 layout_mode = 2
 
-[node name="L2ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+[node name="L2ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox" unique_id=1265093758]
 layout_mode = 2
 text = "Layer 2 Thickness:"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox" unique_id=2063736609]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Layer2ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox"]
+[node name="Layer2ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer2HBox" unique_id=844966621]
 unique_name_in_owner = true
 layout_mode = 2
 text = "105 mm"
 
-[node name="Layer2ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer2ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=834645414]
 unique_name_in_owner = true
 layout_mode = 2
-min_value = 0.0
 max_value = 500.0
 step = 5.0
 value = 105.0
 
-[node name="Layer3Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer3Label" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1361588900]
 layout_mode = 2
 text = "Layer 3 Rear Material"
 
-[node name="Layer3MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer3MaterialOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1427696187]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Layer3HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer3HBox" type="HBoxContainer" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=591323587]
 layout_mode = 2
 
-[node name="L3ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+[node name="L3ThickTitle" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox" unique_id=369130821]
 layout_mode = 2
 text = "Layer 3 Thickness:"
 
-[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+[node name="Spacer" type="Control" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox" unique_id=1459127653]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Layer3ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox"]
+[node name="Layer3ThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox/Layer3HBox" unique_id=2050890916]
 unique_name_in_owner = true
 layout_mode = 2
 text = "50 mm"
 
-[node name="Layer3ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="Layer3ThicknessSlider" type="HSlider" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1339102879]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 5.0
@@ -1323,127 +1405,128 @@ max_value = 300.0
 step = 5.0
 value = 50.0
 
-[node name="SpallLinerCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SpallLinerCheck" type="CheckBox" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1968838970]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Spall Liner (Kevlar)"
 
-[node name="AddonProtectionLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="AddonProtectionLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1953190592]
 layout_mode = 2
 text = "Add-on Protection"
 
-[node name="AddonProtectionOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="AddonProtectionOption" type="OptionButton" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1691205894]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="HSeparatorReadout" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="HSeparatorReadout" type="HSeparator" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=687159293]
 layout_mode = 2
 
-[node name="ProtectionSummaryLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="ProtectionSummaryLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1906195415]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
 text = "Protection Summary"
 
-[node name="SandwichTotalThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SandwichTotalThicknessLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1128899141]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
 text = "Physical: 215 mm"
 
-[node name="SandwichWeightLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SandwichWeightLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=1188495994]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
 text = "Weight: 850 kg/m²"
 
-[node name="SandwichEffectiveKeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SandwichEffectiveKeLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=989935703]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 text = "KE (APFSDS): 450 mm RHA"
 
-[node name="SandwichEffectiveHeatLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox"]
+[node name="SandwichEffectiveHeatLabel" type="Label" parent="UIOverlay/RightStructureInspector/Margin/ScrollContainer/VBox" unique_id=814614465]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1.0, 0.75, 0.2, 1)
+theme_override_colors/font_color = Color(1, 0.75, 0.2, 1)
 text = "HEAT (ATGM): 650 mm RHA"
 
-[node name="BottomToolbar" type="PanelContainer" parent="UIOverlay"]
+[node name="BottomToolbar" type="PanelContainer" parent="UIOverlay" unique_id=886635198]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
+anchor_bottom = 1.0
 offset_top = -54.0
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="Margin" type="MarginContainer" parent="UIOverlay/BottomToolbar"]
+[node name="Margin" type="MarginContainer" parent="UIOverlay/BottomToolbar" unique_id=2075470084]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 6
 
-[node name="HBox" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin"]
+[node name="HBox" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin" unique_id=1673002831]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="PresetTabs" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="PresetTabs" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=1419697679]
 layout_mode = 2
 
-[node name="TurretsTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+[node name="TurretsTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs" unique_id=906738502]
 unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_TURRETS"
 
-[node name="StructuralTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+[node name="StructuralTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs" unique_id=368580428]
 unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_STRUCTURAL"
 
-[node name="AddonTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs"]
+[node name="AddonTab" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/PresetTabs" unique_id=2045120488]
 unique_name_in_owner = true
 layout_mode = 2
 text = "TAB_ADDON"
 
-[node name="VSep1" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="VSep1" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=461659970]
 layout_mode = 2
 
-[node name="GizmoToolbar" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="GizmoToolbar" type="HBoxContainer" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=84827175]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ToolTranslateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+[node name="ToolTranslateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar" unique_id=1346152958]
 unique_name_in_owner = true
 layout_mode = 2
 text = "BTN_MOVE"
 
-[node name="ToolRotateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+[node name="ToolRotateBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar" unique_id=1707911578]
 unique_name_in_owner = true
 layout_mode = 2
 text = "BTN_ROTATE"
 
-[node name="ToolScaleBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+[node name="ToolScaleBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar" unique_id=463049502]
 unique_name_in_owner = true
 layout_mode = 2
 text = "BTN_RESIZE"
 
-[node name="ToolSnapBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar"]
+[node name="ToolSnapBtn" type="Button" parent="UIOverlay/BottomToolbar/Margin/HBox/GizmoToolbar" unique_id=508746518]
 unique_name_in_owner = true
 layout_mode = 2
 text = "BTN_SNAP"
 
-[node name="VSep2" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="VSep2" type="VSeparator" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=1885440660]
 layout_mode = 2
 
-[node name="HoverInspectionLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="HoverInspectionLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=1316266829]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.9, 1, 1)
 text = "HOVER_INSPECT_PROMPT"
 
-[node name="FPSLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox"]
+[node name="FPSLabel" type="Label" parent="UIOverlay/BottomToolbar/Margin/HBox" unique_id=294443891]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.7, 0.2, 1)
@@ -1457,17 +1540,10 @@ text = "FPS: 60"
 [connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/XrayBtn" to="UIOverlay" method="_on_xray_btn_pressed"]
 [connection signal="toggled" from="UIOverlay/TopHeaderBar/Margin/HBox/SymmetryCheck" to="UIOverlay" method="_on_symmetry_toggled"]
 [connection signal="pressed" from="UIOverlay/TopHeaderBar/Margin/HBox/TestDriveBtn" to="UIOverlay" method="_on_test_drive_pressed"]
-
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCompartmentsBtn" to="UIOverlay" method="_on_category_selected" binds=[0]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatTracksBtn" to="UIOverlay" method="_on_category_selected" binds=[1]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPowertrainBtn" to="UIOverlay" method="_on_category_selected" binds=[2]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatFirepowerBtn" to="UIOverlay" method="_on_category_selected" binds=[3]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCrewBtn" to="UIOverlay" method="_on_category_selected" binds=[4]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPaintBtn" to="UIOverlay" method="_on_category_selected" binds=[5]]
-[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatDecalsBtn" to="UIOverlay" method="_on_category_selected" binds=[6]]
-
-[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModePointsBtn" to="UIOverlay" method="_on_mode_points_pressed"]
-[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeEdgesBtn" to="UIOverlay" method="_on_mode_edges_pressed"]
-[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeFacesBtn" to="UIOverlay" method="_on_mode_faces_pressed"]
-[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/SubModeContainer/ModeCornersBtn" to="UIOverlay" method="_on_mode_corners_pressed"]
-[connection signal="pressed" from="UIOverlay/RightStructureInspector/Margin/VBox/EditActionsGrid/ExtrudeBtn" to="UIOverlay" method="_on_extrude_pressed"]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCompartmentsBtn" to="UIOverlay" method="_on_category_selected" binds= [0]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatTracksBtn" to="UIOverlay" method="_on_category_selected" binds= [1]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPowertrainBtn" to="UIOverlay" method="_on_category_selected" binds= [2]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatFirepowerBtn" to="UIOverlay" method="_on_category_selected" binds= [3]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatCrewBtn" to="UIOverlay" method="_on_category_selected" binds= [4]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatPaintBtn" to="UIOverlay" method="_on_category_selected" binds= [5]]
+[connection signal="pressed" from="UIOverlay/LeftSidebar/Margin/VBox/CatDecalsBtn" to="UIOverlay" method="_on_category_selected" binds= [6]]

@@ -71,6 +71,8 @@ extends Control
 @onready var wheel_diam_value_label: Label = %WheelDiamValueLabel
 @onready var track_w_slider: HSlider = %TrackWSlider
 @onready var track_w_value_label: Label = %TrackWValueLabel
+@onready var track_links_slider: HSlider = %TrackLinksSlider
+@onready var track_links_value_label: Label = %TrackLinksValueLabel
 
 @onready var engine_power_slider: HSlider = %EnginePowerSlider
 @onready var engine_power_value_label: Label = %EnginePowerValueLabel
@@ -329,6 +331,8 @@ func _connect_signals() -> void:
 	if wheels_count_slider: _safe_connect(wheels_count_slider.value_changed, _on_chassis_changed)
 	if wheel_diam_slider: _safe_connect(wheel_diam_slider.value_changed, _on_chassis_changed)
 	if track_w_slider: _safe_connect(track_w_slider.value_changed, _on_chassis_changed)
+	if track_links_slider: _safe_connect(track_links_slider.value_changed, _on_chassis_changed)
+	if sprocket_location_option: _safe_connect(sprocket_location_option.item_selected, _on_chassis_changed)
 
 	# Powertrain & Firepower Sliders & Preset Selection
 	if engine_power_slider: _safe_connect(engine_power_slider.value_changed, func(_v):
@@ -411,6 +415,8 @@ func _sync_sliders_with_builders() -> void:
 		if wheels_count_slider: wheels_count_slider.value = track_generator.road_wheels_count
 		if wheel_diam_slider: wheel_diam_slider.value = track_generator.wheel_diameter
 		if track_w_slider: track_w_slider.value = track_generator.track_width
+		if track_links_slider and "track_link_count" in track_generator:
+			track_links_slider.value = track_generator.track_link_count
 		if sprocket_location_option and "sprocket_at_front" in track_generator:
 			sprocket_location_option.select(0 if track_generator.sprocket_at_front else 1)
 
@@ -585,6 +591,8 @@ func _update_slider_labels() -> void:
 		wheel_diam_value_label.text = "%.2f m" % wheel_diam_slider.value
 	if track_w_slider and track_w_value_label:
 		track_w_value_label.text = "%.2f m" % track_w_slider.value
+	if track_links_slider and track_links_value_label:
+		track_links_value_label.text = "%d" % int(track_links_slider.value)
 
 	if engine_power_slider and engine_power_value_label:
 		engine_power_value_label.text = "%.0f hp" % engine_power_slider.value
@@ -646,10 +654,10 @@ func _on_main_menu_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
 
 func _on_test_drive_pressed() -> void:
-	var name_str = tank_name_edit.text if tank_name_edit and tank_name_edit.text != "" else "Temp_Tank"
-	var era_str = era_option.get_item_text(era_option.selected) if (era_option and era_option.selected >= 0 and era_option.item_count > era_option.selected) else "Midwar"
-	TankSerializer.save_preset("user://temp_tank.json", name_str, era_str, hull_builder, turret_builder, track_generator, firepower_builder)
-	get_tree().change_scene_to_file("res://scenes/combat/test_range.tscn")
+	if not _in_constructor_test_drive:
+		toggle_in_constructor_test_drive()
+	else:
+		toggle_in_constructor_test_drive()
 
 func toggle_in_constructor_test_drive() -> void:
 	_in_constructor_test_drive = not _in_constructor_test_drive
@@ -815,7 +823,7 @@ func _apply_preset_data(data: Dictionary) -> void:
 
 	if data.has("chassis") and track_generator:
 		var c = data["chassis"]
-		track_generator.set_chassis_parameters(c.get("road_wheel_pairs", 6), c.get("wheel_diameter", 0.65), c.get("track_width", 0.6), 0.6)
+		track_generator.set_chassis_parameters(c.get("road_wheel_pairs", 6), c.get("wheel_diameter", 0.65), c.get("track_width", 0.6), c.get("track_link_count", 80))
 
 	_sync_sliders_with_builders()
 	_update_ttx()
@@ -988,6 +996,8 @@ func _on_chassis_changed(_val: float) -> void:
 		var cnt = int(wheels_count_slider.value) if wheels_count_slider else 6
 		var diam = wheel_diam_slider.value if wheel_diam_slider else 0.65
 		var w = track_w_slider.value if track_w_slider else 0.6
+		var links = int(track_links_slider.value) if track_links_slider else 80
+		track_generator.track_link_count = links
 		track_generator.set_chassis_parameters(cnt, diam, w, 0.6)
 	_update_slider_labels()
 	_update_ttx()

@@ -365,17 +365,18 @@ func _apply_suspension_forces(delta: float) -> void:
 
 	# Apply Anti-Sway Stabilizer Bar Forces between paired Left & Right wheels
 	var wheels_per_side = max(1, total_rays / 2)
-	var anti_sway_k = spring_stiffness * 0.6
+	var anti_sway_k = spring_stiffness * 0.5
 	for i in range(wheels_per_side):
 		var comp_l: float = wheel_compressions.get("L_%d" % i, 0.0)
 		var comp_r: float = wheel_compressions.get("R_%d" % i, 0.0)
-		var diff = comp_l - comp_r
+		var diff = comp_l - comp_r  # positive = left side dipping
 		if abs(diff) > 0.005:
-			var sway_force = clamp(diff * anti_sway_k, -max_force_per_wheel * 0.4, max_force_per_wheel * 0.4)
-			# Equal and opposite vertical forces: push compressed side down, pull uncompressed side up
+			var sway_force = clamp(diff * anti_sway_k, -max_force_per_wheel * 0.3, max_force_per_wheel * 0.3)
 			var x_pos = lerp(-2.4, 2.4, float(i) / max(1.0, float(wheels_per_side - 1)))
-			apply_force(-up_dir * sway_force, Vector3(x_pos, center_of_mass.y, -1.4) - center_of_mass)
-			apply_force(up_dir * sway_force, Vector3(x_pos, center_of_mass.y, 1.4) - center_of_mass)
+			# Left side (z=-1.4): push UP when left is dipping (sway_force > 0)
+			apply_force(up_dir * sway_force, Vector3(x_pos, center_of_mass.y, -1.4) - center_of_mass)
+			# Right side (z=+1.4): push DOWN when left is dipping (sway_force > 0)
+			apply_force(-up_dir * sway_force, Vector3(x_pos, center_of_mass.y, 1.4) - center_of_mass)
 
 func _apply_propulsion_and_steering(delta: float) -> void:
 	var total_rays = _ray_entries.size()
@@ -398,11 +399,13 @@ func _apply_propulsion_and_steering(delta: float) -> void:
 	
 	# Throttle Drive / Braking Force along +X
 	if abs(_inputs.y) > 0.05 and abs(current_speed_kmh) < max_speed_kmh:
-		var max_torque_force = (engine_horsepower * 745.7) / max(3.0, abs(current_speed_ms))
+		# Boost torque by 2.5x for more arcade/fun acceleration feel
+		var max_torque_force = (engine_horsepower * 745.7 * 2.5) / max(3.0, abs(current_speed_ms))
 		var drive_force = forward_dir * (_inputs.y * max_torque_force * ground_contact_ratio)
 		apply_central_force(drive_force)
 	elif abs(_inputs.y) <= 0.05 and ground_contact_ratio > 0.1:
-		var brake_force = -forward_dir * (current_speed_ms * mass * 3.0 * ground_contact_ratio)
+		# Lower coasting brake force from 3.0 to 0.5 to allow better coasting
+		var brake_force = -forward_dir * (current_speed_ms * mass * 0.5 * ground_contact_ratio)
 		apply_central_force(brake_force)
 		
 	# Skid Steering & Stationary Pivot Turn Torque around Y axis

@@ -26,7 +26,8 @@ static func save_preset(file_path: String, tank_name: String, era: String, hull:
 		"chassis": {
 			"road_wheel_pairs": tracks.road_wheel_pairs if tracks else 6,
 			"wheel_diameter": tracks.wheel_diameter if tracks else 0.65,
-			"track_width": tracks.track_width if tracks else 0.6
+			"track_width": tracks.track_width if tracks else 0.6,
+			"track_link_count": tracks.track_link_count if tracks else 80
 		},
 		"firepower": {
 			"caliber_mm": firepower.caliber_mm if firepower else 120.0,

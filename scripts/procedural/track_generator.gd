@@ -16,6 +16,7 @@ enum SuspensionType { TORSION_BAR, HYDROPNEUMATIC, LEAF_SPRING }
 @export_range(0.3, 1.2, 0.05) var suspension_height: float = 0.6 ## Ground clearance
 @export_range(1.2, 2.5, 0.1) var track_span_width: float = 1.6 ## Distance from vehicle center (Z axis)
 @export_range(0.01, 0.15, 0.01) var track_sag_m: float = 0.06 ## Track sag depth on top run
+@export_range(40, 120, 5) var track_link_count: int = 80 ## Number of track link segments per side
 @export var front_drive_sprocket: bool = true ## Drive sprocket position (front if true, rear if false)
 
 @export_group("Suspension Tuning")
@@ -301,14 +302,18 @@ func _compute_track_path(
 	var front_pos = sprocket_pos if sprocket_pos.x > idler_pos.x else idler_pos
 	var rear_pos = idler_pos if sprocket_pos.x > idler_pos.x else sprocket_pos
 
+	# Distribute track_link_count segments proportionally around the loop
+	var ground_segs = max(6, int(track_link_count * 0.40))
+	var idler_segs = max(4, int(track_link_count * 0.10))
+	var top_segs = max(6, int(track_link_count * 0.30))
+	var sprocket_segs = max(4, int(track_link_count * 0.10))
+
 	# Bottom run: interpolate Y between road wheel ground-contact positions
-	# Each road wheel's bottom Y = wheel_center_Y - wheel_radius
 	var front_bottom_x = front_pos.x - wheel_r * 0.5
 	var rear_bottom_x = rear_pos.x + wheel_r * 0.5
 	var chassis_length = (road_wheels_count - 1) * (wheel_diameter * 1.15)
 	var rear_x = -chassis_length * 0.5
 
-	var ground_segs = road_wheels_count * 2 + 2
 	for i in range(ground_segs + 1):
 		var t = float(i) / float(ground_segs)
 		var x = lerp(front_bottom_x, rear_bottom_x, t)
@@ -332,7 +337,6 @@ func _compute_track_path(
 		path_points.append(Vector3(x, bot_y, z_center))
 
 	# Rear Idler Curve (-X)
-	var idler_segs = 8
 	for i in range(1, idler_segs + 1):
 		var angle = (float(i) / float(idler_segs)) * PI + (PI * 0.5)
 		var cx = rear_pos.x + cos(angle) * (wheel_r * 0.95)
@@ -340,7 +344,6 @@ func _compute_track_path(
 		path_points.append(Vector3(cx, cy, z_center))
 
 	# Top Run with Sag Curves over return rollers
-	var top_segs = 14
 	for i in range(1, top_segs):
 		var tt = float(i) / float(top_segs)
 		var tx = lerp(rear_pos.x, front_pos.x, tt)
@@ -350,7 +353,6 @@ func _compute_track_path(
 		path_points.append(Vector3(tx, ty, z_center))
 
 	# Front Sprocket Curve (+X)
-	var sprocket_segs = 8
 	for i in range(sprocket_segs):
 		var angle = (float(i) / float(sprocket_segs)) * PI - (PI * 0.5)
 		var cx = front_pos.x + cos(angle) * (wheel_r * 0.95)
